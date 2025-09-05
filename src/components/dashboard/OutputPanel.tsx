@@ -14,6 +14,7 @@ import {
   Copy
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from 'react-markdown';
 
 interface OutputPanelProps {
   output: {
@@ -56,7 +57,37 @@ The regulatory landscape will continue evolving, but early adopters who embrace 
 export const OutputPanel = ({ output }: OutputPanelProps) => {
   const { toast } = useToast();
 
+  const handleDownload = async () => {
+    try {
+      const blob = new Blob([sampleContent], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${output.title.replace(/\s+/g, '-').toLowerCase()}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Download Started",
+        description: "Markdown file has been downloaded.",
+      });
+    } catch (err) {
+      toast({
+        title: "Download Failed",
+        description: "Unable to download the content.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleAction = (action: string) => {
+    if (action === "Download") {
+      handleDownload();
+      return;
+    }
+    
     toast({
       title: `${action} Initiated`,
       description: `Processing your request for "${output.title}"`,
@@ -127,10 +158,8 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
         <div className="space-y-3">
           <h4 className="font-medium text-foreground">Content Preview</h4>
           <div className="bg-muted/30 rounded-lg p-4 max-h-80 overflow-y-auto">
-            <div className="prose prose-sm max-w-none">
-              <pre className="whitespace-pre-wrap text-sm text-foreground">
-                {sampleContent}
-              </pre>
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <ReactMarkdown>{sampleContent}</ReactMarkdown>
             </div>
           </div>
         </div>

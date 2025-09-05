@@ -26,7 +26,9 @@ const outputTypes = [
   { value: "article", label: "Article", description: "Long-form content" },
   { value: "tweet-thread", label: "Tweet Thread", description: "Social media series" },
   { value: "script", label: "Script", description: "Video/audio content" },
-  { value: "prompt", label: "Prompt", description: "AI instruction template" }
+  { value: "prompt", label: "Prompt", description: "AI instruction template" },
+  { value: "longform", label: "Longform", description: "Extended analysis (Coming Soon)", disabled: true },
+  { value: "whitepaper", label: "White Paper", description: "Technical document (Coming Soon)", disabled: true }
 ];
 
 export const InputPanel = () => {
@@ -49,20 +51,49 @@ export const InputPanel = () => {
 
     setIsGenerating(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsGenerating(false);
+    try {
+      // Call the appropriate API endpoint
+      const endpoint = outputType === 'article' ? '/api/scout-editorial' : '/api/editorial';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          persona,
+          tone,
+          outputType,
+          topic: topic.trim()
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate content');
+      }
+      
+      const result = await response.json();
+      
       toast({
         title: "Content Generated",
         description: `${outputType} created with ${persona}'s ${tone} style.`,
       });
       
-      // Reset form
+      // Reset form after successful generation
       setPersona("");
       setTone("");
       setOutputType("");
       setTopic("");
-    }, 2000);
+      
+    } catch (error) {
+      toast({
+        title: "Generation Failed",
+        description: "Unable to generate content. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -130,9 +161,15 @@ export const InputPanel = () => {
             </SelectTrigger>
             <SelectContent>
               {outputTypes.map((ot) => (
-                <SelectItem key={ot.value} value={ot.value}>
+                <SelectItem 
+                  key={ot.value} 
+                  value={ot.value}
+                  disabled={ot.disabled}
+                >
                   <div className="flex flex-col">
-                    <span className="font-medium">{ot.label}</span>
+                    <span className={`font-medium ${ot.disabled ? 'text-muted-foreground' : ''}`}>
+                      {ot.label}
+                    </span>
                     <span className="text-xs text-muted-foreground">{ot.description}</span>
                   </div>
                 </SelectItem>
