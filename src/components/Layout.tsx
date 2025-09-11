@@ -48,7 +48,7 @@ const Layout = ({ children }: LayoutProps) => {
             </div>
             <div>
               <h1 className="font-semibold text-foreground">Sole Central Station</h1>
-              <p className="text-xs text-muted-foreground">Editorial Intelligence Platform</p>
+              <p className="text-xs text-muted-foreground">Content & Workflow Automation</p>
             </div>
           </div>
 

@@ -27,9 +27,9 @@ const Dashboard = () => {
             <TrendingUp className="h-7 w-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">Editorial Dashboard</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">Sole Central Station</h1>
             <p className="text-lg text-muted-foreground mt-1">
-              Monitor signals, manage content generation, and track your editorial pipeline
+              Monitor signals, manage content workflows, and track your automation pipeline
             </p>
           </div>
         </div>
@@ -78,7 +78,7 @@ const Dashboard = () => {
         
         <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold text-muted-foreground">Articles Generated</CardTitle>
+            <CardTitle className="text-sm font-semibold text-muted-foreground">Content Generated</CardTitle>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-purple/20">
               <FileText className="h-5 w-5 text-accent-purple" />
             </div>
