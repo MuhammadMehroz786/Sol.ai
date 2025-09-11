@@ -21,56 +21,71 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Monitor signals, manage content generation, and track your editorial pipeline.
-        </p>
+      <div className="space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
+            <TrendingUp className="h-7 w-7 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">Editorial Dashboard</h1>
+            <p className="text-lg text-muted-foreground mt-1">
+              Monitor signals, manage content generation, and track your editorial pipeline
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Signals</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">Active Signals</CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-blue/20">
+              <TrendingUp className="h-5 w-5 text-accent-blue" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 from yesterday</p>
+            <div className="text-3xl font-bold text-foreground">12</div>
+            <p className="text-sm text-success mt-1">+2 from yesterday</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Queue</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">In Queue</CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/20">
+              <Clock className="h-5 w-5 text-warning" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground">3 in review</p>
+            <div className="text-3xl font-bold text-foreground">8</div>
+            <p className="text-sm text-muted-foreground mt-1">3 in review</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Published Today</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">Published Today</CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
+              <CheckCircle className="h-5 w-5 text-success" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground">+25% from avg</p>
+            <div className="text-3xl font-bold text-foreground">5</div>
+            <p className="text-sm text-success mt-1">+25% from avg</p>
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Articles Generated</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-semibold text-muted-foreground">Articles Generated</CardTitle>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-purple/20">
+              <FileText className="h-5 w-5 text-accent-purple" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">34</div>
-            <p className="text-xs text-muted-foreground">This week</p>
+            <div className="text-3xl font-bold text-foreground">34</div>
+            <p className="text-sm text-muted-foreground mt-1">This week</p>
           </CardContent>
         </Card>
       </div>
