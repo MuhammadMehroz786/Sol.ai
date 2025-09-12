@@ -43,8 +43,8 @@ const Layout = ({ children }: LayoutProps) => {
           </Button>
           
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">SCS</span>
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center p-1">
+              <img src="/src/assets/sole-logo.png" alt="Sole Logo" className="h-full w-auto object-contain" />
             </div>
             <div>
               <h1 className="font-semibold text-foreground">Sole Central Station</h1>
