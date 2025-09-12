@@ -42,13 +42,20 @@ const Layout = ({ children }: LayoutProps) => {
             {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </Button>
           
-          <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center p-1">
-              <img src="/src/assets/sole-logo.png" alt="Sole Logo" className="h-full w-auto object-contain" />
+          <div className="flex items-center space-x-4">
+            <div className="group relative">
+              <div className="absolute -inset-1 bg-gradient-primary rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
+              <div className="relative h-10 w-auto px-3 py-1 rounded-xl bg-gradient-to-br from-primary/10 to-primary-glow/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
+                <img 
+                  src="/src/assets/sole-logo.png" 
+                  alt="Sole Logo" 
+                  className="h-8 w-auto object-contain filter brightness-110 contrast-110" 
+                />
+              </div>
             </div>
-            <div>
-              <h1 className="font-semibold text-foreground">Sole Central Station</h1>
-              <p className="text-xs text-muted-foreground">Content & Workflow Automation</p>
+            <div className="animate-fade-in">
+              <h1 className="font-bold text-lg text-foreground tracking-tight">Sole Central Station</h1>
+              <p className="text-xs text-muted-foreground font-medium">Content & Workflow Automation</p>
             </div>
           </div>
 
