@@ -6,34 +6,34 @@
 
 @layer base {
   :root {
-    /* Core Background & Text - Dark over Light Theme */
-    --background: 35 41% 92%;
-    --foreground: 15 48% 10%;
+    /* Core Background & Text - Brand Aligned */
+    --background: 0 0% 100%;
+    --foreground: 15 48% 20%;
 
     /* Cards & Surfaces */
     --card: 0 0% 100%;
-    --card-foreground: 15 48% 10%;
+    --card-foreground: 15 48% 20%;
 
     /* Popover & Overlays */
     --popover: 0 0% 100%;
-    --popover-foreground: 15 48% 10%;
+    --popover-foreground: 15 48% 20%;
 
-    /* Brand Colors - Principal as Main */
+    /* Primary - Brand Orange (#D07E3B) */
     --primary: 21 60% 53%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 21 65% 70%;
+    --primary-glow: 26 47% 70%;
 
-    /* Secondary - Light Cream (F6EDD4) */
-    --secondary: 47 58% 91%;
-    --secondary-foreground: 15 48% 10%;
+    /* Secondary - Brand Dark Brown (#491A14) */
+    --secondary: 15 48% 20%;
+    --secondary-foreground: 0 0% 100%;
 
-    /* Muted - Neutral Cream */
-    --muted: 47 40% 88%;
-    --muted-foreground: 15 48% 40%;
+    /* Muted - Brand Light Background (#F6EDD4) */
+    --muted: 47 58% 91%;
+    --muted-foreground: 15 48% 20%;
 
-    /* Accent - Peach (E2A176) */
+    /* Accent - Brand Peach (#E2A176) for hover effects */
     --accent: 26 47% 70%;
-    --accent-foreground: 15 48% 10%;
+    --accent-foreground: 15 48% 20%;
 
     /* Status Colors */
     --success: 142 71% 45%;
@@ -43,26 +43,26 @@
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & Inputs */
-    --border: 47 30% 85%;
-    --input: 47 30% 88%;
+    /* Borders & Inputs - Brand Light Cream */
+    --border: 47 58% 85%;
+    --input: 47 58% 88%;
     --ring: 21 60% 53%;
 
-    /* Brand color palette from uploaded design */
+    /* Brand color palette - Updated to match specification */
     --brand-principal: 21 60% 53%;
-    --brand-cream: 35 41% 92%;
-    --brand-dark: 15 48% 10%;
+    --brand-cream: 47 58% 91%;
+    --brand-dark: 15 48% 20%;
     --brand-white: 0 0% 100%;
     --brand-peach: 26 47% 70%;
-    --surface-elevated: 0 0% 98%;
-    --surface-overlay: 35 20% 95%;
+    --surface-elevated: 47 58% 96%;
+    --surface-overlay: 47 58% 93%;
 
-    /* Brand Gradients - Principal Focused */
-    --gradient-primary: linear-gradient(135deg, hsl(21, 60%, 53%) 0%, hsl(21, 65%, 70%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(47, 58%, 91%) 100%);
-    --gradient-background: linear-gradient(180deg, hsl(47, 58%, 95%) 0%, hsl(0, 0%, 100%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(47, 40%, 95%) 100%);
-    --gradient-surface: linear-gradient(145deg, hsl(0, 0%, 98%) 0%, hsl(47, 30%, 92%) 100%);
+    /* Brand Gradients - Updated for consistency */
+    --gradient-primary: linear-gradient(135deg, hsl(21, 60%, 53%) 0%, hsl(26, 47%, 70%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(15, 48%, 20%) 0%, hsl(15, 48%, 30%) 100%);
+    --gradient-background: linear-gradient(180deg, hsl(47, 58%, 91%) 0%, hsl(0, 0%, 100%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(47, 58%, 95%) 100%);
+    --gradient-surface: linear-gradient(145deg, hsl(47, 58%, 96%) 0%, hsl(47, 58%, 91%) 100%);
 
     /* Elevated shadows - Light theme */
     --shadow-sm: 0 2px 4px 0 hsl(15 48% 10% / 0.08);
@@ -80,47 +80,47 @@
 
     --radius: 0.75rem;
 
-    /* Sidebar colors - Principal themed */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 15 48% 10%;
+    /* Sidebar colors - Brand Dark Brown Navigation */
+    --sidebar-background: 15 48% 20%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 21 60% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 47 40% 95%;
-    --sidebar-accent-foreground: 15 48% 10%;
-    --sidebar-border: 47 30% 85%;
+    --sidebar-accent: 15 48% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 15 48% 15%;
     --sidebar-ring: 21 60% 53%;
   }
 
   .dark {
-    /* Maintain light theme as primary - dark mode keeps same values */
-    --background: 35 41% 92%;
-    --foreground: 15 48% 10%;
+    /* Keep brand colors consistent in dark mode */
+    --background: 0 0% 100%;
+    --foreground: 15 48% 20%;
     --card: 0 0% 100%;
-    --card-foreground: 15 48% 10%;
+    --card-foreground: 15 48% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 15 48% 10%;
+    --popover-foreground: 15 48% 20%;
     --primary: 21 60% 53%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 47 58% 91%;
-    --secondary-foreground: 15 48% 10%;
-    --muted: 47 40% 88%;
-    --muted-foreground: 15 48% 40%;
+    --secondary: 15 48% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 47 58% 91%;
+    --muted-foreground: 15 48% 20%;
     --accent: 26 47% 70%;
-    --accent-foreground: 15 48% 10%;
+    --accent-foreground: 15 48% 20%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
-    --border: 47 30% 85%;
-    --input: 47 30% 88%;
+    --border: 47 58% 85%;
+    --input: 47 58% 88%;
     --ring: 21 60% 53%;
     
-    /* Light theme sidebar maintained */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 15 48% 10%;
+    /* Brand sidebar maintained */
+    --sidebar-background: 15 48% 20%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 21 60% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 47 40% 95%;
-    --sidebar-accent-foreground: 15 48% 10%;
-    --sidebar-border: 47 30% 85%;
+    --sidebar-accent: 15 48% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 15 48% 15%;
     --sidebar-ring: 21 60% 53%;
   }
 }
