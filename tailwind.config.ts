@@ -43,10 +43,14 @@ export default {
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))',
-					orange: 'hsl(var(--accent-orange))',
-					peach: 'hsl(var(--accent-peach))',
-					cream: 'hsl(var(--accent-cream))'
+					foreground: 'hsl(var(--accent-foreground))'
+				},
+				brand: {
+					principal: 'hsl(var(--brand-principal))',
+					cream: 'hsl(var(--brand-cream))',
+					dark: 'hsl(var(--brand-dark))',
+					white: 'hsl(var(--brand-white))',
+					peach: 'hsl(var(--brand-peach))'
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
