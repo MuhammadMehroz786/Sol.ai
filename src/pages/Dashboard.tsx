@@ -37,7 +37,7 @@ const Dashboard = () => {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+        <Card className="bg-gradient-card border border-border shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground">Active Signals</CardTitle>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-blue/20">
@@ -50,7 +50,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+        <Card className="bg-gradient-card border border-border shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground">In Queue</CardTitle>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/20">
@@ -63,7 +63,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+        <Card className="bg-gradient-card border border-border shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground">Published Today</CardTitle>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
@@ -76,7 +76,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-card border-0 shadow-elegant hover:shadow-elevated transition-shadow">
+        <Card className="bg-gradient-card border border-border shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground">Content Generated</CardTitle>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-purple/20">
