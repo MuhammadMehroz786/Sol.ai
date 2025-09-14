@@ -11,8 +11,11 @@ import {
   Menu,
   X,
   LogOut,
-  User 
+  User,
+  Moon,
+  Sun
 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,6 +24,7 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
   
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -64,6 +68,17 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
               System Online
             </Badge>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              className="w-9 h-9 p-0"
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Toggle theme</span>
+            </Button>
             
             <Avatar className="h-8 w-8">
               <AvatarImage src="" />
