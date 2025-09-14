@@ -92,45 +92,45 @@
   }
 
   .dark {
-    /* Dark theme with brand colors */
-    --background: 15 48% 8%;
-    --foreground: 47 58% 95%;
+    /* Warm dark mode using brand palette effectively */
+    --background: 15 48% 20%;        /* Dark brown as main background */
+    --foreground: 47 58% 95%;        /* Light cream text */
     
-    --card: 15 48% 12%;
-    --card-foreground: 47 58% 90%;
+    --card: 15 48% 25%;              /* Slightly lighter brown for cards */
+    --card-foreground: 47 58% 90%;   /* Cream text on cards */
     
-    --popover: 15 48% 10%;
+    --popover: 15 48% 22%;           /* Dark brown popover */
     --popover-foreground: 47 58% 95%;
     
-    /* Keep brand primary colors */
-    --primary: 21 60% 53%;
+    /* Keep vibrant brand primary colors */
+    --primary: 21 60% 53%;           /* Brand orange stays vibrant */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 26 47% 70%;
+    --primary-glow: 26 47% 70%;      /* Peach glow */
     
-    --secondary: 15 48% 15%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 47 58% 85%;         /* Light cream for secondary */
+    --secondary-foreground: 15 48% 20%; /* Dark brown text */
     
-    --muted: 15 48% 15%;
-    --muted-foreground: 47 58% 70%;
+    --muted: 15 48% 30%;             /* Muted brown */
+    --muted-foreground: 47 58% 75%;   /* Softer cream */
     
-    --accent: 26 47% 70%;
-    --accent-foreground: 15 48% 8%;
+    --accent: 26 47% 70%;            /* Brand peach for accents */
+    --accent-foreground: 15 48% 15%; /* Dark brown on accent */
     
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 15 48% 20%;
-    --input: 15 48% 18%;
-    --ring: 21 60% 53%;
+    --border: 15 48% 35%;            /* Lighter brown borders */
+    --input: 15 48% 30%;             /* Input backgrounds */
+    --ring: 21 60% 53%;              /* Brand orange ring */
     
-    /* Dark sidebar */
-    --sidebar-background: 15 48% 5%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 21 60% 53%;
+    /* Warm dark sidebar using brand colors */
+    --sidebar-background: 15 48% 18%; /* Darker brown sidebar */
+    --sidebar-foreground: 47 58% 90%; /* Cream text */
+    --sidebar-primary: 21 60% 53%;    /* Brand orange */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 15 48% 15%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 15 48% 12%;
+    --sidebar-accent: 15 48% 28%;     /* Accent brown */
+    --sidebar-accent-foreground: 47 58% 85%;
+    --sidebar-border: 15 48% 25%;     /* Sidebar borders */
     --sidebar-ring: 21 60% 53%;
   }
 }
