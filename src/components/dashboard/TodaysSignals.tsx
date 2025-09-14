@@ -57,49 +57,49 @@ export const TodaysSignals = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {mockSignals.map((signal) => (
-          <div key={signal.id} className="border border-border rounded-lg p-4 space-y-3">
+          <div key={signal.id} className="bg-gradient-card border-2 border-border rounded-xl p-6 space-y-4 hover:shadow-elegant transition-all duration-300 hover:border-primary/30">
             <div className="flex items-start justify-between">
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-semibold text-foreground line-clamp-2">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-start gap-3">
+                  <h3 className="font-bold text-lg text-foreground line-clamp-2 leading-tight flex-1">
                     {signal.headline}
                   </h3>
-                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                  <Badge variant="default" className="bg-primary text-primary-foreground font-bold text-sm px-3 py-1 min-w-fit">
                     {signal.score}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2">
+                <p className="text-muted-foreground line-clamp-2 text-base leading-relaxed">
                   {signal.summary}
                 </p>
                 <div className="flex items-center justify-between">
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-2">
                     {signal.tags.slice(0, 3).map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
+                      <Badge key={tag} variant="secondary" className="bg-accent/20 text-accent-foreground font-medium px-2 py-1">
                         {tag}
                       </Badge>
                     ))}
                     {signal.tags.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="secondary" className="bg-accent/20 text-accent-foreground font-medium px-2 py-1">
                         +{signal.tags.length - 3}
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                    <span>{signal.source}</span>
+                  <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground">
+                    <span className="text-foreground">{signal.source}</span>
                     <span>•</span>
                     <span>{signal.timestamp}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <Button variant="ghost" size="sm" asChild>
+            <div className="flex items-center justify-between pt-4 border-t border-border/50">
+              <Button variant="outline" size="sm" className="border-border hover:border-primary/50 hover:bg-primary/5" asChild>
                 <a href={signal.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View Source
                 </a>
               </Button>
-              <Button size="sm" className="bg-primary hover:bg-primary/90">
+              <Button size="sm" className="bg-primary hover:bg-accent shadow-sm hover:shadow-md transition-all duration-200 font-medium px-4">
                 <Send className="h-4 w-4 mr-2" />
                 Send to Editorial
               </Button>
