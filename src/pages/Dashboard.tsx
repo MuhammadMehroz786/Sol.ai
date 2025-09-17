@@ -33,8 +33,12 @@ const Dashboard = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-              <TrendingUp className="h-7 w-7 text-primary-foreground" />
+            <div className="flex h-14 w-auto items-center justify-center rounded-xl bg-gradient-primary shadow-glow px-4">
+              <img 
+                src="/src/assets/sole-logo-with-tagline.png" 
+                alt="SOLE - Born for Us. Raised by the Culture" 
+                className="h-10 w-auto"
+              />
             </div>
             <div>
               <h1 className="text-4xl font-bold tracking-tight text-foreground">Sole Central Station</h1>

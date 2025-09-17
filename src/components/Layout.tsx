@@ -50,10 +50,12 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center space-x-4">
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-primary rounded-xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-              <div className="relative h-10 w-auto px-3 py-1 rounded-xl bg-gradient-to-br from-primary/10 to-primary-glow/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
-                <div className="h-8 flex items-center text-primary font-bold text-xl">
-                  SOLE
-                </div>
+              <div className="relative h-12 w-auto px-4 py-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary-glow/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
+                <img 
+                  src="/src/assets/sole-logo-with-tagline.png" 
+                  alt="SOLE - Born for Us. Raised by the Culture" 
+                  className="h-8 w-auto"
+                />
               </div>
             </div>
             <div className="animate-fade-in">
