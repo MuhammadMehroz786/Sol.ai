@@ -52,14 +52,14 @@ const Layout = ({ children }: LayoutProps) => {
               <div className="relative h-10 w-auto px-3 py-1 rounded-xl bg-gradient-to-br from-primary/10 to-primary-glow/10 backdrop-blur-sm border border-primary/20 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
                 <img 
                   src="/src/assets/sole-logo-with-tagline.png" 
-                  alt="Sole Logo - Born for Us, Raised by the Culture" 
+                  alt="SOLE - Born for Us, Raised by the Culture" 
                   className="h-8 w-auto object-contain" 
                 />
               </div>
             </div>
             <div className="animate-fade-in">
               <h1 className="font-bold text-lg text-foreground tracking-tight">Sole Central Station</h1>
-              <p className="text-xs text-muted-foreground font-medium">Content & Workflow Automation</p>
+              <p className="text-xs text-muted-foreground font-medium">AI Agent Orchestration Platform</p>
             </div>
           </div>
 

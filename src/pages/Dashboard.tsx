@@ -8,6 +8,7 @@ import { TodaysSignals } from "@/components/dashboard/TodaysSignals";
 import { OutputQueue } from "@/components/dashboard/OutputQueue";
 import { InputPanel } from "@/components/dashboard/InputPanel";
 import { OutputPanel } from "@/components/dashboard/OutputPanel";
+import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
 import { 
   TrendingUp, 
   FileText, 
@@ -35,13 +36,13 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - SOLE Brand Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="bg-gradient-card border border-border shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground">Active Signals</CardTitle>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-blue/20">
-              <TrendingUp className="h-5 w-5 text-accent-blue" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
+              <TrendingUp className="h-5 w-5 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
@@ -79,8 +80,8 @@ const Dashboard = () => {
         <Card className="bg-gradient-card border border-border shadow-elegant hover:shadow-elevated transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle className="text-sm font-semibold text-muted-foreground">Content Generated</CardTitle>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-purple/20">
-              <FileText className="h-5 w-5 text-accent-purple" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20">
+              <FileText className="h-5 w-5 text-accent" />
             </div>
           </CardHeader>
           <CardContent>
@@ -97,9 +98,9 @@ const Dashboard = () => {
           <OutputQueue onSelectOutput={setSelectedOutput} />
         </div>
 
-        {/* Right Column - Input & Output Panels */}
+        {/* Right Column - Content Generator & Output Panels */}
         <div className="space-y-6">
-          <InputPanel />
+          <ContentGenerator />
           {selectedOutput && (
             <OutputPanel output={selectedOutput} />
           )}

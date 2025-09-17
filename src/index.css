@@ -18,22 +18,22 @@
     --popover: 0 0% 100%;
     --popover-foreground: 15 48% 20%;
 
-    /* Primary - Brand Orange (#D07E3B) */
-    --primary: 21 60% 53%;
+    /* Primary - Brand Orange (#D07E3B) - Exact specification */
+    --primary: 21 58% 53%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 26 47% 70%;
 
-    /* Secondary - Brand Dark Brown (#491A14) */
-    --secondary: 15 48% 20%;
+    /* Secondary - Brand Dark Brown (#491A14) - Exact specification */
+    --secondary: 15 46% 20%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Muted - Brand Light Background (#F6EDD4) */
-    --muted: 47 58% 91%;
-    --muted-foreground: 15 48% 20%;
+    /* Muted - Brand Cream (#F6EDD4) - Exact specification */
+    --muted: 47 59% 91%;
+    --muted-foreground: 15 46% 20%;
 
-    /* Accent - Brand Peach (#E2A176) for hover effects */
+    /* Accent - Brand Peach (#E2A176) - Exact specification */
     --accent: 26 47% 70%;
-    --accent-foreground: 15 48% 20%;
+    --accent-foreground: 15 46% 20%;
 
     /* Status Colors */
     --success: 142 71% 45%;
@@ -48,12 +48,12 @@
     --input: 47 58% 88%;
     --ring: 21 60% 53%;
 
-    /* Brand color palette - Updated to match specification */
-    --brand-principal: 21 60% 53%;
-    --brand-cream: 47 58% 91%;
-    --brand-dark: 15 48% 20%;
-    --brand-white: 0 0% 100%;
-    --brand-peach: 26 47% 70%;
+    /* Brand color palette - Exact SOLE brand specification */
+    --brand-principal: 21 58% 53%;    /* #D07E3B - Principal Orange */
+    --brand-cream: 47 59% 91%;        /* #F6EDD4 - Cream/Light */
+    --brand-dark: 15 46% 20%;         /* #491A14 - Dark Brown */
+    --brand-white: 0 0% 100%;         /* #FFFFFF - White */
+    --brand-peach: 26 47% 70%;        /* #E2A176 - Peach/Coral */
     --surface-elevated: 47 58% 96%;
     --surface-overlay: 47 58% 93%;
 
