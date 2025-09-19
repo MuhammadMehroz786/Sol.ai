@@ -79,7 +79,7 @@ const Auth = () => {
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
-                className="h-20 w-auto"
+                className="h-28 w-auto"
               />
             </div>
           </div>
