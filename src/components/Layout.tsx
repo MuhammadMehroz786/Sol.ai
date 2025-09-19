@@ -167,6 +167,13 @@ const Layout = ({ children }: LayoutProps) => {
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           <div className="p-6">
+            <div className="flex items-center mb-6">
+              <img 
+                src={soleLogoWithTagline} 
+                alt="SOLE Logo" 
+                className="h-16 w-auto mr-6 hover:scale-105 transition-transform duration-300"
+              />
+            </div>
             {children}
           </div>
         </main>
