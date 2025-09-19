@@ -29,7 +29,7 @@ const Index = () => {
                 AI-powered content orchestration platform. Born for us, raised by the culture.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-4">
+              <div className="flex justify-center items-center pt-4">
                 <Button 
                   asChild
                   size="lg" 
@@ -37,16 +37,6 @@ const Index = () => {
                 >
                   <Link to="/auth">
                     Get Started <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-6"
-                  asChild
-                >
-                  <Link to="/dashboard">
-                    Dashboard
                   </Link>
                 </Button>
               </div>
@@ -120,7 +110,7 @@ const Index = () => {
               className="bg-white text-primary hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <Link to="/auth">
-                Start Now <ArrowRight className="ml-2 h-4 w-4" />
+                Learn More <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </div>
