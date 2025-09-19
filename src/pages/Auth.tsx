@@ -121,7 +121,6 @@ const Auth = () => {
                     <Input
                       id="signin-email"
                       type="email"
-                      placeholder="your@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -137,7 +136,6 @@ const Auth = () => {
                     <Input
                       id="signin-password"
                       type="password"
-                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
@@ -165,7 +163,6 @@ const Auth = () => {
                     <Input
                       id="signup-name"
                       type="text"
-                      placeholder="Your Name"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       className="bg-background"
@@ -180,7 +177,6 @@ const Auth = () => {
                     <Input
                       id="signup-email"
                       type="email"
-                      placeholder="your@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -196,7 +192,6 @@ const Auth = () => {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
