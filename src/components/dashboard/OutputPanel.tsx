@@ -235,80 +235,77 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
         <Separator />
 
         {/* Quick Actions */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <h4 className="font-semibold text-foreground">Quick Actions</h4>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Rewrite")}
-              className="hover:bg-primary/10 hover:border-primary/20"
+              className="hover:bg-primary/10 hover:border-primary/20 text-xs px-2 py-1 h-8"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-3 w-3 mr-1" />
               Rewrite
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Shorten")}
-              className="hover:bg-warning/10 hover:border-warning/20"
+              className="hover:bg-warning/10 hover:border-warning/20 text-xs px-2 py-1 h-8"
             >
-              <Scissors className="h-4 w-4 mr-2" />
+              <Scissors className="h-3 w-3 mr-1" />
               Shorten
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Poeticize")}
-              className="hover:bg-accent/10 hover:border-accent/20"
+              className="hover:bg-accent/10 hover:border-accent/20 text-xs px-2 py-1 h-8"
             >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Poeticize
+              <Sparkles className="h-3 w-3 mr-1" />
+              Enhance
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Download")}
-              className="hover:bg-info/10 hover:border-info/20"
+              className="hover:bg-info/10 hover:border-info/20 text-xs px-2 py-1 h-8"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Download
+              <Download className="h-3 w-3 mr-1" />
+              Export
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Analytics")}
-              className="hover:bg-success/10 hover:border-success/20"
+              className="hover:bg-success/10 hover:border-success/20 text-xs px-2 py-1 h-8"
             >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
+              <BarChart3 className="h-3 w-3 mr-1" />
+              Stats
             </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Feedback")}
-              className="hover:bg-secondary/10 hover:border-secondary/20"
+              className="hover:bg-secondary/10 hover:border-secondary/20 text-xs px-2 py-1 h-8"
             >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Feedback
+              <MessageSquare className="h-3 w-3 mr-1" />
+              Review
             </Button>
-          </div>
-          
-          <div className="flex space-x-3 pt-2">
             <Button 
-              className="flex-1 bg-gradient-primary hover:shadow-glow transition-all duration-300"
+              className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-xs px-2 py-1 h-8"
               onClick={() => handleAction("Send to CMS")}
             >
-              <Send className="h-4 w-4 mr-2" />
-              Send to CMS
+              <Send className="h-3 w-3 mr-1" />
+              To CMS
             </Button>
             <Button 
               variant="outline"
-              className="flex-1 hover:bg-primary/10 border-primary/20"
+              className="hover:bg-primary/10 border-primary/20 text-xs px-2 py-1 h-8"
               onClick={() => handleAction("Chain to Agent")}
             >
-              <Zap className="h-4 w-4 mr-2" />
-              Chain to Agent
+              <Zap className="h-3 w-3 mr-1" />
+              Chain
             </Button>
           </div>
         </div>
