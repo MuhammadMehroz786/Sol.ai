@@ -10,6 +10,7 @@ import { InputPanel } from "@/components/dashboard/InputPanel";
 import { OutputPanel } from "@/components/dashboard/OutputPanel";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
 import { useAuth } from "@/contexts/AuthContext";
+import soleLogoWithTagline from "@/assets/sole-logo-with-tagline.png";
 import { 
   TrendingUp, 
   FileText, 
@@ -35,7 +36,7 @@ const Dashboard = () => {
           <div className="flex items-center space-x-4">
             <div className="flex h-14 w-auto items-center justify-center rounded-xl bg-gradient-primary shadow-glow px-4">
               <img 
-                src="/src/assets/sole-logo-with-tagline.png" 
+                src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
                 className="h-10 w-auto"
               />
