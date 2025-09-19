@@ -56,7 +56,7 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="flex h-40 items-center px-6">
+        <div className="flex h-20 items-center px-6">
           <Button
             variant="ghost"
             size="sm"
@@ -71,7 +71,7 @@ const Layout = ({ children }: LayoutProps) => {
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE Logo" 
-                className="h-36 w-auto object-contain hover-scale transition-all duration-300 hover:brightness-110 filter drop-shadow-lg hover:drop-shadow-xl"
+                className="h-18 w-auto object-contain hover-scale transition-all duration-300 hover:brightness-110 filter drop-shadow-lg hover:drop-shadow-xl"
               />
             </div>
           </div>
