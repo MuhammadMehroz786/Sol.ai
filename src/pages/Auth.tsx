@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Lock, User, Mail, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import soleLogoWithTagline from "@/assets/sole-logo-orange-brown-v2.png";
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -72,12 +73,21 @@ const Auth = () => {
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-primary shadow-glow mx-auto">
-            <Lock className="h-8 w-8 text-primary-foreground" />
+        <div className="text-center space-y-4">
+          <div className="group relative mx-auto w-fit">
+            <div className="absolute -inset-3 bg-gradient-primary rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
+            <div className="relative h-20 w-auto px-8 py-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary-glow/5 backdrop-blur-sm border border-primary/10 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
+              <img 
+                src={soleLogoWithTagline} 
+                alt="SOLE - Born for Us. Raised by the Culture" 
+                className="h-16 w-auto"
+              />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">Sole Central Station</h1>
-          <p className="text-muted-foreground">Access your AI content orchestration platform</p>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Sole Central Station</h1>
+            <p className="text-muted-foreground">Access your AI content orchestration platform</p>
+          </div>
         </div>
 
         {/* Auth Card */}
