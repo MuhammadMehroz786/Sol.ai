@@ -295,9 +295,9 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Button 
-              className="flex-1 bg-gradient-primary hover:shadow-glow transition-all duration-300"
+              className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-sm px-3 py-2 h-9"
               onClick={() => handleAction("Send to CMS")}
             >
               <Send className="h-4 w-4 mr-2" />
@@ -305,7 +305,7 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
             </Button>
             <Button 
               variant="outline"
-              className="flex-1 hover:bg-primary/10 border-primary/20"
+              className="hover:bg-primary/10 border-primary/20 text-sm px-3 py-2 h-9"
               onClick={() => handleAction("Chain to Agent")}
             >
               <Zap className="h-4 w-4 mr-2" />
