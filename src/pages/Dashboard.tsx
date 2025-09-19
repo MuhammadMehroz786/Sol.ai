@@ -24,17 +24,19 @@ const Dashboard = () => {
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <h1 className="text-4xl font-bold tracking-tight text-foreground">Sole Central Station</h1>
             <p className="text-lg text-muted-foreground mt-1">
               Monitor signals, manage content workflows, and track your automation pipeline
             </p>
           </div>
-          <img 
-            src={soleLogoWithTagline} 
-            alt="SOLE Logo" 
-            className="h-32 w-auto opacity-90"
-          />
+          <div className="flex items-center">
+            <img 
+              src={soleLogoWithTagline} 
+              alt="SOLE Logo" 
+              className="h-24 w-auto opacity-90"
+            />
+          </div>
         </div>
       </div>
 
