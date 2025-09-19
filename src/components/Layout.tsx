@@ -150,7 +150,7 @@ const Layout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-gradient-subtle">
+        <main className="flex-1 overflow-auto bg-gradient-to-br from-brand-cream/30 via-white to-accent/20">
           <div className="p-8">
             {children}
           </div>
