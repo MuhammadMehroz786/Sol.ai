@@ -84,16 +84,16 @@ const Auth = () => {
             </div>
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Sole Central Station</h1>
-            <p className="text-muted-foreground">Access your AI content orchestration platform</p>
+            <h1 className="text-4xl font-bold text-foreground">Sole Central Station</h1>
+            <p className="text-lg text-muted-foreground">Access your AI content orchestration platform</p>
           </div>
         </div>
 
         {/* Auth Card */}
         <Card className="bg-gradient-card border border-border shadow-elegant">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-center">Welcome</CardTitle>
-            <CardDescription className="text-center">
+            <CardTitle className="text-center text-xl">Welcome</CardTitle>
+            <CardDescription className="text-center text-base">
               Sign in to your account or create a new one
             </CardDescription>
           </CardHeader>
@@ -114,7 +114,7 @@ const Auth = () => {
               <TabsContent value="signin" className="space-y-4">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email" className="flex items-center space-x-2">
+                    <Label htmlFor="signin-email" className="flex items-center space-x-2 text-base">
                       <Mail className="h-4 w-4" />
                       <span>Email</span>
                     </Label>
@@ -129,7 +129,7 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password" className="flex items-center space-x-2">
+                    <Label htmlFor="signin-password" className="flex items-center space-x-2 text-base">
                       <Lock className="h-4 w-4" />
                       <span>Password</span>
                     </Label>
@@ -156,7 +156,7 @@ const Auth = () => {
               <TabsContent value="signup" className="space-y-4">
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-name" className="flex items-center space-x-2">
+                    <Label htmlFor="signup-name" className="flex items-center space-x-2 text-base">
                       <User className="h-4 w-4" />
                       <span>Display Name (Optional)</span>
                     </Label>
@@ -170,7 +170,7 @@ const Auth = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email" className="flex items-center space-x-2">
+                    <Label htmlFor="signup-email" className="flex items-center space-x-2 text-base">
                       <Mail className="h-4 w-4" />
                       <span>Email</span>
                     </Label>
@@ -185,7 +185,7 @@ const Auth = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password" className="flex items-center space-x-2">
+                    <Label htmlFor="signup-password" className="flex items-center space-x-2 text-base">
                       <Lock className="h-4 w-4" />
                       <span>Password</span>
                     </Label>

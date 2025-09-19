@@ -150,8 +150,8 @@ export const ContentGenerator = () => {
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-lg font-semibold">Content Generator</CardTitle>
-            <CardDescription className="text-sm">
+            <CardTitle className="text-xl font-semibold">Content Generator</CardTitle>
+            <CardDescription className="text-base">
               Create tailored content with AI personas
             </CardDescription>
           </div>
@@ -161,7 +161,7 @@ export const ContentGenerator = () => {
       <CardContent className="space-y-6">
         {/* Persona Selector */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium flex items-center space-x-2">
+          <Label className="text-base font-medium flex items-center space-x-2">
             <User className="h-4 w-4" />
             <span>Persona</span>
           </Label>
@@ -174,7 +174,7 @@ export const ContentGenerator = () => {
                 <SelectItem key={persona.value} value={persona.value}>
                   <div>
                     <div className="font-medium">{persona.label}</div>
-                    <div className="text-xs text-muted-foreground">{persona.description}</div>
+                    <div className="text-sm text-muted-foreground">{persona.description}</div>
                   </div>
                 </SelectItem>
               ))}
@@ -186,7 +186,7 @@ export const ContentGenerator = () => {
 
         {/* Tone Modifiers */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Tone Modifiers</Label>
+          <Label className="text-base font-medium">Tone Modifiers</Label>
           <div className="flex flex-wrap gap-2">
             {tones.map((tone) => (
               <Badge
@@ -209,7 +209,7 @@ export const ContentGenerator = () => {
 
         {/* Output Type */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Output Type</Label>
+          <Label className="text-base font-medium">Output Type</Label>
           <div className="grid grid-cols-2 gap-2">
             {outputTypes.map((type) => (
               <Button
@@ -222,8 +222,8 @@ export const ContentGenerator = () => {
                 <div className="flex items-center space-x-3">
                   <type.icon className="h-4 w-4" />
                   <div className="text-left">
-                    <div className="text-sm font-medium">{type.label}</div>
-                    <div className="text-xs text-muted-foreground">{type.description}</div>
+                    <div className="text-base font-medium">{type.label}</div>
+                    <div className="text-sm text-muted-foreground">{type.description}</div>
                   </div>
                 </div>
               </Button>
@@ -235,7 +235,7 @@ export const ContentGenerator = () => {
 
         {/* Topic Input */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Topic & Context</Label>
+          <Label className="text-base font-medium">Topic & Context</Label>
           <Textarea
             placeholder="Describe the topic, provide context, or paste source material..."
             value={topic}

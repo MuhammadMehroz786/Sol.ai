@@ -158,6 +158,34 @@
 
   body {
     @apply bg-background text-foreground;
+    font-size: 16px; /* Base font size for better readability */
+    line-height: 1.6;
+  }
+
+  /* Improved text size hierarchy for better readability */
+  .text-xs {
+    font-size: 0.875rem; /* 14px instead of 12px */
+    line-height: 1.5;
+  }
+  
+  .text-sm {
+    font-size: 1rem; /* 16px instead of 14px */
+    line-height: 1.5;
+  }
+  
+  .text-base {
+    font-size: 1.125rem; /* 18px instead of 16px */
+    line-height: 1.6;
+  }
+  
+  .text-lg {
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.6;
+  }
+  
+  .text-xl {
+    font-size: 1.5rem; /* 24px */
+    line-height: 1.5;
   }
 }
 

@@ -50,8 +50,8 @@ const Layout = ({ children }: LayoutProps) => {
           
           <div className="flex items-center space-x-6">
             <div className="animate-fade-in">
-              <h1 className="font-bold text-xl text-foreground tracking-tight">Sole Central Station</h1>
-              <p className="text-sm text-muted-foreground font-medium">AI Agent Orchestration Platform</p>
+              <h1 className="font-bold text-2xl text-foreground tracking-tight">Sole Central Station</h1>
+              <p className="text-base text-muted-foreground font-medium">AI Agent Orchestration Platform</p>
             </div>
           </div>
 
@@ -74,7 +74,7 @@ const Layout = ({ children }: LayoutProps) => {
             
             <Avatar className="h-8 w-8">
               <AvatarImage src="" />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                 {user?.email?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -98,7 +98,7 @@ const Layout = ({ children }: LayoutProps) => {
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    "flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center space-x-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors",
                     isActive 
                       ? "bg-primary text-primary-foreground shadow-sm" 
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"

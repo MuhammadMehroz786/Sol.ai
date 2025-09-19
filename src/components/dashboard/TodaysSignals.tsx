@@ -63,51 +63,51 @@ export const TodaysSignals = () => {
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center space-x-2 text-lg">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-primary">
-            <TrendingUp className="h-3 w-3 text-white" />
+        <CardTitle className="flex items-center space-x-2 text-xl">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary">
+            <TrendingUp className="h-4 w-4 text-white" />
           </div>
           <span>Today's Signals</span>
-          <Badge className="ml-auto bg-primary/10 text-primary border-primary/20 text-xs">
+          <Badge className="ml-auto bg-primary/10 text-primary border-primary/20 text-sm">
             {signals.length}
           </Badge>
         </CardTitle>
-        <CardDescription className="text-sm">
+        <CardDescription className="text-base">
           Priority signals ranked by Scout GPT
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {signals.map((signal) => (
-          <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-3 hover:shadow-md transition-all duration-300 hover:border-primary/30">
+          <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-4 hover:shadow-md transition-all duration-300 hover:border-primary/30">
             {/* Compact Rank */}
             <div className="absolute -top-1 -left-1 bg-background border border-primary rounded-full p-1">
               {getRankIcon(signal.rank)}
             </div>
             
-            <div className="flex justify-between items-start mb-2 pl-4">
+            <div className="flex justify-between items-start mb-3 pl-4">
               <div className="flex-1 pr-3">
-                <div className="flex items-center space-x-2 mb-1">
-                  <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h3 className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
                     {signal.headline}
                   </h3>
-                  <Badge className={`text-xs ${getPriorityColor(signal.priority)}`}>
+                  <Badge className={`text-sm ${getPriorityColor(signal.priority)}`}>
                     {signal.priority}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                   {signal.summary}
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-lg font-bold text-primary">{signal.score}</div>
-                <div className="text-xs text-success">{signal.engagement}</div>
+                <div className="text-xl font-bold text-primary">{signal.score}</div>
+                <div className="text-sm text-success">{signal.engagement}</div>
               </div>
             </div>
 
             {/* Compact Tags */}
-            <div className="flex flex-wrap gap-1 mb-2 pl-4">
+            <div className="flex flex-wrap gap-1 mb-3 pl-4">
               {signal.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 bg-accent/10 text-accent-foreground">
+                <Badge key={tag} variant="secondary" className="text-sm px-2 py-1 bg-accent/10 text-accent-foreground">
                   {tag}
                 </Badge>
               ))}
@@ -115,24 +115,24 @@ export const TodaysSignals = () => {
 
             {/* Compact Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-border pl-4">
-              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
                 <span>{signal.timestamp}</span>
                 <span>•</span>
                 <span>{signal.source}</span>
               </div>
               
-              <div className="flex space-x-1">
-                <Button size="sm" className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-xs px-2 py-1 h-7">
-                  <Zap className="h-3 w-3 mr-1" />
+              <div className="flex space-x-2">
+                <Button size="sm" className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-sm px-3 py-2 h-8">
+                  <Zap className="h-4 w-4 mr-1" />
                   GPT
                 </Button>
-                <Button size="sm" variant="outline" className="hover:bg-accent/10 text-xs px-2 py-1 h-7">
+                <Button size="sm" variant="outline" className="hover:bg-accent/10 text-sm px-3 py-2 h-8">
                   Chain
-                  <ArrowRight className="h-3 w-3 ml-1" />
+                  <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
-                <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary text-xs px-1 py-1 h-7">
-                  <ExternalLink className="h-3 w-3" />
+                <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8">
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -140,8 +140,8 @@ export const TodaysSignals = () => {
         ))}
         
         {/* Compact Load More */}
-        <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-foreground hover:bg-accent/10 mt-2">
-          Load More <ArrowRight className="h-3 w-3 ml-2" />
+        <Button variant="ghost" size="sm" className="w-full text-sm text-muted-foreground hover:text-foreground hover:bg-accent/10 mt-3 py-2">
+          Load More <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </CardContent>
     </Card>
