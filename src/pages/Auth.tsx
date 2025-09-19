@@ -74,12 +74,12 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="mx-auto w-fit">
-            <div className="h-32 w-auto px-8 py-6 flex items-center justify-center">
+          <div className="mx-auto w-fit mt-4">
+            <div className="h-36 w-auto px-8 py-2 flex items-center justify-center">
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
-                className="h-24 w-auto"
+                className="h-28 w-auto"
               />
             </div>
           </div>
