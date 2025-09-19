@@ -76,11 +76,11 @@ const Auth = () => {
         <div className="text-center space-y-4">
           <div className="group relative mx-auto w-fit">
             <div className="absolute -inset-3 bg-gradient-primary rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="relative h-20 w-auto px-8 py-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary-glow/5 backdrop-blur-sm border border-primary/10 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
+            <div className="relative h-20 w-auto px-16 py-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary-glow/5 backdrop-blur-sm border border-primary/10 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
-                className="h-16 w-auto"
+                className="h-16 w-auto scale-x-125"
               />
             </div>
           </div>
