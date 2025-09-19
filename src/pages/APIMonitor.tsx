@@ -67,30 +67,30 @@ const APIMonitor = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-accent/15 to-primary/5 p-8 rounded-3xl border-2 border-primary/20 shadow-lg">
+      <div className="bg-gradient-to-r from-primary/10 via-accent/15 to-primary/5 p-4 rounded-2xl border-2 border-primary/20 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-brand-dark">API Monitor</h1>
-            <p className="text-lg text-brand-dark/70 mt-3 font-medium">
-              Monitor API performance, track agent health, and analyze request patterns
+            <h1 className="text-2xl font-bold tracking-tight text-brand-dark">API Monitor</h1>
+            <p className="text-sm text-brand-dark/70 mt-1 font-medium">
+              Monitor API performance and track agent health
             </p>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex space-x-3">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-44 bg-white border-2 border-primary/30 text-base h-12 rounded-xl">
+              <SelectTrigger className="w-36 bg-white border-2 border-primary/30 text-sm h-10 rounded-lg">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="1h" className="text-sm">Last Hour</SelectItem>
-                <SelectItem value="24h" className="text-sm">Last 24 Hours</SelectItem>
-                <SelectItem value="7d" className="text-sm">Last 7 Days</SelectItem>
-                <SelectItem value="30d" className="text-sm">Last 30 Days</SelectItem>
+              <SelectContent className="rounded-lg">
+                <SelectItem value="1h" className="text-xs">Last Hour</SelectItem>
+                <SelectItem value="24h" className="text-xs">Last 24 Hours</SelectItem>
+                <SelectItem value="7d" className="text-xs">Last 7 Days</SelectItem>
+                <SelectItem value="30d" className="text-xs">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="h-12 px-6 text-base border-2 border-primary/30 rounded-xl hover:bg-primary hover:text-white transition-all">
-              <RefreshCw className="h-5 w-5 mr-3" />
+            <Button variant="outline" className="h-10 px-4 text-sm border-2 border-primary/30 rounded-lg hover:bg-primary hover:text-white transition-all">
+              <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
           </div>
@@ -98,60 +98,60 @@ const APIMonitor = () => {
       </div>
 
       {/* Key Metrics */}
-      <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl border-2 border-accent/30 shadow-lg">
-        <h2 className="text-xl font-bold text-brand-dark mb-6">System Health Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <Card className="bg-gradient-to-br from-success/5 to-success/15 border-2 border-success/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center space-x-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-success text-white shadow-lg">
-                  <Activity className="h-8 w-8" />
+      <div className="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border-2 border-accent/30 shadow-lg">
+        <h2 className="text-lg font-bold text-brand-dark mb-4">System Health Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-success/5 to-success/15 border-2 border-success/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-xl overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success text-white shadow-lg">
+                  <Activity className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-success">98.7%</p>
-                  <p className="text-base text-success/80 font-medium mt-1">Overall Uptime</p>
+                  <p className="text-2xl font-bold text-success">98.7%</p>
+                  <p className="text-sm text-success/80 font-medium">Overall Uptime</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/15 border-2 border-primary/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center space-x-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg">
-                  <Timer className="h-8 w-8" />
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/15 border-2 border-primary/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-xl overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white shadow-lg">
+                  <Timer className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-primary">847ms</p>
-                  <p className="text-base text-primary/80 font-medium mt-1">Avg Response Time</p>
+                  <p className="text-2xl font-bold text-primary">847ms</p>
+                  <p className="text-sm text-primary/80 font-medium">Avg Response Time</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-accent/5 to-accent/15 border-2 border-accent/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center space-x-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-brand-dark shadow-lg">
-                  <Target className="h-8 w-8" />
+          <Card className="bg-gradient-to-br from-accent/5 to-accent/15 border-2 border-accent/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-xl overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-brand-dark shadow-lg">
+                  <Target className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-accent-foreground">2,889</p>
-                  <p className="text-base text-accent-foreground/80 font-medium mt-1">Requests Today</p>
+                  <p className="text-2xl font-bold text-accent-foreground">2,889</p>
+                  <p className="text-sm text-accent-foreground/80 font-medium">Requests Today</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-warning/5 to-warning/15 border-2 border-warning/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center space-x-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-warning text-warning-foreground shadow-lg">
-                  <AlertTriangle className="h-8 w-8" />
+          <Card className="bg-gradient-to-br from-warning/5 to-warning/15 border-2 border-warning/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-xl overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning text-warning-foreground shadow-lg">
+                  <AlertTriangle className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-warning-foreground">13</p>
-                  <p className="text-base text-warning-foreground/80 font-medium mt-1">Errors Today</p>
+                  <p className="text-2xl font-bold text-warning-foreground">13</p>
+                  <p className="text-sm text-warning-foreground/80 font-medium">Errors Today</p>
                 </div>
               </div>
             </CardContent>
@@ -160,48 +160,48 @@ const APIMonitor = () => {
       </div>
 
       {/* Endpoints */}
-      <div className="bg-gradient-to-br from-brand-cream/40 to-accent/10 p-8 rounded-3xl border-2 border-primary/20 shadow-lg">
-        <Card className="bg-white/90 backdrop-blur-sm border-2 border-primary/30 shadow-elegant rounded-2xl">
-          <CardHeader className="p-8">
-            <CardTitle className="flex items-center space-x-3 text-xl text-brand-dark">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
-                <Server className="h-6 w-6" />
+      <div className="bg-gradient-to-br from-brand-cream/40 to-accent/10 p-4 rounded-2xl border-2 border-primary/20 shadow-lg">
+        <Card className="bg-white/90 backdrop-blur-sm border-2 border-primary/30 shadow-elegant rounded-xl">
+          <CardHeader className="p-4">
+            <CardTitle className="flex items-center space-x-3 text-lg text-brand-dark">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+                <Server className="h-5 w-5" />
               </div>
               <span>Endpoint Performance</span>
             </CardTitle>
-            <CardDescription className="text-base text-brand-dark/70 mt-3">Monitor individual API endpoint health and metrics</CardDescription>
+            <CardDescription className="text-sm text-brand-dark/70 mt-2">Monitor individual API endpoint health and metrics</CardDescription>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="space-y-6">
+          <CardContent className="p-4">
+            <div className="space-y-3">
               {endpointData.map((endpoint, index) => (
-                <div key={index} className="bg-gradient-to-r from-white to-accent/5 border-2 border-accent/30 rounded-2xl p-6 hover:shadow-elevated hover:border-primary/40 transition-all duration-300">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-md">
-                        <Network className="h-6 w-6" />
+                <div key={index} className="bg-gradient-to-r from-white to-accent/5 border-2 border-accent/30 rounded-xl p-4 hover:shadow-elevated hover:border-primary/40 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent text-white shadow-md">
+                        <Network className="h-5 w-5" />
                       </div>
                       <div>
-                        <h4 className="text-lg font-bold text-brand-dark">{endpoint.name}</h4>
-                        <p className="text-sm text-brand-dark/70 font-medium">{endpoint.requests.toLocaleString()} requests</p>
+                        <h4 className="text-base font-bold text-brand-dark">{endpoint.name}</h4>
+                        <p className="text-xs text-brand-dark/70 font-medium">{endpoint.requests.toLocaleString()} requests</p>
                       </div>
                     </div>
-                    <Badge className="bg-success/15 text-success border-2 border-success/40 text-sm px-4 py-2 rounded-xl font-semibold">
+                    <Badge className="bg-success/15 text-success border-2 border-success/40 text-xs px-3 py-1 rounded-lg font-semibold">
                       {endpoint.uptime}% uptime
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-6 text-sm">
-                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="bg-primary/5 p-3 rounded-lg border border-primary/20">
                       <p className="text-primary font-semibold mb-1">Avg Response</p>
-                      <p className="text-xl font-bold text-brand-dark">{endpoint.avgResponse}ms</p>
+                      <p className="text-lg font-bold text-brand-dark">{endpoint.avgResponse}ms</p>
                     </div>
-                    <div className="bg-accent/5 p-4 rounded-xl border border-accent/20">
+                    <div className="bg-accent/5 p-3 rounded-lg border border-accent/20">
                       <p className="text-accent-foreground font-semibold mb-1">Errors</p>
-                      <p className="text-xl font-bold text-brand-dark">{endpoint.errors}</p>
+                      <p className="text-lg font-bold text-brand-dark">{endpoint.errors}</p>
                     </div>
-                    <div className="bg-success/5 p-4 rounded-xl border border-success/20">
+                    <div className="bg-success/5 p-3 rounded-lg border border-success/20">
                       <p className="text-success font-semibold mb-1">Success Rate</p>
-                      <p className="text-xl font-bold text-brand-dark">{(100 - (endpoint.errors / endpoint.requests * 100)).toFixed(1)}%</p>
+                      <p className="text-lg font-bold text-brand-dark">{(100 - (endpoint.errors / endpoint.requests * 100)).toFixed(1)}%</p>
                     </div>
                   </div>
                 </div>
