@@ -15,7 +15,8 @@ import {
   Video,
   ScrollText,
   BookOpen,
-  FileImage
+  FileImage,
+  Palette
 } from "lucide-react";
 
 const personas = [
@@ -186,49 +187,92 @@ export const ContentGenerator = () => {
 
         {/* Tone Modifiers */}
         <div className="space-y-3">
-          <Label className="text-base font-medium">Tone Modifiers</Label>
-          <div className="flex flex-wrap gap-2">
-            {tones.map((tone) => (
-              <Badge
-                key={tone.value}
-                variant={selectedTones.includes(tone.value) ? "default" : "outline"}
-                className={`cursor-pointer transition-all hover:scale-105 ${
-                  selectedTones.includes(tone.value) 
-                    ? "bg-primary text-primary-foreground" 
-                    : tone.color
-                }`}
-                onClick={() => toggleTone(tone.value)}
-              >
-                {tone.label}
-              </Badge>
-            ))}
-          </div>
+          <Label className="text-base font-medium flex items-center space-x-2">
+            <Palette className="h-4 w-4" />
+            <span>Tone Modifiers</span>
+          </Label>
+          <Select 
+            value={selectedTones.join(',')} 
+            onValueChange={(value) => {
+              if (value) {
+                const toneValue = value.split(',').pop() || '';
+                toggleTone(toneValue);
+              }
+            }}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue>
+                {selectedTones.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedTones.slice(0, 2).map((toneValue) => {
+                      const tone = tones.find(t => t.value === toneValue);
+                      return tone ? (
+                        <Badge key={toneValue} variant="secondary" className="text-xs">
+                          {tone.label}
+                        </Badge>
+                      ) : null;
+                    })}
+                    {selectedTones.length > 2 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{selectedTones.length - 2} more
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  "Select tone modifiers..."
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border shadow-lg z-50">
+              {tones.map((tone) => (
+                <SelectItem 
+                  key={tone.value} 
+                  value={selectedTones.includes(tone.value) ? selectedTones.join(',') : [...selectedTones, tone.value].join(',')}
+                  className="hover:bg-accent"
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="font-medium">{tone.label}</div>
+                    {selectedTones.includes(tone.value) && (
+                      <Badge variant="secondary" className="ml-2">Selected</Badge>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <Separator />
 
         {/* Output Type */}
         <div className="space-y-3">
-          <Label className="text-base font-medium">Output Type</Label>
-          <div className="grid grid-cols-2 gap-2">
-            {outputTypes.map((type) => (
-              <Button
-                key={type.value}
-                variant={selectedOutputType === type.value ? "default" : "outline"}
-                className="h-auto p-3 justify-start"
-                onClick={() => setSelectedOutputType(type.value)}
-                disabled={type.value === "longform" || type.value === "whitepaper"}
-              >
-                <div className="flex items-center space-x-3">
-                  <type.icon className="h-4 w-4" />
-                  <div className="text-left">
-                    <div className="text-base font-medium">{type.label}</div>
-                    <div className="text-sm text-muted-foreground">{type.description}</div>
+          <Label className="text-base font-medium flex items-center space-x-2">
+            <FileText className="h-4 w-4" />
+            <span>Output Type</span>
+          </Label>
+          <Select value={selectedOutputType} onValueChange={setSelectedOutputType}>
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select output type..." />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border border-border shadow-lg z-50">
+              {outputTypes.map((type) => (
+                <SelectItem 
+                  key={type.value} 
+                  value={type.value}
+                  disabled={type.value === "longform" || type.value === "whitepaper"}
+                  className="hover:bg-accent"
+                >
+                  <div className="flex items-center space-x-3">
+                    <type.icon className="h-4 w-4" />
+                    <div className="text-left">
+                      <div className="text-base font-medium">{type.label}</div>
+                      <div className="text-sm text-muted-foreground">{type.description}</div>
+                    </div>
                   </div>
-                </div>
-              </Button>
-            ))}
-          </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <Separator />
