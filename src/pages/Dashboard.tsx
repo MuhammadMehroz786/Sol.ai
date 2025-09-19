@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -9,54 +8,26 @@ import { ContentQueue } from "@/components/dashboard/ContentQueue";
 import { InputPanel } from "@/components/dashboard/InputPanel";
 import { OutputPanel } from "@/components/dashboard/OutputPanel";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
-import { useAuth } from "@/contexts/AuthContext";
 import soleLogoWithTagline from "@/assets/sole-logo-with-tagline.png";
 import { 
   TrendingUp, 
   FileText, 
   Clock, 
-  CheckCircle,
-  LogOut,
-  User
+  CheckCircle
 } from "lucide-react";
 
 const Dashboard = () => {
   const [selectedOutput, setSelectedOutput] = useState<any>(null);
-  const { signOut, user } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-foreground">Sole Central Station</h1>
-              <p className="text-lg text-muted-foreground mt-1">
-                Monitor signals, manage content workflows, and track your automation pipeline
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <User className="h-4 w-4" />
-              <span>{user?.email}</span>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSignOut}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sign Out</span>
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">Sole Central Station</h1>
+          <p className="text-lg text-muted-foreground mt-1">
+            Monitor signals, manage content workflows, and track your automation pipeline
+          </p>
         </div>
       </div>
 
