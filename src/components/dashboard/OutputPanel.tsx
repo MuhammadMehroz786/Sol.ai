@@ -84,7 +84,6 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
     { value: "rewrite", label: "Rewrite", icon: RefreshCw },
     { value: "shorten", label: "Shorten", icon: Scissors },
     { value: "enhance", label: "Enhance", icon: Sparkles },
-    { value: "export", label: "Export", icon: Download },
     { value: "stats", label: "Stats", icon: BarChart3 },
     { value: "review", label: "Review", icon: MessageSquare }
   ];
@@ -305,11 +304,11 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
             </Button>
             <Button 
               variant="outline"
-              className="hover:bg-primary/10 border-primary/20 text-sm px-3 py-2 h-9"
-              onClick={() => handleAction("Chain to Agent")}
+              className="hover:bg-info/10 border-info/20 text-sm px-3 py-2 h-9"
+              onClick={handleDownload}
             >
-              <Zap className="h-4 w-4 mr-2" />
-              Chain to Agent
+              <Download className="h-4 w-4 mr-2" />
+              Download
             </Button>
           </div>
         </div>
