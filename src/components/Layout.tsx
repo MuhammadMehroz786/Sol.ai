@@ -67,11 +67,10 @@ const Layout = ({ children }: LayoutProps) => {
           </Button>
           
           <div className="flex items-center space-x-6">
-            <img 
-              src={soleLogoWithTagline} 
-              alt="SOLE Logo" 
-              className="h-16 w-auto object-contain transition-all duration-300 hover:scale-105 hover:brightness-110 filter drop-shadow-lg hover:drop-shadow-xl"
-            />
+            <div className="animate-fade-in">
+              <h1 className="font-bold text-2xl text-foreground tracking-tight">Sole Central Station</h1>
+              <p className="text-base text-muted-foreground font-medium">AI Agent Orchestration Platform</p>
+            </div>
           </div>
 
           <div className="ml-auto flex items-center space-x-4">
