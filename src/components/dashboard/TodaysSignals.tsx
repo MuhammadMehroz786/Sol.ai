@@ -125,7 +125,7 @@ export const TodaysSignals = () => {
               <div className="flex space-x-2">
                 <Button size="sm" className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-sm px-3 py-2 h-8">
                   <Zap className="h-4 w-4 mr-1" />
-                  Send to Editorial
+                  Send to Editorial GPT
                 </Button>
                 <Button size="sm" variant="outline" className="hover:bg-accent/10 text-sm px-3 py-2 h-8">
                   Chain
