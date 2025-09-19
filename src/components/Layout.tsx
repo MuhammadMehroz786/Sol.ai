@@ -21,12 +21,9 @@ import {
   Menu,
   X,
   User,
-  Moon,
-  Sun,
   LogOut,
   UserCircle
 } from "lucide-react";
-import { useTheme } from "next-themes";
 
 interface LayoutProps {
   children: ReactNode;
@@ -35,7 +32,6 @@ interface LayoutProps {
 const Layout = ({ children }: LayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
-  const { theme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
   
   const handleSignOut = async () => {
@@ -55,15 +51,15 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40">
-        <div className="flex h-16 items-center px-6">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40 shadow-sm">
+        <div className="flex h-20 items-center px-8">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="mr-4"
+            className="mr-6 rounded-xl hover:bg-muted/50 transition-colors"
           >
-            {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
           
           <div className="flex items-center space-x-6">
@@ -74,34 +70,23 @@ const Layout = ({ children }: LayoutProps) => {
           </div>
 
           <div className="ml-auto flex items-center space-x-4">
-            <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+            <Badge variant="secondary" className="bg-success/10 text-success border-success/20 rounded-full px-4 py-2">
               <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
               System Online
             </Badge>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-              className="w-9 h-9 p-0"
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-muted/50 transition-colors">
+                  <Avatar className="h-9 w-9 border-2 border-primary/20">
                     <AvatarImage src="" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
                       {user?.email?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-popover border border-border shadow-lg" align="end" forceMount>
+              <DropdownMenuContent className="w-60 bg-card border border-border shadow-elegant rounded-2xl p-2" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-base font-medium leading-none">Account</p>
@@ -138,11 +123,11 @@ const Layout = ({ children }: LayoutProps) => {
         {/* Sidebar */}
         <aside 
           className={cn(
-            "bg-card border-r border-border transition-all duration-300 flex-shrink-0",
-            sidebarOpen ? "w-64" : "w-16"
+            "bg-card/80 backdrop-blur-sm border-r border-border transition-all duration-300 flex-shrink-0 shadow-sm",
+            sidebarOpen ? "w-72" : "w-18"
           )}
         >
-          <nav className="p-4 space-y-2">
+          <nav className="p-6 space-y-3">
             {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -150,14 +135,14 @@ const Layout = ({ children }: LayoutProps) => {
                   key={item.name}
                   to={item.href}
                   className={cn(
-                    "flex items-center space-x-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors",
+                    "flex items-center space-x-4 px-4 py-3 rounded-2xl text-base font-medium transition-all duration-200",
                     isActive 
-                      ? "bg-primary text-primary-foreground shadow-sm" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      ? "bg-primary text-primary-foreground shadow-md transform hover:scale-[1.02]" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:transform hover:scale-[1.02]"
                   )}
                 >
-                  <item.icon className="h-4 w-4 flex-shrink-0" />
-                  {sidebarOpen && <span>{item.name}</span>}
+                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  {sidebarOpen && <span className="font-medium">{item.name}</span>}
                 </Link>
               );
             })}
@@ -165,8 +150,8 @@ const Layout = ({ children }: LayoutProps) => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="p-6">
+        <main className="flex-1 overflow-auto bg-gradient-subtle">
+          <div className="p-8">
             {children}
           </div>
         </main>

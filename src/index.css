@@ -2,36 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Sole Central Station Design System - Professional Brand Platform */
+/* Sole Central Station Design System - Professional Light Theme */
 
 @layer base {
   :root {
-    /* Core Background & Text - Brand Aligned */
-    --background: 0 0% 100%;
+    /* Core Background & Text - Professional Light */
+    --background: 0 0% 98%;
     --foreground: 15 48% 20%;
 
-    /* Cards & Surfaces */
-    --card: 47 58% 96%;
+    /* Cards & Surfaces - Clean Professional */
+    --card: 0 0% 100%;
     --card-foreground: 15 48% 20%;
 
     /* Popover & Overlays */
     --popover: 0 0% 100%;
     --popover-foreground: 15 48% 20%;
 
-    /* Primary - Brand Orange (#D07E3B) - Exact specification */
+    /* Primary - Brand Orange (#D07E3B) */
     --primary: 21 58% 53%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 26 47% 70%;
 
-    /* Secondary - Brand Dark Brown (#491A14) - Exact specification */
-    --secondary: 15 46% 20%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary - Professional Gray */
+    --secondary: 210 6% 93%;
+    --secondary-foreground: 15 48% 20%;
 
-    /* Muted - Brand Cream (#F6EDD4) - Exact specification */
-    --muted: 47 59% 91%;
-    --muted-foreground: 15 46% 20%;
+    /* Muted - Soft Neutral */
+    --muted: 210 10% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    /* Accent - Brand Peach (#E2A176) - Exact specification */
+    /* Accent - Brand Peach */
     --accent: 26 47% 70%;
     --accent-foreground: 15 46% 20%;
 
@@ -43,111 +43,54 @@
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & Inputs - Brand Light Cream */
-    --border: 47 58% 85%;
-    --input: 47 58% 88%;
+    /* Borders & Inputs - Subtle Professional */
+    --border: 215 20% 90%;
+    --input: 215 20% 94%;
     --ring: 21 60% 53%;
 
-    /* Brand color palette - Exact SOLE brand specification */
-    --brand-principal: 21 58% 53%;    /* #D07E3B - Principal Orange */
-    --brand-cream: 47 59% 91%;        /* #F6EDD4 - Cream/Light */
-    --brand-dark: 15 46% 20%;         /* #491A14 - Dark Brown */
-    --brand-white: 0 0% 100%;         /* #FFFFFF - White */
-    --brand-peach: 26 47% 70%;        /* #E2A176 - Peach/Coral */
-    --surface-elevated: 47 58% 96%;
-    --surface-overlay: 47 58% 93%;
+    /* Brand color palette */
+    --brand-principal: 21 58% 53%;
+    --brand-cream: 47 59% 96%;
+    --brand-dark: 15 46% 20%;
+    --brand-white: 0 0% 100%;
+    --brand-peach: 26 47% 70%;
+    --surface-elevated: 0 0% 100%;
+    --surface-overlay: 210 10% 98%;
 
-    /* Brand Gradients - Updated for consistency */
+    /* Professional Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(21, 60%, 53%) 0%, hsl(26, 47%, 70%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(15, 48%, 20%) 0%, hsl(15, 48%, 30%) 100%);
-    --gradient-background: linear-gradient(180deg, hsl(47, 58%, 91%) 0%, hsl(0, 0%, 100%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(47, 58%, 95%) 100%);
-    --gradient-surface: linear-gradient(145deg, hsl(47, 58%, 96%) 0%, hsl(47, 58%, 91%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(210, 6%, 93%) 0%, hsl(210, 10%, 96%) 100%);
+    --gradient-background: linear-gradient(180deg, hsl(0, 0%, 98%) 0%, hsl(210, 10%, 99%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(210, 10%, 98%) 100%);
+    --gradient-surface: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(210, 6%, 96%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(210, 10%, 99%) 0%, hsl(210, 6%, 96%) 100%);
 
-    /* Elevated shadows - Light theme */
-    --shadow-sm: 0 2px 4px 0 hsl(15 48% 10% / 0.08);
-    --shadow-md: 0 8px 16px -4px hsl(15 48% 10% / 0.12), 0 4px 8px -4px hsl(15 48% 10% / 0.08);
-    --shadow-lg: 0 16px 32px -8px hsl(15 48% 10% / 0.15), 0 8px 16px -8px hsl(15 48% 10% / 0.1);
-    --shadow-xl: 0 32px 64px -12px hsl(15 48% 10% / 0.18), 0 16px 32px -16px hsl(15 48% 10% / 0.12);
+    /* Professional shadows */
+    --shadow-sm: 0 2px 8px 0 hsl(215 25% 27% / 0.08);
+    --shadow-md: 0 8px 20px -4px hsl(215 25% 27% / 0.12), 0 4px 12px -4px hsl(215 25% 27% / 0.08);
+    --shadow-lg: 0 16px 40px -8px hsl(215 25% 27% / 0.15), 0 8px 20px -8px hsl(215 25% 27% / 0.1);
+    --shadow-xl: 0 32px 64px -12px hsl(215 25% 27% / 0.18), 0 16px 32px -16px hsl(215 25% 27% / 0.12);
     --shadow-glow: 0 0 40px hsl(21 60% 53% / 0.25);
-    --shadow-elegant: 0 8px 32px -8px hsl(15 48% 10% / 0.12);
-    --shadow-elevated: 0 16px 48px -12px hsl(15 48% 10% / 0.15);
+    --shadow-elegant: 0 12px 32px -8px hsl(215 25% 27% / 0.12);
+    --shadow-elevated: 0 16px 48px -12px hsl(215 25% 27% / 0.15);
 
-    /* Smooth transitions */
-    --transition-smooth: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    /* Smooth professional transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
     --transition-fast: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-    --radius: 0.75rem;
+    /* Professional border radius - softer edges */
+    --radius: 1rem;
 
-    /* Sidebar colors - Brand Dark Brown Navigation */
-    --sidebar-background: 15 48% 20%;
-    --sidebar-foreground: 0 0% 100%;
+    /* Sidebar colors */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 15 48% 20%;
     --sidebar-primary: 21 60% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 15 48% 25%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 15 48% 15%;
+    --sidebar-accent: 210 6% 93%;
+    --sidebar-accent-foreground: 15 48% 20%;
+    --sidebar-border: 215 20% 90%;
     --sidebar-ring: 21 60% 53%;
-  }
-
-  .dark {
-    /* Rich dark mode with sophisticated brand palette */
-    --background: 15 48% 12%;         /* Deep dark brown */
-    --foreground: 47 58% 92%;         /* Warm cream text */
-    
-    --card: 15 48% 18%;               /* Rich dark brown cards */
-    --card-foreground: 47 58% 88%;    /* Cream text on cards */
-    
-    --popover: 15 48% 16%;            /* Dark popover */
-    --popover-foreground: 47 58% 90%;
-    
-    /* Vibrant brand colors enhanced for dark mode */
-    --primary: 21 70% 58%;            /* Brighter orange for dark mode */
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 26 60% 75%;       /* Enhanced peach glow */
-    
-    --secondary: 26 47% 70%;          /* Peach as secondary */
-    --secondary-foreground: 15 48% 15%; /* Dark brown text */
-    
-    --muted: 15 48% 25%;              /* Muted brown surface */
-    --muted-foreground: 47 58% 70%;   /* Softer cream */
-    
-    --accent: 21 60% 53%;             /* Brand orange for accents */
-    --accent-foreground: 0 0% 100%;   /* White on accent */
-    
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 100%;
-    
-    --border: 15 48% 28%;             /* Subtle brown borders */
-    --input: 15 48% 22%;              /* Input backgrounds */
-    --ring: 21 70% 58%;               /* Bright orange ring */
-    
-    /* Enhanced dark sidebar */
-    --sidebar-background: 15 48% 10%; /* Deep brown sidebar */
-    --sidebar-foreground: 47 58% 85%; /* Cream text */
-    --sidebar-primary: 21 70% 58%;    /* Bright orange */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 15 48% 20%;     /* Accent brown */
-    --sidebar-accent-foreground: 26 47% 70%;
-    --sidebar-border: 15 48% 18%;     /* Sidebar borders */
-    --sidebar-ring: 21 70% 58%;
-    
-    /* Rich dark mode gradients */
-    --gradient-card: linear-gradient(145deg, hsl(15 48% 18%) 0%, hsl(15 48% 22%) 50%, hsl(21 60% 53% / 0.1) 100%);
-    --gradient-primary: linear-gradient(135deg, hsl(21 70% 58%) 0%, hsl(26 60% 75%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(15 48% 15%) 0%, hsl(15 48% 25%) 100%);
-    --gradient-background: linear-gradient(180deg, hsl(15 48% 12%) 0%, hsl(15 48% 8%) 100%);
-    --gradient-surface: linear-gradient(145deg, hsl(15 48% 20%) 0%, hsl(26 47% 70% / 0.05) 100%);
-    
-    /* Enhanced shadows for dark mode */
-    --shadow-sm: 0 2px 8px 0 hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 8px 24px -4px hsl(0 0% 0% / 0.4), 0 4px 12px -4px hsl(21 60% 53% / 0.1);
-    --shadow-lg: 0 16px 48px -8px hsl(0 0% 0% / 0.5), 0 8px 24px -8px hsl(21 60% 53% / 0.15);
-    --shadow-glow: 0 0 60px hsl(21 70% 58% / 0.3);
-    --shadow-elegant: 0 12px 40px -8px hsl(0 0% 0% / 0.4);
-    --shadow-elevated: 0 20px 60px -12px hsl(0 0% 0% / 0.5);
-
   }
 }
 
@@ -158,33 +101,34 @@
 
   body {
     @apply bg-background text-foreground;
-    font-size: 16px; /* Base font size for better readability */
+    font-size: 16px;
     line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
-  /* Improved text size hierarchy for better readability */
+  /* Professional text hierarchy */
   .text-xs {
-    font-size: 0.875rem; /* 14px instead of 12px */
+    font-size: 0.875rem;
     line-height: 1.5;
   }
   
   .text-sm {
-    font-size: 1rem; /* 16px instead of 14px */
+    font-size: 1rem;
     line-height: 1.5;
   }
   
   .text-base {
-    font-size: 1.125rem; /* 18px instead of 16px */
+    font-size: 1.125rem;
     line-height: 1.6;
   }
   
   .text-lg {
-    font-size: 1.25rem; /* 20px */
+    font-size: 1.25rem;
     line-height: 1.6;
   }
   
   .text-xl {
-    font-size: 1.5rem; /* 24px */
+    font-size: 1.5rem;
     line-height: 1.5;
   }
 }
