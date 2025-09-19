@@ -72,24 +72,24 @@ const APIMonitor = () => {
       <div className="bg-gradient-to-r from-primary/10 via-accent/15 to-primary/5 p-8 rounded-3xl border-2 border-primary/20 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-5xl font-bold tracking-tight text-brand-dark">API Monitor</h1>
-            <p className="text-xl text-brand-dark/70 mt-3 font-medium">
+            <h1 className="text-4xl font-bold tracking-tight text-brand-dark">API Monitor</h1>
+            <p className="text-lg text-brand-dark/70 mt-3 font-medium">
               Monitor API performance, track agent health, and analyze request patterns
             </p>
           </div>
           <div className="flex space-x-4">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-44 bg-white border-2 border-primary/30 text-lg h-12 rounded-xl">
+              <SelectTrigger className="w-44 bg-white border-2 border-primary/30 text-base h-12 rounded-xl">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="1h" className="text-base">Last Hour</SelectItem>
-                <SelectItem value="24h" className="text-base">Last 24 Hours</SelectItem>
-                <SelectItem value="7d" className="text-base">Last 7 Days</SelectItem>
-                <SelectItem value="30d" className="text-base">Last 30 Days</SelectItem>
+                <SelectItem value="1h" className="text-sm">Last Hour</SelectItem>
+                <SelectItem value="24h" className="text-sm">Last 24 Hours</SelectItem>
+                <SelectItem value="7d" className="text-sm">Last 7 Days</SelectItem>
+                <SelectItem value="30d" className="text-sm">Last 30 Days</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="h-12 px-6 text-lg border-2 border-primary/30 rounded-xl hover:bg-primary hover:text-white transition-all">
+            <Button variant="outline" className="h-12 px-6 text-base border-2 border-primary/30 rounded-xl hover:bg-primary hover:text-white transition-all">
               <RefreshCw className="h-5 w-5 mr-3" />
               Refresh
             </Button>
@@ -99,7 +99,7 @@ const APIMonitor = () => {
 
       {/* Key Metrics */}
       <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl border-2 border-accent/30 shadow-lg">
-        <h2 className="text-2xl font-bold text-brand-dark mb-6">System Health Overview</h2>
+        <h2 className="text-xl font-bold text-brand-dark mb-6">System Health Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <Card className="bg-gradient-to-br from-success/5 to-success/15 border-2 border-success/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
             <CardContent className="p-8">
@@ -108,8 +108,8 @@ const APIMonitor = () => {
                   <Activity className="h-8 w-8" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold text-success">98.7%</p>
-                  <p className="text-lg text-success/80 font-medium mt-1">Overall Uptime</p>
+                  <p className="text-3xl font-bold text-success">98.7%</p>
+                  <p className="text-base text-success/80 font-medium mt-1">Overall Uptime</p>
                 </div>
               </div>
             </CardContent>
@@ -122,8 +122,8 @@ const APIMonitor = () => {
                   <Timer className="h-8 w-8" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold text-primary">847ms</p>
-                  <p className="text-lg text-primary/80 font-medium mt-1">Avg Response Time</p>
+                  <p className="text-3xl font-bold text-primary">847ms</p>
+                  <p className="text-base text-primary/80 font-medium mt-1">Avg Response Time</p>
                 </div>
               </div>
             </CardContent>
@@ -136,8 +136,8 @@ const APIMonitor = () => {
                   <Target className="h-8 w-8" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold text-accent-foreground">2,889</p>
-                  <p className="text-lg text-accent-foreground/80 font-medium mt-1">Requests Today</p>
+                  <p className="text-3xl font-bold text-accent-foreground">2,889</p>
+                  <p className="text-base text-accent-foreground/80 font-medium mt-1">Requests Today</p>
                 </div>
               </div>
             </CardContent>
@@ -150,8 +150,8 @@ const APIMonitor = () => {
                   <AlertTriangle className="h-8 w-8" />
                 </div>
                 <div>
-                  <p className="text-4xl font-bold text-warning-foreground">13</p>
-                  <p className="text-lg text-warning-foreground/80 font-medium mt-1">Errors Today</p>
+                  <p className="text-3xl font-bold text-warning-foreground">13</p>
+                  <p className="text-base text-warning-foreground/80 font-medium mt-1">Errors Today</p>
                 </div>
               </div>
             </CardContent>
@@ -163,13 +163,13 @@ const APIMonitor = () => {
       <div className="bg-gradient-to-br from-brand-cream/40 to-accent/10 p-8 rounded-3xl border-2 border-primary/20 shadow-lg">
         <Card className="bg-white/90 backdrop-blur-sm border-2 border-primary/30 shadow-elegant rounded-2xl">
           <CardHeader className="p-8">
-            <CardTitle className="flex items-center space-x-3 text-2xl text-brand-dark">
+            <CardTitle className="flex items-center space-x-3 text-xl text-brand-dark">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
                 <Server className="h-6 w-6" />
               </div>
               <span>Endpoint Performance</span>
             </CardTitle>
-            <CardDescription className="text-lg text-brand-dark/70 mt-3">Monitor individual API endpoint health and metrics</CardDescription>
+            <CardDescription className="text-base text-brand-dark/70 mt-3">Monitor individual API endpoint health and metrics</CardDescription>
           </CardHeader>
           <CardContent className="p-8">
             <div className="space-y-6">
@@ -181,27 +181,27 @@ const APIMonitor = () => {
                         <Network className="h-6 w-6" />
                       </div>
                       <div>
-                        <h4 className="text-xl font-bold text-brand-dark">{endpoint.name}</h4>
-                        <p className="text-base text-brand-dark/70 font-medium">{endpoint.requests.toLocaleString()} requests</p>
+                        <h4 className="text-lg font-bold text-brand-dark">{endpoint.name}</h4>
+                        <p className="text-sm text-brand-dark/70 font-medium">{endpoint.requests.toLocaleString()} requests</p>
                       </div>
                     </div>
-                    <Badge className="bg-success/15 text-success border-2 border-success/40 text-base px-4 py-2 rounded-xl font-semibold">
+                    <Badge className="bg-success/15 text-success border-2 border-success/40 text-sm px-4 py-2 rounded-xl font-semibold">
                       {endpoint.uptime}% uptime
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-6 text-base">
+                  <div className="grid grid-cols-3 gap-6 text-sm">
                     <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
                       <p className="text-primary font-semibold mb-1">Avg Response</p>
-                      <p className="text-2xl font-bold text-brand-dark">{endpoint.avgResponse}ms</p>
+                      <p className="text-xl font-bold text-brand-dark">{endpoint.avgResponse}ms</p>
                     </div>
                     <div className="bg-accent/5 p-4 rounded-xl border border-accent/20">
                       <p className="text-accent-foreground font-semibold mb-1">Errors</p>
-                      <p className="text-2xl font-bold text-brand-dark">{endpoint.errors}</p>
+                      <p className="text-xl font-bold text-brand-dark">{endpoint.errors}</p>
                     </div>
                     <div className="bg-success/5 p-4 rounded-xl border border-success/20">
                       <p className="text-success font-semibold mb-1">Success Rate</p>
-                      <p className="text-2xl font-bold text-brand-dark">{(100 - (endpoint.errors / endpoint.requests * 100)).toFixed(1)}%</p>
+                      <p className="text-xl font-bold text-brand-dark">{(100 - (endpoint.errors / endpoint.requests * 100)).toFixed(1)}%</p>
                     </div>
                   </div>
                 </div>
