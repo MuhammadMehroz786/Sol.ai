@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Download, 
   RefreshCw, 
@@ -17,10 +18,12 @@ import {
   BarChart3,
   MessageSquare,
   CheckCircle,
-  Zap
+  Zap,
+  ChevronDown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from 'react-markdown';
+import { useState } from 'react';
 
 interface OutputPanelProps {
   output: {
@@ -75,6 +78,16 @@ As we continue this journey, SOLE remains committed to developing AI that serves
 
 export const OutputPanel = ({ output }: OutputPanelProps) => {
   const { toast } = useToast();
+  const [selectedAction, setSelectedAction] = useState<string>("");
+
+  const quickActions = [
+    { value: "rewrite", label: "Rewrite", icon: RefreshCw },
+    { value: "shorten", label: "Shorten", icon: Scissors },
+    { value: "enhance", label: "Enhance", icon: Sparkles },
+    { value: "export", label: "Export", icon: Download },
+    { value: "stats", label: "Stats", icon: BarChart3 },
+    { value: "review", label: "Review", icon: MessageSquare }
+  ];
 
   const handleDownload = async () => {
     try {
@@ -102,15 +115,29 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
   };
 
   const handleAction = (action: string) => {
-    if (action === "Download") {
+    if (action === "export") {
       handleDownload();
       return;
     }
     
     toast({
-      title: `${action} Processing`,
+      title: `${action.charAt(0).toUpperCase() + action.slice(1)} Processing`,
       description: `Your request for "${output.title}" is being processed by our AI agents.`,
     });
+  };
+
+  const handleApplyAction = () => {
+    if (!selectedAction) {
+      toast({
+        title: "No Action Selected",
+        description: "Please select an action to apply.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    handleAction(selectedAction);
+    setSelectedAction(""); // Reset selection after applying
   };
 
   const handleCopyContent = async () => {
@@ -237,75 +264,52 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
         {/* Quick Actions */}
         <div className="space-y-3">
           <h4 className="font-semibold text-foreground">Quick Actions</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 flex gap-2">
+              <Select value={selectedAction} onValueChange={setSelectedAction}>
+                <SelectTrigger className="flex-1 bg-background">
+                  <SelectValue placeholder="Select action..." />
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border shadow-lg z-50">
+                  {quickActions.map((action) => {
+                    const IconComponent = action.icon;
+                    return (
+                      <SelectItem key={action.value} value={action.value} className="hover:bg-accent">
+                        <div className="flex items-center">
+                          <IconComponent className="h-4 w-4 mr-2" />
+                          {action.label}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <Button 
+                onClick={handleApplyAction}
+                disabled={!selectedAction}
+                variant="outline"
+                className="hover:bg-primary/10 hover:border-primary/20"
+              >
+                Apply
+              </Button>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-2">
             <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleAction("Rewrite")}
-              className="hover:bg-primary/10 hover:border-primary/20 text-xs px-2 py-1 h-8"
-            >
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Rewrite
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleAction("Shorten")}
-              className="hover:bg-warning/10 hover:border-warning/20 text-xs px-2 py-1 h-8"
-            >
-              <Scissors className="h-3 w-3 mr-1" />
-              Shorten
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleAction("Poeticize")}
-              className="hover:bg-accent/10 hover:border-accent/20 text-xs px-2 py-1 h-8"
-            >
-              <Sparkles className="h-3 w-3 mr-1" />
-              Enhance
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleAction("Download")}
-              className="hover:bg-info/10 hover:border-info/20 text-xs px-2 py-1 h-8"
-            >
-              <Download className="h-3 w-3 mr-1" />
-              Export
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleAction("Analytics")}
-              className="hover:bg-success/10 hover:border-success/20 text-xs px-2 py-1 h-8"
-            >
-              <BarChart3 className="h-3 w-3 mr-1" />
-              Stats
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => handleAction("Feedback")}
-              className="hover:bg-secondary/10 hover:border-secondary/20 text-xs px-2 py-1 h-8"
-            >
-              <MessageSquare className="h-3 w-3 mr-1" />
-              Review
-            </Button>
-            <Button 
-              className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-xs px-2 py-1 h-8"
+              className="flex-1 bg-gradient-primary hover:shadow-glow transition-all duration-300"
               onClick={() => handleAction("Send to CMS")}
             >
-              <Send className="h-3 w-3 mr-1" />
-              To CMS
+              <Send className="h-4 w-4 mr-2" />
+              Send to CMS
             </Button>
             <Button 
               variant="outline"
-              className="hover:bg-primary/10 border-primary/20 text-xs px-2 py-1 h-8"
+              className="flex-1 hover:bg-primary/10 border-primary/20"
               onClick={() => handleAction("Chain to Agent")}
             >
-              <Zap className="h-3 w-3 mr-1" />
-              Chain
+              <Zap className="h-4 w-4 mr-2" />
+              Chain to Agent
             </Button>
           </div>
         </div>
