@@ -11,7 +11,13 @@ import {
   User,
   Clock,
   FileText,
-  Copy
+  Copy,
+  Eye,
+  Share,
+  BarChart3,
+  MessageSquare,
+  CheckCircle,
+  Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from 'react-markdown';
@@ -26,33 +32,46 @@ interface OutputPanelProps {
     status: string;
     created: string;
     wordCount: number;
+    preview?: string;
+    tags?: string[];
   };
 }
 
-const sampleContent = `# AI Regulation Analysis: What Businesses Need to Know
+const sampleContent = `# The Future of AI in Creative Industries
 
-The European Union's comprehensive AI governance framework represents a pivotal moment in the evolution of artificial intelligence regulation. This landmark legislation establishes clear guidelines for transparency and accountability in automated decision-making systems.
+## Introduction
 
-## Key Regulatory Requirements
+The intersection of artificial intelligence and human creativity represents one of the most fascinating frontiers in modern technology. As we stand at this crossroads, it's essential to examine how AI is not replacing human creativity, but rather amplifying it in unprecedented ways.
 
-The new framework introduces several critical requirements:
+## The Cultural Context
 
-1. **Transparency Obligations**: Organizations must provide clear documentation of AI system capabilities and limitations
-2. **Risk Assessment Protocols**: Mandatory evaluation of potential societal impacts before deployment
-3. **Human Oversight Mechanisms**: Ensuring meaningful human control in high-stakes decisions
+In the realm of SOLE's vision, AI becomes a tool for authentic cultural expression rather than a replacement for human insight. The technology serves as a catalyst for deeper storytelling and community connection.
 
-## Business Implementation Timeline
+### Key Insights:
 
-Companies have 18 months to achieve compliance across three phases:
-- **Phase 1** (Months 1-6): Risk assessment and documentation
-- **Phase 2** (Months 7-12): System modifications and testing
-- **Phase 3** (Months 13-18): Full compliance verification
+1. **Amplification, Not Replacement**: AI enhances human creativity rather than diminishing it
+2. **Cultural Authenticity**: Technology must serve genuine cultural expression
+3. **Community Connection**: Tools should strengthen rather than isolate communities
 
-## Strategic Recommendations
+## The SOLE Approach
 
-Organizations should begin immediate preparation by establishing cross-functional AI governance teams and conducting comprehensive audits of existing AI implementations.
+At SOLE, we believe in "Born for Us. Raised by the Culture" - a philosophy that puts community and authenticity at the center of technological innovation.
 
-The regulatory landscape will continue evolving, but early adopters who embrace transparency and accountability will gain competitive advantages in the AI-driven economy.`;
+### Strategic Implementation:
+
+- **Community-First Design**: Every AI tool is designed with community building in mind
+- **Cultural Sensitivity**: Understanding that technology must respect and enhance cultural narratives
+- **Authentic Voice**: Maintaining genuine human expression in AI-assisted content
+
+## Looking Forward
+
+The future of AI in creative industries isn't about perfect algorithms or flawless automation. It's about creating technology that understands culture, respects community, and amplifies authentic human voices.
+
+As we continue this journey, SOLE remains committed to developing AI that serves people, not the other way around.
+
+---
+
+*This content was generated using SOLE's Editorial GPT with Ana's analytical tone, focusing on cultural authenticity and community impact.*`;
 
 export const OutputPanel = ({ output }: OutputPanelProps) => {
   const { toast } = useToast();
@@ -70,8 +89,8 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
       URL.revokeObjectURL(url);
       
       toast({
-        title: "Download Started",
-        description: "Markdown file has been downloaded.",
+        title: "Download Complete",
+        description: "Markdown file has been downloaded successfully.",
       });
     } catch (err) {
       toast({
@@ -89,8 +108,8 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
     }
     
     toast({
-      title: `${action} Initiated`,
-      description: `Processing your request for "${output.title}"`,
+      title: `${action} Processing`,
+      description: `Your request for "${output.title}" is being processed by our AI agents.`,
     });
   };
 
@@ -99,7 +118,7 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
       await navigator.clipboard.writeText(sampleContent);
       toast({
         title: "Content Copied",
-        description: "The content has been copied to your clipboard.",
+        description: "The full content has been copied to your clipboard.",
       });
     } catch (err) {
       toast({
@@ -110,54 +129,103 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
     }
   };
 
+  const getPersonaColor = (persona: string) => {
+    switch (persona.toLowerCase()) {
+      case "ana": return "bg-accent/10 text-accent-foreground border-accent/20";
+      case "malcolm": return "bg-primary/10 text-primary border-primary/20";
+      case "winston": return "bg-secondary/10 text-secondary-foreground border-secondary/20";
+      default: return "bg-muted/10 text-muted-foreground border-muted/20";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "final": return "bg-success/10 text-success border-success/20";
+      case "review": return "bg-warning/10 text-warning border-warning/20";
+      case "draft": return "bg-info/10 text-info border-info/20";
+      default: return "bg-muted/10 text-muted-foreground border-muted/20";
+    }
+  };
+
   return (
-    <Card>
+    <Card className="bg-gradient-card border border-border shadow-elegant">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
+                <FileText className="h-4 w-4 text-white" />
+              </div>
               <span>Generated Output</span>
             </CardTitle>
             <CardDescription>
-              Review and manage your generated content
+              Review, edit, and publish your AI-generated content
             </CardDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleCopyContent}>
-            <Copy className="h-4 w-4" />
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="ghost" size="sm" onClick={handleCopyContent}>
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm">
+              <Share className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Output Metadata */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-foreground">{output.title}</h3>
+        <div className="space-y-4">
+          <h3 className="font-bold text-xl text-foreground leading-tight">{output.title}</h3>
           
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="flex items-center space-x-1">
-              <User className="h-3 w-3" />
-              <span>{output.persona}</span>
+            <Badge className={getPersonaColor(output.persona)}>
+              <User className="h-3 w-3 mr-1" />
+              {output.persona}
             </Badge>
-            <Badge variant="outline">{output.tone}</Badge>
-            <Badge variant="outline">{output.type}</Badge>
+            <Badge variant="outline" className="border-accent/20 text-accent-foreground">
+              {output.tone}
+            </Badge>
+            <Badge variant="outline" className="border-primary/20 text-primary">
+              {output.type}
+            </Badge>
+            <Badge className={getStatusColor(output.status)}>
+              <CheckCircle className="h-3 w-3 mr-1" />
+              {output.status}
+            </Badge>
           </div>
           
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-            <div className="flex items-center space-x-1">
-              <Clock className="h-3 w-3" />
-              <span>{output.created}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-1">
+                <Clock className="h-3 w-3" />
+                <span>{output.created}</span>
+              </div>
+              <span>•</span>
+              <span>{output.wordCount} words</span>
+              <span>•</span>
+              <span>~{Math.round(output.wordCount / 200)} min read</span>
             </div>
-            <span>•</span>
-            <span>{output.wordCount} words</span>
+            <div className="flex items-center space-x-2 text-sm">
+              <Badge variant="secondary" className="bg-success/10 text-success">
+                <BarChart3 className="h-3 w-3 mr-1" />
+                Quality Score: 94%
+              </Badge>
+            </div>
           </div>
         </div>
 
         <Separator />
 
         {/* Content Preview */}
-        <div className="space-y-3">
-          <h4 className="font-medium text-foreground">Content Preview</h4>
-          <div className="bg-muted/30 rounded-lg p-4 max-h-80 overflow-y-auto">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-foreground">Content Preview</h4>
+            <Button variant="ghost" size="sm">
+              <Eye className="h-4 w-4 mr-2" />
+              Full Screen
+            </Button>
+          </div>
+          <div className="bg-background border border-border rounded-lg p-6 max-h-96 overflow-y-auto">
             <div className="prose prose-sm max-w-none dark:prose-invert">
               <ReactMarkdown>{sampleContent}</ReactMarkdown>
             </div>
@@ -167,13 +235,14 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
         <Separator />
 
         {/* Quick Actions */}
-        <div className="space-y-3">
-          <h4 className="font-medium text-foreground">Quick Actions</h4>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-4">
+          <h4 className="font-semibold text-foreground">Quick Actions</h4>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             <Button 
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Rewrite")}
+              className="hover:bg-primary/10 hover:border-primary/20"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Rewrite
@@ -182,6 +251,7 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Shorten")}
+              className="hover:bg-warning/10 hover:border-warning/20"
             >
               <Scissors className="h-4 w-4 mr-2" />
               Shorten
@@ -190,6 +260,7 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Poeticize")}
+              className="hover:bg-accent/10 hover:border-accent/20"
             >
               <Sparkles className="h-4 w-4 mr-2" />
               Poeticize
@@ -198,19 +269,48 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
               variant="outline" 
               size="sm"
               onClick={() => handleAction("Download")}
+              className="hover:bg-info/10 hover:border-info/20"
             >
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleAction("Analytics")}
+              className="hover:bg-success/10 hover:border-success/20"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => handleAction("Feedback")}
+              className="hover:bg-secondary/10 hover:border-secondary/20"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Feedback
+            </Button>
           </div>
           
-          <Button 
-            className="w-full bg-primary hover:bg-primary/90"
-            onClick={() => handleAction("Send to CMS")}
-          >
-            <Send className="h-4 w-4 mr-2" />
-            Send to CMS
-          </Button>
+          <div className="flex space-x-3 pt-2">
+            <Button 
+              className="flex-1 bg-gradient-primary hover:shadow-glow transition-all duration-300"
+              onClick={() => handleAction("Send to CMS")}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send to CMS
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1 hover:bg-primary/10 border-primary/20"
+              onClick={() => handleAction("Chain to Agent")}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Chain to Agent
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
