@@ -74,9 +74,8 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-4">
-          <div className="group relative mx-auto w-fit">
-            <div className="absolute -inset-4 bg-gradient-primary rounded-xl blur opacity-25 group-hover:opacity-50 transition-opacity duration-300"></div>
-            <div className="relative h-32 w-auto px-8 py-6 flex items-center justify-center">
+          <div className="mx-auto w-fit">
+            <div className="h-32 w-auto px-8 py-6 flex items-center justify-center">
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
