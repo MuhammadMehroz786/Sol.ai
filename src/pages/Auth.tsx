@@ -75,12 +75,12 @@ const Auth = () => {
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="group relative mx-auto w-fit">
-            <div className="absolute -inset-3 bg-gradient-primary rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
-            <div className="relative h-24 w-auto px-16 py-4 rounded-xl bg-gradient-to-br from-primary/5 to-primary-glow/5 backdrop-blur-sm border border-primary/10 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
+            <div className="absolute -inset-4 bg-gradient-primary rounded-xl blur opacity-25 group-hover:opacity-50 transition-opacity duration-300"></div>
+            <div className="relative h-32 w-auto px-8 py-6 flex items-center justify-center">
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
-                className="h-20 w-auto"
+                className="h-24 w-auto"
               />
             </div>
           </div>
