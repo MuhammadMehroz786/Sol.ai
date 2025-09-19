@@ -33,7 +33,7 @@ const Dashboard = () => {
           <img 
             src={soleLogoWithTagline} 
             alt="SOLE Logo" 
-            className="h-16 w-auto opacity-90"
+            className="h-32 w-auto opacity-90"
           />
         </div>
       </div>
