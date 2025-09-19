@@ -67,140 +67,149 @@ const APIMonitor = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">API Monitor</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor API performance, track agent health, and analyze request patterns
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32 bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">Last Hour</SelectItem>
-              <SelectItem value="24h">Last 24 Hours</SelectItem>
-              <SelectItem value="7d">Last 7 Days</SelectItem>
-              <SelectItem value="30d">Last 30 Days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+      <div className="bg-gradient-to-r from-primary/10 via-accent/15 to-primary/5 p-8 rounded-3xl border-2 border-primary/20 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-5xl font-bold tracking-tight text-brand-dark">API Monitor</h1>
+            <p className="text-xl text-brand-dark/70 mt-3 font-medium">
+              Monitor API performance, track agent health, and analyze request patterns
+            </p>
+          </div>
+          <div className="flex space-x-4">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-44 bg-white border-2 border-primary/30 text-lg h-12 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="1h" className="text-base">Last Hour</SelectItem>
+                <SelectItem value="24h" className="text-base">Last 24 Hours</SelectItem>
+                <SelectItem value="7d" className="text-base">Last 7 Days</SelectItem>
+                <SelectItem value="30d" className="text-base">Last 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" className="h-12 px-6 text-lg border-2 border-primary/30 rounded-xl hover:bg-primary hover:text-white transition-all">
+              <RefreshCw className="h-5 w-5 mr-3" />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-card border border-border shadow-elegant">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/20">
-                <Activity className="h-5 w-5 text-success" />
+      <div className="bg-white/80 backdrop-blur-sm p-8 rounded-3xl border-2 border-accent/30 shadow-lg">
+        <h2 className="text-2xl font-bold text-brand-dark mb-6">System Health Overview</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <Card className="bg-gradient-to-br from-success/5 to-success/15 border-2 border-success/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-success text-white shadow-lg">
+                  <Activity className="h-8 w-8" />
+                </div>
+                <div>
+                  <p className="text-4xl font-bold text-success">98.7%</p>
+                  <p className="text-lg text-success/80 font-medium mt-1">Overall Uptime</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">98.7%</p>
-                <p className="text-sm text-muted-foreground">Overall Uptime</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/15 border-2 border-primary/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-white shadow-lg">
+                  <Timer className="h-8 w-8" />
+                </div>
+                <div>
+                  <p className="text-4xl font-bold text-primary">847ms</p>
+                  <p className="text-lg text-primary/80 font-medium mt-1">Avg Response Time</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-card border border-border shadow-elegant">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
-                <Timer className="h-5 w-5 text-primary" />
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-accent/5 to-accent/15 border-2 border-accent/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-brand-dark shadow-lg">
+                  <Target className="h-8 w-8" />
+                </div>
+                <div>
+                  <p className="text-4xl font-bold text-accent-foreground">2,889</p>
+                  <p className="text-lg text-accent-foreground/80 font-medium mt-1">Requests Today</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">847ms</p>
-                <p className="text-sm text-muted-foreground">Avg Response Time</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-warning/5 to-warning/15 border-2 border-warning/40 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center space-x-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-warning text-warning-foreground shadow-lg">
+                  <AlertTriangle className="h-8 w-8" />
+                </div>
+                <div>
+                  <p className="text-4xl font-bold text-warning-foreground">13</p>
+                  <p className="text-lg text-warning-foreground/80 font-medium mt-1">Errors Today</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-card border border-border shadow-elegant">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-info/20">
-                <Target className="h-5 w-5 text-info" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Endpoints */}
+      <div className="bg-gradient-to-br from-brand-cream/40 to-accent/10 p-8 rounded-3xl border-2 border-primary/20 shadow-lg">
+        <Card className="bg-white/90 backdrop-blur-sm border-2 border-primary/30 shadow-elegant rounded-2xl">
+          <CardHeader className="p-8">
+            <CardTitle className="flex items-center space-x-3 text-2xl text-brand-dark">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
+                <Server className="h-6 w-6" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">2,889</p>
-                <p className="text-sm text-muted-foreground">Requests Today</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-gradient-card border border-border shadow-elegant">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/20">
-                <AlertTriangle className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">13</p>
-                <p className="text-sm text-muted-foreground">Errors Today</p>
-              </div>
+              <span>Endpoint Performance</span>
+            </CardTitle>
+            <CardDescription className="text-lg text-brand-dark/70 mt-3">Monitor individual API endpoint health and metrics</CardDescription>
+          </CardHeader>
+          <CardContent className="p-8">
+            <div className="space-y-6">
+              {endpointData.map((endpoint, index) => (
+                <div key={index} className="bg-gradient-to-r from-white to-accent/5 border-2 border-accent/30 rounded-2xl p-6 hover:shadow-elevated hover:border-primary/40 transition-all duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-white shadow-md">
+                        <Network className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-xl font-bold text-brand-dark">{endpoint.name}</h4>
+                        <p className="text-base text-brand-dark/70 font-medium">{endpoint.requests.toLocaleString()} requests</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-success/15 text-success border-2 border-success/40 text-base px-4 py-2 rounded-xl font-semibold">
+                      {endpoint.uptime}% uptime
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-6 text-base">
+                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/20">
+                      <p className="text-primary font-semibold mb-1">Avg Response</p>
+                      <p className="text-2xl font-bold text-brand-dark">{endpoint.avgResponse}ms</p>
+                    </div>
+                    <div className="bg-accent/5 p-4 rounded-xl border border-accent/20">
+                      <p className="text-accent-foreground font-semibold mb-1">Errors</p>
+                      <p className="text-2xl font-bold text-brand-dark">{endpoint.errors}</p>
+                    </div>
+                    <div className="bg-success/5 p-4 rounded-xl border border-success/20">
+                      <p className="text-success font-semibold mb-1">Success Rate</p>
+                      <p className="text-2xl font-bold text-brand-dark">{(100 - (endpoint.errors / endpoint.requests * 100)).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Endpoints */}
-      <Card className="bg-gradient-card border border-border shadow-elegant">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Server className="h-5 w-5" />
-            <span>Endpoint Performance</span>
-          </CardTitle>
-          <CardDescription>Monitor individual API endpoint health and metrics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {endpointData.map((endpoint, index) => (
-              <div key={index} className="border border-border rounded-lg p-4 hover:shadow-elevated transition-all duration-300">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                      <Network className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-foreground">{endpoint.name}</h4>
-                      <p className="text-sm text-muted-foreground">{endpoint.requests.toLocaleString()} requests</p>
-                    </div>
-                  </div>
-                  <Badge className="bg-success/10 text-success border-success/20">
-                    {endpoint.uptime}% uptime
-                  </Badge>
-                </div>
-                
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Avg Response</p>
-                    <p className="font-semibold text-foreground">{endpoint.avgResponse}ms</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Errors</p>
-                    <p className="font-semibold text-foreground">{endpoint.errors}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Success Rate</p>
-                    <p className="font-semibold text-foreground">{(100 - (endpoint.errors / endpoint.requests * 100)).toFixed(1)}%</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
