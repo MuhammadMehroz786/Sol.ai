@@ -49,16 +49,6 @@ const Layout = ({ children }: LayoutProps) => {
           </Button>
           
           <div className="flex items-center space-x-6">
-            <div className="group relative">
-              <div className="absolute -inset-2 bg-gradient-primary rounded-xl blur opacity-20 group-hover:opacity-40 transition-opacity duration-300"></div>
-              <div className="relative h-16 w-auto px-6 py-3 rounded-xl bg-gradient-to-br from-primary/5 to-primary-glow/5 backdrop-blur-sm border border-primary/10 flex items-center justify-center hover-scale transition-all duration-300 hover:shadow-glow">
-                <img 
-                  src={soleLogoWithTagline} 
-                  alt="SOLE - Born for Us. Raised by the Culture" 
-                  className="h-12 w-auto"
-                />
-              </div>
-            </div>
             <div className="animate-fade-in">
               <h1 className="font-bold text-xl text-foreground tracking-tight">Sole Central Station</h1>
               <p className="text-sm text-muted-foreground font-medium">AI Agent Orchestration Platform</p>
