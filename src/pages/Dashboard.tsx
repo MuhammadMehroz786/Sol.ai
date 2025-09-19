@@ -8,7 +8,7 @@ import { ContentQueue } from "@/components/dashboard/ContentQueue";
 import { InputPanel } from "@/components/dashboard/InputPanel";
 import { OutputPanel } from "@/components/dashboard/OutputPanel";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
-import soleLogoWithTagline from "@/assets/sole-logo-with-tagline.png";
+import soleLogoWithTagline from "@/assets/sole-logo-new.png";
 import { 
   TrendingUp, 
   FileText, 
