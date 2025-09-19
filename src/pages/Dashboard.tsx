@@ -10,7 +10,7 @@ import { InputPanel } from "@/components/dashboard/InputPanel";
 import { OutputPanel } from "@/components/dashboard/OutputPanel";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
 import { useAuth } from "@/contexts/AuthContext";
-import soleLogoOrangeBrown from "@/assets/sole-logo-orange-brown.png";
+import soleLogoWithTagline from "@/assets/sole-logo-with-tagline.png";
 import { 
   TrendingUp, 
   FileText, 
@@ -33,13 +33,19 @@ const Dashboard = () => {
       {/* Header */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             <div className="flex h-14 w-auto items-center justify-center rounded-xl bg-gradient-primary shadow-glow px-4">
               <img 
-                src={soleLogoOrangeBrown} 
+                src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
                 className="h-10 w-auto"
               />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight text-foreground">Sole Central Station</h1>
+              <p className="text-lg text-muted-foreground mt-1">
+                Monitor signals, manage content workflows, and track your automation pipeline
+              </p>
             </div>
           </div>
           
