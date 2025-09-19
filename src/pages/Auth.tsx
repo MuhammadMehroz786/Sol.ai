@@ -74,7 +74,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto w-fit mt-8">
+          <div className="mx-auto w-fit mt-20">
             <div className="h-40 w-auto px-8 py-2 flex items-center justify-center">
               <img 
                 src={soleLogoWithTagline} 
