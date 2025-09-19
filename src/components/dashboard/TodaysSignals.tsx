@@ -8,66 +8,37 @@ const signals = [
     id: 1,
     rank: 1,
     headline: "AI Revolution in Creative Content Generation",
-    summary: "Major breakthrough in AI-generated content creation with new GPT models showing unprecedented creativity and cultural awareness. This could reshape how SOLE approaches content production.",
-    tags: ["AI", "Creative", "Technology", "Culture"],
-    url: "https://example.com/ai-creative-breakthrough",
+    summary: "Major breakthrough in AI-generated content with new GPT models showing unprecedented creativity and cultural awareness.",
+    tags: ["AI", "Creative", "Technology"],
     priority: "High",
-    timestamp: "2 hours ago",
+    timestamp: "2h",
     source: "TechCrunch",
     score: 95,
-    engagement: "73% increase"
+    engagement: "+73%"
   },
   {
     id: 2,
     rank: 2,
     headline: "Cultural Shifts in Gen Z Digital Engagement",
-    summary: "Emerging trends show significant changes in how brands connect with Gen Z audiences through authentic storytelling and community-driven content strategies.",
-    tags: ["Marketing", "Culture", "Gen Z", "Storytelling"],
-    url: "https://example.com/gen-z-engagement",
+    summary: "Emerging trends show significant changes in how brands connect with Gen Z through authentic storytelling.",
+    tags: ["Marketing", "Culture", "Gen Z"],
     priority: "High",
-    timestamp: "3 hours ago",
-    source: "Harvard Business Review",
+    timestamp: "3h",
+    source: "HBR",
     score: 92,
-    engagement: "45% growth"
+    engagement: "+45%"
   },
   {
     id: 3,
     rank: 3,
     headline: "Rise of Micro-Influencer Authenticity",
-    summary: "Study reveals micro-influencers with 10K-100K followers drive 3x higher engagement rates than mega-influencers, emphasizing authentic community connections.",
-    tags: ["Influencer", "Marketing", "Authenticity"],
-    url: "https://example.com/micro-influencer-study",
+    summary: "Study reveals micro-influencers drive 3x higher engagement rates than mega-influencers.",
+    tags: ["Influencer", "Marketing"],
     priority: "Medium",
-    timestamp: "5 hours ago",
-    source: "Social Media Today",
+    timestamp: "5h",
+    source: "SMT",
     score: 88,
-    engagement: "28% boost"
-  },
-  {
-    id: 4,
-    rank: 4,
-    headline: "AI-Powered Personalization in Content",
-    summary: "New algorithms enable real-time content personalization based on cultural context, user behavior, and emotional state analysis.",
-    tags: ["AI", "Personalization", "UX"],
-    url: "https://example.com/ai-personalization",
-    priority: "Medium",
-    timestamp: "6 hours ago",
-    source: "Wired",
-    score: 85,
-    engagement: "18% lift"
-  },
-  {
-    id: 5,
-    rank: 5,
-    headline: "Sustainability Messaging in Brand Identity",
-    summary: "Consumer research shows 73% of millennials willing to pay premium for sustainable brands, driving major shifts in brand messaging strategies.",
-    tags: ["Sustainability", "Branding", "Millennials"],
-    url: "https://example.com/sustainability-branding",
-    priority: "Medium",
-    timestamp: "8 hours ago",
-    source: "Fast Company",
-    score: 82,
-    engagement: "22% rise"
+    engagement: "+28%"
   }
 ];
 
@@ -76,96 +47,91 @@ export const TodaysSignals = () => {
     switch (priority) {
       case "High": return "bg-destructive/10 text-destructive border-destructive/20";
       case "Medium": return "bg-warning/10 text-warning border-warning/20";
-      case "Low": return "bg-success/10 text-success border-success/20";
       default: return "bg-muted/10 text-muted-foreground border-border";
     }
   };
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
-      case 1: return <Crown className="h-4 w-4 text-yellow-500" />;
-      case 2: return <Star className="h-4 w-4 text-orange-500" />;
-      case 3: return <Target className="h-4 w-4 text-blue-500" />;
-      default: return <div className="w-4 h-4 rounded-full bg-muted text-xs flex items-center justify-center font-bold">{rank}</div>;
+      case 1: return <Crown className="h-3 w-3 text-yellow-500" />;
+      case 2: return <Star className="h-3 w-3 text-orange-500" />;
+      case 3: return <Target className="h-3 w-3 text-blue-500" />;
+      default: return <div className="w-3 h-3 rounded-full bg-muted text-xs flex items-center justify-center font-bold">{rank}</div>;
     }
   };
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-            <TrendingUp className="h-4 w-4 text-white" />
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center space-x-2 text-lg">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-primary">
+            <TrendingUp className="h-3 w-3 text-white" />
           </div>
           <span>Today's Signals</span>
-          <Badge className="ml-auto bg-primary/10 text-primary border-primary/20">
-            {signals.length} Active
+          <Badge className="ml-auto bg-primary/10 text-primary border-primary/20 text-xs">
+            {signals.length}
           </Badge>
         </CardTitle>
-        <CardDescription>
-          Priority content signals detected and ranked by Scout GPT
+        <CardDescription className="text-sm">
+          Priority signals ranked by Scout GPT
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {signals.map((signal) => (
-          <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-5 hover:shadow-elevated transition-all duration-300 hover:border-primary/30">
-            {/* Rank Badge */}
-            <div className="absolute -top-3 -left-3 flex items-center justify-center">
-              <div className="bg-background border-2 border-primary rounded-full p-2 shadow-md">
-                {getRankIcon(signal.rank)}
-              </div>
+          <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-3 hover:shadow-md transition-all duration-300 hover:border-primary/30">
+            {/* Compact Rank */}
+            <div className="absolute -top-1 -left-1 bg-background border border-primary rounded-full p-1">
+              {getRankIcon(signal.rank)}
             </div>
             
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1 pr-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2">
+            <div className="flex justify-between items-start mb-2 pl-4">
+              <div className="flex-1 pr-3">
+                <div className="flex items-center space-x-2 mb-1">
+                  <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
                     {signal.headline}
                   </h3>
-                  <Badge className={getPriorityColor(signal.priority)}>
+                  <Badge className={`text-xs ${getPriorityColor(signal.priority)}`}>
                     {signal.priority}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-3">
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                   {signal.summary}
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-primary mb-1">{signal.score}</div>
-                <div className="text-xs text-success font-medium">{signal.engagement}</div>
+                <div className="text-lg font-bold text-primary">{signal.score}</div>
+                <div className="text-xs text-success">{signal.engagement}</div>
               </div>
             </div>
 
-            {/* Tags */}
-            <div className="flex flex-wrap gap-1 mb-4">
-              {signal.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs bg-accent/10 text-accent-foreground hover:bg-accent/20">
+            {/* Compact Tags */}
+            <div className="flex flex-wrap gap-1 mb-2 pl-4">
+              {signal.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs px-1 py-0 bg-accent/10 text-accent-foreground">
                   {tag}
                 </Badge>
               ))}
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-3 border-t border-border">
-              <div className="flex items-center space-x-3 text-xs text-muted-foreground">
-                <div className="flex items-center space-x-1">
-                  <Clock className="h-3 w-3" />
-                  <span>{signal.timestamp}</span>
-                </div>
+            {/* Compact Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-border pl-4">
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                <span>{signal.timestamp}</span>
                 <span>•</span>
-                <span className="font-medium">{signal.source}</span>
+                <span>{signal.source}</span>
               </div>
               
-              <div className="flex space-x-2">
-                <Button size="sm" className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
+              <div className="flex space-x-1">
+                <Button size="sm" className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-xs px-2 py-1 h-7">
                   <Zap className="h-3 w-3 mr-1" />
-                  Send to Editorial GPT
+                  GPT
                 </Button>
-                <Button size="sm" variant="outline" className="hover:bg-accent/10">
-                  Chain Agent
+                <Button size="sm" variant="outline" className="hover:bg-accent/10 text-xs px-2 py-1 h-7">
+                  Chain
                   <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
-                <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary">
+                <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary text-xs px-1 py-1 h-7">
                   <ExternalLink className="h-3 w-3" />
                 </Button>
               </div>
@@ -173,13 +139,10 @@ export const TodaysSignals = () => {
           </div>
         ))}
         
-        {/* Load More */}
-        <div className="pt-4 border-t border-border">
-          <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground hover:bg-accent/10">
-            Load More Signals
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </div>
+        {/* Compact Load More */}
+        <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-foreground hover:bg-accent/10 mt-2">
+          Load More <ArrowRight className="h-3 w-3 ml-2" />
+        </Button>
       </CardContent>
     </Card>
   );
