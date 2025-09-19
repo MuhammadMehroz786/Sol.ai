@@ -70,7 +70,7 @@ const Layout = ({ children }: LayoutProps) => {
             <img 
               src={soleLogoWithTagline} 
               alt="SOLE Logo" 
-              className="h-12 w-auto object-contain transition-all duration-300 hover:scale-105 hover:brightness-110 filter drop-shadow-lg hover:drop-shadow-xl"
+              className="h-14 w-auto object-contain transition-all duration-300 hover:scale-105 hover:brightness-110 filter drop-shadow-lg hover:drop-shadow-xl"
             />
           </div>
 
