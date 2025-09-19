@@ -70,16 +70,16 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex items-start justify-center p-4 pt-8">
-      <div className="w-full max-w-md space-y-4">
+    <div className="min-h-screen bg-gradient-subtle flex items-start justify-center p-4 pt-2">
+      <div className="w-full max-w-md space-y-2">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-fit mt-4">
-            <div className="h-32 w-auto px-8 py-2 flex items-center justify-center">
+        <div className="text-center space-y-1">
+          <div className="mx-auto w-fit mt-1">
+            <div className="h-28 w-auto px-8 py-1 flex items-center justify-center">
               <img 
                 src={soleLogoWithTagline} 
                 alt="SOLE - Born for Us. Raised by the Culture" 
-                className="h-24 w-auto"
+                className="h-20 w-auto"
               />
             </div>
           </div>
