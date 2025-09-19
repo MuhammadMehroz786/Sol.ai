@@ -83,9 +83,7 @@ export const OutputPanel = ({ output }: OutputPanelProps) => {
   const quickActions = [
     { value: "rewrite", label: "Rewrite", icon: RefreshCw },
     { value: "shorten", label: "Shorten", icon: Scissors },
-    { value: "enhance", label: "Enhance", icon: Sparkles },
-    { value: "stats", label: "Stats", icon: BarChart3 },
-    { value: "review", label: "Review", icon: MessageSquare }
+    { value: "enhance", label: "Enhance", icon: Sparkles }
   ];
 
   const handleDownload = async () => {
