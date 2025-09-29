@@ -14,8 +14,8 @@ import { Link } from 'react-router-dom';
 import soleLogoWithTagline from "@/assets/sole-logo-orange-brown-v2.png";
 
 const Auth = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('mehroz@gmail.com');
+  const [password, setPassword] = useState('mehroz1234');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
