@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import soleLogoWithTagline from "@/assets/sole-logo-orange-brown-v2.png";
+import soleLogoBlack from "@/assets/SOLE LOGO - BLACK WO BG.png";
 import { 
   LayoutDashboard, 
   Settings, 
@@ -49,69 +50,88 @@ const Layout = ({ children }: LayoutProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-40 shadow-sm">
-        <div className="flex h-20 items-center px-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="mr-6 rounded-xl hover:bg-muted/50 transition-colors"
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-          
+    <div className="bg-gradient-to-br from-background via-brand-cream/10 to-accent/5 min-h-screen">
+      {/* Header - Fixed position, follows scroll with enhanced styling */}
+      <header className="fixed top-0 left-0 right-0 z-40 border-b border-border/30 bg-gradient-to-r from-card/95 via-brand-cream/80 to-card/95 backdrop-blur-xl shadow-elegant">
+        <div className="flex h-20 items-center justify-between px-8">
+          {/* Left section */}
           <div className="flex items-center space-x-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="rounded-xl hover:bg-brand-cream/40 hover:shadow-glow transition-all duration-300 group"
+            >
+              {sidebarOpen ? (
+                <X className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
+              ) : (
+                <Menu className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
+              )}
+            </Button>
+
             <div className="animate-fade-in">
-              <h1 className="font-bold text-2xl text-foreground tracking-tight">Sole Central Station</h1>
-              <p className="text-base text-muted-foreground font-medium">AI Agent Orchestration Platform</p>
+              <h1 className="font-bold text-2xl bg-gradient-to-r from-primary via-brand-dark to-primary bg-clip-text text-transparent tracking-tight">
+                Sole Central Station
+              </h1>
+              <p className="text-base text-muted-foreground font-medium bg-gradient-to-r from-muted-foreground to-brand-dark/70 bg-clip-text text-transparent">
+                AI Agent Orchestration Platform
+              </p>
             </div>
           </div>
 
-          <div className="ml-auto flex items-center space-x-4">
-            <Badge variant="secondary" className="bg-success/10 text-success border-success/20 rounded-full px-4 py-2">
-              <div className="w-2 h-2 bg-success rounded-full mr-2"></div>
-              System Online
+          {/* Center section - SOLE Logo */}
+          <div className="absolute left-1/2 transform -translate-x-1/2">
+            <img
+              src={soleLogoBlack}
+              alt="SOLE Logo"
+              className="h-16 w-auto hover:scale-105 transition-transform duration-300 drop-shadow-lg"
+            />
+          </div>
+
+          {/* Right section */}
+          <div className="flex items-center space-x-4">
+            <Badge variant="secondary" className="bg-gradient-to-r from-success/10 to-success/20 text-success border-success/30 rounded-full px-4 py-2 shadow-md hover:shadow-glow transition-all duration-300">
+              <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
+              <span className="font-semibold">System Online</span>
             </Badge>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-muted/50 transition-colors">
-                  <Avatar className="h-9 w-9 border-2 border-primary/20">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-brand-cream/40 hover:shadow-glow transition-all duration-300 group">
+                  <Avatar className="h-9 w-9 border-2 border-primary/30 shadow-md group-hover:border-primary/50 transition-all duration-300">
                     <AvatarImage src="" />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-bold">
                       {user?.email?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-60 bg-card border border-border shadow-elegant rounded-2xl p-2" align="end" forceMount>
+              <DropdownMenuContent className="w-60 bg-gradient-card border border-border/30 shadow-elegant rounded-2xl p-2 backdrop-blur-sm" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-base font-medium leading-none">Account</p>
-                    <p className="text-sm leading-none text-muted-foreground">
+                    <p className="text-base font-semibold leading-none text-foreground">Account</p>
+                    <p className="text-sm leading-none text-muted-foreground font-medium">
                       {user?.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-border/30" />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center">
+                  <Link to="/profile" className="flex items-center rounded-xl hover:bg-brand-cream/30 transition-colors duration-200">
                     <UserCircle className="mr-2 h-4 w-4" />
-                    <span>Profile Settings</span>
+                    <span className="font-medium">Profile Settings</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/settings" className="flex items-center">
+                  <Link to="/settings" className="flex items-center rounded-xl hover:bg-brand-cream/30 transition-colors duration-200">
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Account Settings</span>
+                    <span className="font-medium">Account Settings</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                <DropdownMenuSeparator className="bg-border/30" />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive rounded-xl hover:bg-destructive/10 transition-colors duration-200">
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign out</span>
+                  <span className="font-medium">Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -119,43 +139,68 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside 
-          className={cn(
-            "bg-card/80 backdrop-blur-sm border-r border-border transition-all duration-300 flex-shrink-0 shadow-sm",
-            sidebarOpen ? "w-72" : "w-18"
-          )}
-        >
-          <nav className="p-6 space-y-3">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center space-x-4 px-4 py-3 rounded-2xl text-base font-medium transition-all duration-200",
-                    isActive 
-                      ? "bg-primary text-primary-foreground shadow-md transform hover:scale-[1.02]" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 hover:transform hover:scale-[1.02]"
-                  )}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {sidebarOpen && <span className="font-medium">{item.name}</span>}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
+      {/* Sidebar - Fixed position, follows scroll with enhanced styling */}
+      <aside
+        className={cn(
+          "fixed top-20 left-0 h-[calc(100vh-5rem)] bg-gradient-to-b from-card/95 via-brand-cream/60 to-card/90 backdrop-blur-xl border-r border-border/30 shadow-elegant z-30 transition-all duration-500 ease-in-out",
+          sidebarOpen ? "w-72" : "w-18"
+        )}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+        <nav className="relative p-6 space-y-3">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={cn(
+                  "flex items-center space-x-4 px-4 py-3 rounded-2xl text-base font-semibold transition-all duration-300 group relative overflow-hidden",
+                  isActive
+                    ? "bg-gradient-to-r from-primary via-primary/90 to-primary text-primary-foreground shadow-elegant transform hover:scale-[1.02] hover:shadow-glow"
+                    : "text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-brand-cream/40 hover:to-accent/20 hover:shadow-md hover:transform hover:scale-[1.02]"
+                )}
+              >
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-r opacity-0 transition-opacity duration-300",
+                  isActive
+                    ? "from-primary/20 to-primary/10 opacity-100"
+                    : "from-brand-cream/20 to-accent/10 group-hover:opacity-100"
+                )} />
+                <item.icon className={cn(
+                  "h-5 w-5 flex-shrink-0 relative z-10 transition-transform duration-300",
+                  isActive ? "drop-shadow-sm" : "group-hover:scale-110"
+                )} />
+                {sidebarOpen && (
+                  <span className="font-semibold relative z-10 transition-all duration-300">
+                    {item.name}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-gradient-to-br from-brand-cream/30 via-white to-accent/20">
-          <div className="p-8">
-            {children}
-          </div>
-        </main>
-      </div>
+        {/* Sidebar decoration */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/10 via-transparent to-transparent pointer-events-none" />
+      </aside>
+
+      {/* Page Content with enhanced styling */}
+      <main
+        className={cn(
+          "bg-gradient-to-br from-brand-cream/30 via-background to-accent/15 p-8 pt-28 transition-all duration-500 ease-in-out min-h-screen relative",
+          sidebarOpen ? "ml-72" : "ml-18"
+        )}
+      >
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-brand-cream/20 via-transparent to-transparent pointer-events-none" />
+
+        {/* Content wrapper with enhanced styling */}
+        <div className="relative z-10">
+          {children}
+        </div>
+      </main>
     </div>
   );
 };

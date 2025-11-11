@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,18 +6,146 @@ import { Separator } from "@/components/ui/separator";
 import { TodaysSignals } from "@/components/dashboard/TodaysSignals";
 import { ContentQueue } from "@/components/dashboard/ContentQueue";
 import { InputPanel } from "@/components/dashboard/InputPanel";
-import { OutputPanel } from "@/components/dashboard/OutputPanel";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { ScoutGptService } from "@/services/scoutGptService";
 import soleLogoWithTagline from "@/assets/sole-logo-new.png";
-import { 
-  TrendingUp, 
-  FileText, 
-  Clock, 
+import soleLogoBlack from "@/assets/SOLE LOGO - BLACK WO BG.png";
+import {
+  TrendingUp,
+  FileText,
+  Clock,
   CheckCircle
 } from "lucide-react";
 
+interface ContentStats {
+  totalGenerated: number;
+  inQueue: number;
+  inReview: number;
+  publishedToday: number;
+}
+
+interface SignalsStats {
+  activeSignals: number;
+  isLoading: boolean;
+}
+
 const Dashboard = () => {
-  const [selectedOutput, setSelectedOutput] = useState<any>(null);
+  const { user } = useAuth();
+  const [stats, setStats] = useState<ContentStats>({
+    totalGenerated: 0,
+    inQueue: 0,
+    inReview: 0,
+    publishedToday: 0
+  });
+  const [signalsStats, setSignalsStats] = useState<SignalsStats>({
+    activeSignals: 0,
+    isLoading: true
+  });
+
+  const fetchStats = async () => {
+    if (!user) return;
+
+    try {
+      // Get all content for user
+      const { data: allContent, error } = await supabase
+        .from('content_outputs')
+        .select('status, created_at, updated_at')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error fetching stats:', error);
+        return;
+      }
+
+      if (allContent) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const totalGenerated = allContent.length;
+        const inQueue = allContent.filter(c => c.status === 'draft' || c.status === 'review' || c.status === 'final').length;
+        const inReview = allContent.filter(c => c.status === 'review').length;
+        const publishedToday = allContent.filter(c => {
+          if (c.status !== 'published') return false;
+          const updatedDate = new Date(c.updated_at);
+          return updatedDate >= today;
+        }).length;
+
+        setStats({
+          totalGenerated,
+          inQueue,
+          inReview,
+          publishedToday
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchSignalsStats = async () => {
+    if (!user) return;
+
+    try {
+      setSignalsStats(prev => ({ ...prev, isLoading: true }));
+
+      // Load signals from database to get the count
+      const signals = await ScoutGptService.loadSignalsFromDatabase();
+
+      setSignalsStats({
+        activeSignals: signals.length,
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('Error fetching signals stats:', error);
+      setSignalsStats({
+        activeSignals: 0,
+        isLoading: false
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchStats();
+      fetchSignalsStats();
+    }
+  }, [user]);
+
+  // Refresh stats when content is updated
+  useEffect(() => {
+    (window as any).refreshDashboardStats = () => {
+      fetchStats();
+      fetchSignalsStats();
+    };
+    return () => {
+      delete (window as any).refreshDashboardStats;
+    };
+  }, [user]);
+
+  // Listen for signals updates from the TodaysSignals component
+  useEffect(() => {
+    const handleSignalsUpdated = () => {
+      console.log('Dashboard: Signals updated event received, refreshing stats...');
+      fetchSignalsStats();
+    };
+
+    window.addEventListener('signalsUpdated', handleSignalsUpdated);
+
+    return () => {
+      window.removeEventListener('signalsUpdated', handleSignalsUpdated);
+    };
+  }, [user]);
+
+  const handleActiveSignalsClick = () => {
+    // Try to trigger the "Show All Signals" modal from TodaysSignals component
+    if ((window as any).openAllSignalsModal) {
+      (window as any).openAllSignalsModal();
+    } else {
+      console.log('All signals modal not available');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -31,10 +159,10 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="flex items-center">
-            <img 
-              src={soleLogoWithTagline} 
-              alt="SOLE Logo" 
-              className="h-24 w-auto opacity-90"
+            <img
+              src={soleLogoWithTagline}
+              alt="SOLE Logo"
+              className="h-32 w-auto opacity-90"
             />
           </div>
         </div>
@@ -43,7 +171,10 @@ const Dashboard = () => {
       {/* Quick Stats - SOLE Brand Metrics */}
       <div className="bg-white/80 backdrop-blur-sm p-6 rounded-3xl border border-primary/20 shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/15 border-2 border-primary/30 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden">
+          <Card
+            className="bg-gradient-to-br from-primary/5 to-primary/15 border-2 border-primary/30 shadow-elegant hover:shadow-elevated transition-all duration-300 rounded-2xl overflow-hidden cursor-pointer hover:scale-105"
+            onClick={handleActiveSignalsClick}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-lg font-semibold text-primary">Active Signals</CardTitle>
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white">
@@ -51,8 +182,10 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">12</div>
-              <p className="text-sm text-success mt-1 font-medium">+2 from yesterday</p>
+              <div className="text-3xl font-bold text-primary">
+                {signalsStats.isLoading ? '...' : signalsStats.activeSignals}
+              </div>
+              <p className="text-sm text-success mt-1 font-medium">From Scout GPT</p>
             </CardContent>
           </Card>
           
@@ -64,8 +197,8 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-accent-foreground">8</div>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">3 in review</p>
+              <div className="text-3xl font-bold text-accent-foreground">{stats.inQueue}</div>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">{stats.inReview} in review</p>
             </CardContent>
           </Card>
           
@@ -77,8 +210,8 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-success">5</div>
-              <p className="text-sm text-success mt-1 font-medium">+25% from avg</p>
+              <div className="text-3xl font-bold text-success">{stats.publishedToday}</div>
+              <p className="text-sm text-success mt-1 font-medium">Published content today</p>
             </CardContent>
           </Card>
           
@@ -90,8 +223,8 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-brand-dark">34</div>
-              <p className="text-sm text-muted-foreground mt-1 font-medium">This week</p>
+              <div className="text-3xl font-bold text-brand-dark">{stats.totalGenerated}</div>
+              <p className="text-sm text-muted-foreground mt-1 font-medium">Total content pieces</p>
             </CardContent>
           </Card>
         </div>
@@ -104,20 +237,15 @@ const Dashboard = () => {
             <TodaysSignals />
           </div>
           <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-6 rounded-3xl border border-primary/20">
-            <ContentQueue onSelectOutput={setSelectedOutput} />
+            <ContentQueue onSelectOutput={() => {}} />
           </div>
         </div>
 
-        {/* Right Column - Content Generator & Output Panels */}
+        {/* Right Column - Content Generator */}
         <div className="space-y-8">
           <div className="bg-gradient-to-br from-brand-cream/50 to-brand-cream/20 p-6 rounded-3xl border border-primary/30">
             <ContentGenerator />
           </div>
-          {selectedOutput && (
-            <div className="bg-white/90 backdrop-blur-sm p-6 rounded-3xl border border-accent/30 shadow-lg">
-              <OutputPanel output={selectedOutput} />
-            </div>
-          )}
         </div>
       </div>
     </div>

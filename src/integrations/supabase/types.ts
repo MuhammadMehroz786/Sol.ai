@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      agents: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          role: string
+          function: string
+          endpoint: string
+          auth_method: string
+          api_key_encrypted: string | null
+          api_headers: Json | null
+          input_schema: Json | null
+          output_schema: Json | null
+          status: string
+          last_ping: string | null
+          response_time: number | null
+          success_rate: number | null
+          error_count: number
+          total_requests: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          role: string
+          function: string
+          endpoint: string
+          auth_method: string
+          api_key_encrypted?: string | null
+          api_headers?: Json | null
+          input_schema?: Json | null
+          output_schema?: Json | null
+          status?: string
+          last_ping?: string | null
+          response_time?: number | null
+          success_rate?: number | null
+          error_count?: number
+          total_requests?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          role?: string
+          function?: string
+          endpoint?: string
+          auth_method?: string
+          api_key_encrypted?: string | null
+          api_headers?: Json | null
+          input_schema?: Json | null
+          output_schema?: Json | null
+          status?: string
+          last_ping?: string | null
+          response_time?: number | null
+          success_rate?: number | null
+          error_count?: number
+          total_requests?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       content_outputs: {
         Row: {
           content: string
@@ -83,6 +149,57 @@ export type Database = {
         }
         Relationships: []
       }
+      signals: {
+        Row: {
+          id: string
+          user_id: string
+          topic: string
+          summary: string
+          url: string | null
+          date: string
+          hashtag: string[] | null
+          score: number
+          rank: number | null
+          source: string
+          priority: string
+          engagement: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          topic: string
+          summary: string
+          url?: string | null
+          date: string
+          hashtag?: string[] | null
+          score: number
+          rank?: number | null
+          source?: string
+          priority?: string
+          engagement?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          topic?: string
+          summary?: string
+          url?: string | null
+          date?: string
+          hashtag?: string[] | null
+          score?: number
+          rank?: number | null
+          source?: string
+          priority?: string
+          engagement?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -91,7 +208,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      agent_status: "active" | "inactive" | "planned" | "error"
+      auth_method: "bearer_token" | "api_key" | "basic_auth" | "oauth" | "custom"
+      agent_role: "admin" | "editor" | "viewer" | "moderator" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never

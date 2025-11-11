@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/api/scout-gpt': {
+        target: 'https://soleai.app.n8n.cloud',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/scout-gpt/, '/webhook/301d63b0-3049-420d-857e-d9dbcbdc7eaf'),
+        secure: true,
+      }
+    }
   },
   plugins: [
     react(),
