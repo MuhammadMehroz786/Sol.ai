@@ -11,9 +11,34 @@ export type AuthMethod = Database['public']['Enums']['auth_method'];
 export type AgentRole = Database['public']['Enums']['agent_role'];
 
 // Enhanced interfaces for UI
-export interface AgentWithStats extends Agent {
-  uptime_percentage?: number;
+export interface AgentWithStats {
+  id: string;
+  user_id: string;
+  name: string;
+  role: string;
+  function: string;
+  endpoint: string;
+  auth_method: string;
+  api_key_encrypted: string | null;
+  api_headers: any;
+  input_schema: any;
+  output_schema: any;
+  status: string;
+  last_ping: string | null;
+  response_time: number | null;
+  success_rate: number | null;
+  error_count: number;
+  total_requests: number;
+  created_at: string;
+  updated_at: string;
+  health_status?: string;
+  category?: string;
+  priority?: number;
+  is_fallback_enabled?: boolean;
+  consecutive_failures?: number;
+  last_failure_time?: string | null;
   avg_response_time?: number;
+  uptime_percentage?: number;
   last_error?: string;
   is_healthy?: boolean;
 }

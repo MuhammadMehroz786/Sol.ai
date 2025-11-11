@@ -6,6 +6,27 @@ export interface ScoutGptSignal {
   date: string;
   hashtag?: string[];
   score: number;
+  headline?: string;
+  title?: string;
+  description?: string;
+}
+
+// Processed signal with optional ID for flexibility
+export interface ProcessedSignal {
+  id?: string;
+  rank: number;
+  headline: string;
+  summary: string;
+  tags: string[];
+  priority: 'High' | 'Medium' | 'Low';
+  timestamp: string;
+  source: string;
+  score: number;
+  engagement: string;
+  url?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Internal signal representation for the app
