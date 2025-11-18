@@ -30,7 +30,7 @@ export class DatabaseTest {
 
       // Try to query the signals table (this will fail if table doesn't exist)
       const { data, error } = await supabase
-        .from('signals')
+        .from('signals_ranked')
         .select('count')
         .limit(1);
 
@@ -107,21 +107,23 @@ export class DatabaseTest {
       }
 
       const mockSignal = {
-        user_id: user.user.id,
-        topic: 'Test Signal from Database Test',
+        headline: 'Test Signal from Database Test',
         summary: 'This is a test signal created to verify database functionality',
         url: 'https://example.com',
-        date: new Date().toISOString(),
-        hashtag: ['test', 'database'],
+        published_at: new Date().toISOString(),
+        tag: ['test', 'database'],
         score: 95,
-        rank: 1,
         source: 'Database Test',
-        priority: 'High',
-        engagement: '+85%'
+        analyzed_at: new Date().toISOString(),
+        community_context: null,
+        narrative_stakes: null,
+        use_mode: null,
+        rationale: null,
+        confidence: null
       };
 
       const { data, error } = await supabase
-        .from('signals')
+        .from('signals_ranked')
         .insert([mockSignal])
         .select();
 

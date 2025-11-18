@@ -591,7 +591,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
           <DialogContent className="sm:max-w-4xl max-h-[90vh] bg-gradient-card border-border/50 shadow-elegant">
             <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
               <div className="flex items-center justify-between mb-3">
-                <DialogTitle className="text-xl font-bold text-primary">
+                <DialogTitle className="text-xl font-bold text-primary uppercase">
                   {selectedOutput.title}
                 </DialogTitle>
                 <div className="flex items-center space-x-2">
@@ -610,7 +610,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                       }`}>
                         <Icon className="h-5 w-5" />
                         <span className="font-semibold text-sm uppercase tracking-wide">
-                          {config.label} Mode
+                          {config.label.toUpperCase()} MODE
                         </span>
                       </div>
                     );
@@ -635,11 +635,11 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground flex items-center">
+                  <label className="text-sm font-medium text-foreground flex items-center uppercase">
                     <Eye className="h-4 w-4 mr-1 text-primary" />
                     Content
                     {selectedOutput.status === 'review' && (
-                      <span className="ml-2 text-xs text-muted-foreground">(Editable)</span>
+                      <span className="ml-2 text-xs text-muted-foreground normal-case">(Editable)</span>
                     )}
                   </label>
 
@@ -695,135 +695,159 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
               {/* Quick Actions - Only show for review status */}
               {selectedOutput.status === 'review' && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Quick Actions</label>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleQuickAction('poeticize')}
-                      disabled={isProcessingAction === 'poeticize'}
-                      className="text-sm bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm"
-                    >
-                      {isProcessingAction === 'poeticize' ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 mr-1" />
-                      )}
-                      Poeticize
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleQuickAction('rewrite')}
-                      disabled={isProcessingAction === 'rewrite'}
-                      className="text-sm bg-accent/30 border-accent/70 text-black hover:bg-accent/40 hover:border-accent font-medium shadow-sm"
-                    >
-                      {isProcessingAction === 'rewrite' ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                      )}
-                      Rewrite
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleQuickAction('shorten')}
-                      disabled={isProcessingAction === 'shorten'}
-                      className="text-sm bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm"
-                    >
-                      {isProcessingAction === 'shorten' ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <Scissors className="h-4 w-4 mr-1" />
-                      )}
-                      Shorten
-                    </Button>
+                  <label className="text-sm font-medium text-foreground uppercase">Quick Actions</label>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleQuickAction('poeticize')}
+                        disabled={isProcessingAction === 'poeticize'}
+                        className="bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm h-10"
+                      >
+                        {isProcessingAction === 'poeticize' ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4 mr-2" />
+                        )}
+                        Poeticize
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleQuickAction('rewrite')}
+                        disabled={isProcessingAction === 'rewrite'}
+                        className="bg-accent/30 border-accent/70 text-black hover:bg-accent/40 hover:border-accent font-medium shadow-sm h-10"
+                      >
+                        {isProcessingAction === 'rewrite' ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                        )}
+                        Rewrite
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleQuickAction('shorten')}
+                        disabled={isProcessingAction === 'shorten'}
+                        className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
+                      >
+                        {isProcessingAction === 'shorten' ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Scissors className="h-4 w-4 mr-2" />
+                        )}
+                        Shorten
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => updateStatus(selectedOutput.id, 'final')}
+                        className="bg-success/30 border-success/70 text-black hover:bg-success/40 hover:border-success font-medium shadow-sm h-10"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Confirm Edits
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={closeModal}
+                        disabled={!!isProcessingAction || isSaving}
+                        className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50 h-10"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Close
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-2 pb-2">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex space-x-2">
-                  {/* Export/CMS buttons only for final status */}
-                  {selectedOutput.status === 'final' && (
-                    <>
+            {/* DialogFooter - Only show for draft and final status (not review) */}
+            {selectedOutput.status !== 'review' && (
+              <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-4 pb-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {/* Export/CMS buttons only for final status */}
+                    {selectedOutput.status === 'final' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => updateStatus(selectedOutput.id, 'review')}
+                          className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
+                          Back to Review
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={exportToPDF}
+                          disabled={isExporting}
+                          className="bg-accent/30 border-accent/70 text-black hover:bg-accent/40 hover:border-accent font-medium shadow-sm h-10"
+                        >
+                          {isExporting ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4 mr-2" />
+                          )}
+                          Export PDF
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={sendToCMS}
+                          disabled={isSendingToCMS}
+                          className="bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm h-10"
+                        >
+                          {isSendingToCMS ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-2" />
+                          )}
+                          Send to CMS
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Status transition buttons - only for draft status */}
+                    {selectedOutput.status === 'draft' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => updateStatus(selectedOutput.id, 'review')}
+                          className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
+                        >
+                          <ArrowRight className="h-4 w-4 mr-2" />
+                          Move to Review
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={closeModal}
+                          disabled={!!isProcessingAction || isSaving || isExporting || isSendingToCMS}
+                          className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50 h-10"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Close
+                        </Button>
+                      </>
+                    )}
+
+                    {/* Close button for final status */}
+                    {selectedOutput.status === 'final' && (
                       <Button
                         variant="outline"
-                        onClick={() => updateStatus(selectedOutput.id, 'review')}
-                        className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm"
+                        onClick={closeModal}
+                        disabled={!!isProcessingAction || isSaving || isExporting || isSendingToCMS}
+                        className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50 h-10"
                       >
-                        <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
-                        Back to Review
+                        <X className="h-4 w-4 mr-2" />
+                        Close
                       </Button>
-                      <Button
-                        variant="outline"
-                        onClick={exportToPDF}
-                        disabled={isExporting}
-                        className="bg-accent/30 border-accent/70 text-black hover:bg-accent/40 hover:border-accent font-medium shadow-sm"
-                      >
-                        {isExporting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <FileDown className="h-4 w-4 mr-2" />
-                        )}
-                        Export PDF
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={sendToCMS}
-                        disabled={isSendingToCMS}
-                        className="bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm"
-                      >
-                        {isSendingToCMS ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4 mr-2" />
-                        )}
-                        Send to CMS
-                      </Button>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex items-center space-x-2">
-                  {/* Status transition buttons - moved to right */}
-                  {selectedOutput.status === 'draft' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => updateStatus(selectedOutput.id, 'review')}
-                      className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm"
-                    >
-                      <ArrowRight className="h-4 w-4 mr-2" />
-                      Move to Review
-                    </Button>
-                  )}
-
-                  {selectedOutput.status === 'review' && (
-                    <Button
-                      variant="outline"
-                      onClick={() => updateStatus(selectedOutput.id, 'final')}
-                      className="bg-success/30 border-success/70 text-black hover:bg-success/40 hover:border-success font-medium shadow-sm"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Confirm Edits
-                    </Button>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    onClick={closeModal}
-                    disabled={!!isProcessingAction || isSaving || isExporting || isSendingToCMS}
-                    className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </DialogFooter>
+              </DialogFooter>
+            )}
           </DialogContent>
         </Dialog>
       )}

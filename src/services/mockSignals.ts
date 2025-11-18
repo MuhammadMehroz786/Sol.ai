@@ -1,6 +1,7 @@
 import { ProcessedSignal } from './scoutGptService';
 
 export const createMockSignals = (): ProcessedSignal[] => {
+  const now = new Date().toISOString();
   const mockSignals: ProcessedSignal[] = [
     {
       id: 'mock-1',
@@ -14,8 +15,8 @@ export const createMockSignals = (): ProcessedSignal[] => {
       score: 95,
       engagement: '+78%',
       url: 'https://example.com/ai-revolution',
-      user_id: 'mock-user',
-      created_at: new Date().toISOString()
+      published_at: now,
+      analyzed_at: now
     },
     {
       id: 'mock-2',
@@ -29,8 +30,8 @@ export const createMockSignals = (): ProcessedSignal[] => {
       score: 87,
       engagement: '+62%',
       url: 'https://example.com/algorithm-changes',
-      user_id: 'mock-user',
-      created_at: new Date().toISOString()
+      published_at: now,
+      analyzed_at: now
     },
     {
       id: 'mock-3',
@@ -44,8 +45,8 @@ export const createMockSignals = (): ProcessedSignal[] => {
       score: 82,
       engagement: '+45%',
       url: 'https://example.com/genz-behavior',
-      user_id: 'mock-user',
-      created_at: new Date().toISOString()
+      published_at: now,
+      analyzed_at: now
     },
     {
       id: 'mock-4',
@@ -59,8 +60,8 @@ export const createMockSignals = (): ProcessedSignal[] => {
       score: 75,
       engagement: '+38%',
       url: 'https://example.com/remote-work',
-      user_id: 'mock-user',
-      created_at: new Date().toISOString()
+      published_at: now,
+      analyzed_at: now
     },
     {
       id: 'mock-5',
@@ -74,8 +75,8 @@ export const createMockSignals = (): ProcessedSignal[] => {
       score: 68,
       engagement: '+29%',
       url: 'https://example.com/sustainable-business',
-      user_id: 'mock-user',
-      created_at: new Date().toISOString()
+      published_at: now,
+      analyzed_at: now
     }
   ];
 

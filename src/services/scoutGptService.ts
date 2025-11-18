@@ -1,11 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ScoutGptSignal {
-  topic: string;
+  headline: string;
   summary: string;
   url?: string;
-  date: string;
-  hashtag?: string[];
+  published_at: string;
+  tag?: string[];
   score: number;
 }
 
@@ -21,8 +21,13 @@ export interface ProcessedSignal {
   score: number;
   engagement?: string;
   url?: string;
-  user_id?: string;
-  created_at?: string;
+  published_at?: string;
+  analyzed_at?: string;
+  community_context?: string;
+  narrative_stakes?: string;
+  use_mode?: string;
+  rationale?: string;
+  confidence?: number;
 }
 
 // Use proxy endpoint for development to avoid CORS issues
@@ -115,7 +120,7 @@ export class ScoutGptService {
     // Filter and validate signals
     const validSignals = signals.filter(signal => {
       const isValid = signal &&
-                     (signal.topic || signal.headline || signal.title) &&
+                     (signal.headline || signal.topic || signal.title) &&
                      (signal.summary || signal.description);
 
       if (!isValid) {
@@ -142,28 +147,30 @@ export class ScoutGptService {
 
       const processedSignals = signals.map((signal, index) => {
         // Handle different field names from Scout GPT
-        const topic = signal.topic || signal.headline || signal.title || 'Untitled Signal';
+        const headline = signal.headline || signal.topic || signal.title || 'Untitled Signal';
         const summary = signal.summary || signal.description || 'No summary available';
         const score = signal.score || Math.floor(Math.random() * 100);
 
         const processed = {
-          user_id: user.user.id,
-          topic: topic,
+          headline: headline,
           summary: summary,
           url: signal.url || null,
-          date: signal.date ? new Date(signal.date).toISOString() : new Date().toISOString(),
-          hashtag: signal.hashtag || [],
+          published_at: signal.published_at || signal.date ? new Date(signal.published_at || signal.date).toISOString() : new Date().toISOString(),
+          tag: signal.tag || signal.hashtag || [],
           score: score,
-          rank: index + 1,
           source: 'Scout GPT',
-          priority: score >= 90 ? 'High' : score >= 70 ? 'Medium' : 'Low',
-          engagement: `+${Math.floor(Math.random() * 50 + 20)}%`,
+          analyzed_at: new Date().toISOString(),
+          community_context: signal.community_context || null,
+          narrative_stakes: signal.narrative_stakes || null,
+          use_mode: signal.use_mode || null,
+          rationale: signal.rationale || null,
+          confidence: signal.confidence || null,
         };
 
         console.log(`📝 Processed signal ${index + 1}:`, {
-          topic: processed.topic,
+          headline: processed.headline,
           score: processed.score,
-          priority: processed.priority
+          source: processed.source
         });
 
         return processed;
@@ -172,7 +179,7 @@ export class ScoutGptService {
       console.log('💾 Inserting signals into database...');
 
       const { data, error } = await supabase
-        .from('signals')
+        .from('signals_ranked')
         .insert(processedSignals)
         .select();
 
@@ -208,11 +215,10 @@ export class ScoutGptService {
       console.log('👤 User authenticated:', user.user.id);
 
       const { data, error } = await supabase
-        .from('signals')
+        .from('signals_ranked')
         .select('*')
-        .eq('user_id', user.user.id)
         .order('score', { ascending: false })
-        .order('created_at', { ascending: false })
+        .order('analyzed_at', { ascending: false })
         .limit(10);
 
       if (error) {
@@ -240,21 +246,29 @@ export class ScoutGptService {
   }
 
   static convertToProcessedSignals(dbSignals: any[]): ProcessedSignal[] {
-    return dbSignals.map((signal, index) => ({
-      id: signal.id,
-      rank: signal.rank || index + 1,
-      headline: signal.topic,
-      summary: signal.summary,
-      tags: Array.isArray(signal.hashtag) ? signal.hashtag : [],
-      priority: signal.priority || 'Medium',
-      timestamp: this.formatTimestamp(signal.created_at || signal.date),
-      source: signal.source || 'Scout GPT',
-      score: signal.score || 0,
-      engagement: signal.engagement || `+${Math.floor(Math.random() * 50 + 20)}%`,
-      url: signal.url,
-      user_id: signal.user_id,
-      created_at: signal.created_at,
-    }));
+    return dbSignals.map((signal, index) => {
+      const score = signal.score || 0;
+      return {
+        id: signal.id,
+        rank: index + 1,
+        headline: signal.headline,
+        summary: signal.summary,
+        tags: Array.isArray(signal.tag) ? signal.tag : [],
+        priority: score >= 90 ? 'High' : score >= 70 ? 'Medium' : 'Low',
+        timestamp: this.formatTimestamp(signal.analyzed_at || signal.published_at),
+        source: signal.source || 'Scout GPT',
+        score: score,
+        engagement: `+${Math.floor(Math.random() * 50 + 20)}%`,
+        url: signal.url,
+        published_at: signal.published_at,
+        analyzed_at: signal.analyzed_at,
+        community_context: signal.community_context,
+        narrative_stakes: signal.narrative_stakes,
+        use_mode: signal.use_mode,
+        rationale: signal.rationale,
+        confidence: signal.confidence,
+      };
+    });
   }
 
   static formatTimestamp(dateString: string): string {

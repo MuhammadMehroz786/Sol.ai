@@ -6,7 +6,7 @@ export const quickDatabaseTest = async () => {
 
     // Test if signals table exists and is accessible
     const { data, error } = await supabase
-      .from('signals')
+      .from('signals_ranked')
       .select('count(*)')
       .limit(1);
 
@@ -25,16 +25,23 @@ export const quickDatabaseTest = async () => {
     }
 
     const testSignal = {
-      user_id: user.user.id,
-      topic: 'Database Test Signal',
+      headline: 'Database Test Signal',
       summary: 'This is a test signal to verify database functionality',
       score: 85,
-      hashtag: ['test'],
-      source: 'Database Test'
+      tag: ['test'],
+      source: 'Database Test',
+      published_at: new Date().toISOString(),
+      analyzed_at: new Date().toISOString(),
+      url: null,
+      community_context: null,
+      narrative_stakes: null,
+      use_mode: null,
+      rationale: null,
+      confidence: null
     };
 
     const { data: insertData, error: insertError } = await supabase
-      .from('signals')
+      .from('signals_ranked')
       .insert([testSignal])
       .select();
 
@@ -48,7 +55,7 @@ export const quickDatabaseTest = async () => {
     // Clean up test signal
     if (insertData && insertData.length > 0) {
       await supabase
-        .from('signals')
+        .from('signals_ranked')
         .delete()
         .eq('id', insertData[0].id);
       console.log('✅ Test signal cleaned up');
