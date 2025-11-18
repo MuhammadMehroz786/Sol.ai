@@ -183,6 +183,45 @@ export type Database = {
           },
         ]
       }
+      agent_runs: {
+        Row: {
+          agent: string
+          cost_usd: number | null
+          created_at: string | null
+          error: Json | null
+          id: string
+          idempotency_key: string
+          input_hash: string
+          status: string
+          tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          agent: string
+          cost_usd?: number | null
+          created_at?: string | null
+          error?: Json | null
+          id?: string
+          idempotency_key: string
+          input_hash: string
+          status: string
+          tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          agent?: string
+          cost_usd?: number | null
+          created_at?: string | null
+          error?: Json | null
+          id?: string
+          idempotency_key?: string
+          input_hash?: string
+          status?: string
+          tokens?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           api_headers: Json | null
@@ -312,6 +351,51 @@ export type Database = {
           topic_context?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      editorial_scores: {
+        Row: {
+          accessibility_score: number | null
+          article_content: string
+          article_title: string
+          black_expertise_score: number | null
+          clarity_score: number | null
+          created_at: string | null
+          cultural_context_score: number | null
+          freshness_score: number | null
+          id: number
+          integrity_score: number | null
+          summary: string | null
+          total_score: number
+        }
+        Insert: {
+          accessibility_score?: number | null
+          article_content: string
+          article_title: string
+          black_expertise_score?: number | null
+          clarity_score?: number | null
+          created_at?: string | null
+          cultural_context_score?: number | null
+          freshness_score?: number | null
+          id?: number
+          integrity_score?: number | null
+          summary?: string | null
+          total_score: number
+        }
+        Update: {
+          accessibility_score?: number | null
+          article_content?: string
+          article_title?: string
+          black_expertise_score?: number | null
+          clarity_score?: number | null
+          created_at?: string | null
+          cultural_context_score?: number | null
+          freshness_score?: number | null
+          id?: number
+          integrity_score?: number | null
+          summary?: string | null
+          total_score?: number
         }
         Relationships: []
       }
@@ -507,6 +591,53 @@ export type Database = {
         }
         Relationships: []
       }
+      social_outputs: {
+        Row: {
+          artifact: Json
+          compliance: Json | null
+          created_at: string | null
+          cta: string | null
+          est_read_time_sec: number | null
+          hashtags: Json | null
+          id: string
+          platform: string
+          run_id: string | null
+          user_id: string
+        }
+        Insert: {
+          artifact: Json
+          compliance?: Json | null
+          created_at?: string | null
+          cta?: string | null
+          est_read_time_sec?: number | null
+          hashtags?: Json | null
+          id?: string
+          platform: string
+          run_id?: string | null
+          user_id: string
+        }
+        Update: {
+          artifact?: Json
+          compliance?: Json | null
+          created_at?: string | null
+          cta?: string | null
+          est_read_time_sec?: number | null
+          hashtags?: Json | null
+          id?: string
+          platform?: string
+          run_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_outputs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_alerts: {
         Row: {
           acknowledged_at: string | null
@@ -587,6 +718,33 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          profile_name: string
+          samples: string[] | null
+          style_json: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          profile_name: string
+          samples?: string[] | null
+          style_json: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          profile_name?: string
+          samples?: string[] | null
+          style_json?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -595,6 +753,13 @@ export type Database = {
       calculate_agent_health_status: {
         Args: { p_agent_id: string; p_window_minutes?: number }
         Returns: Database["public"]["Enums"]["health_status"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       update_agent_health_status: {
         Args: { p_agent_id: string }
@@ -610,6 +775,7 @@ export type Database = {
         | "high_latency"
         | "category_failure"
         | "all_agents_down"
+      app_role: "admin" | "editor" | "viewer"
       auth_method:
         | "bearer_token"
         | "api_key"
@@ -753,6 +919,7 @@ export const Constants = {
         "category_failure",
         "all_agents_down",
       ],
+      app_role: ["admin", "editor", "viewer"],
       auth_method: ["bearer_token", "api_key", "basic_auth", "oauth", "custom"],
       health_status: ["ok", "warn", "fail", "unknown"],
     },
