@@ -42,12 +42,16 @@ export class ScoutGptService {
       console.log('🚀 Fetching signals from Scout GPT...');
       console.log('📡 Endpoint:', SCOUT_GPT_ENDPOINT);
 
-      // Use GET request (n8n webhook is configured for GET only)
+      // Use POST request (n8n webhook is configured for POST)
       const response = await fetch(SCOUT_GPT_ENDPOINT, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          action: 'get_signals',
+          timestamp: new Date().toISOString()
+        })
       });
 
       console.log('📊 Response status:', response.status);
@@ -58,7 +62,7 @@ export class ScoutGptService {
       }
 
       const data = await response.json();
-      console.log('✅ Scout GPT GET response:', data);
+      console.log('✅ Scout GPT POST response:', data);
       console.log('📝 Response type:', typeof data);
       console.log('📝 Is array:', Array.isArray(data));
 

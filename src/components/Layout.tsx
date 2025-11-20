@@ -90,11 +90,6 @@ const Layout = ({ children }: LayoutProps) => {
 
           {/* Right section */}
           <div className="flex items-center space-x-4">
-            <Badge variant="secondary" className="bg-gradient-to-r from-success/10 to-success/20 text-success border-success/30 rounded-full px-4 py-2 shadow-md hover:shadow-glow transition-all duration-300">
-              <div className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
-              <span className="font-semibold">System Online</span>
-            </Badge>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-brand-cream/40 hover:shadow-glow transition-all duration-300 group">
@@ -143,11 +138,11 @@ const Layout = ({ children }: LayoutProps) => {
       <aside
         className={cn(
           "fixed top-20 left-0 h-[calc(100vh-5rem)] bg-gradient-to-b from-card/95 via-brand-cream/60 to-card/90 backdrop-blur-xl border-r border-border/30 shadow-elegant z-30 transition-all duration-500 ease-in-out",
-          sidebarOpen ? "w-72" : "w-18"
+          sidebarOpen ? "w-72" : "w-20"
         )}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-        <nav className="relative p-6 space-y-3">
+        <nav className={cn("relative space-y-3 transition-all duration-500", sidebarOpen ? "p-6" : "p-3")}>
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -155,7 +150,8 @@ const Layout = ({ children }: LayoutProps) => {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "flex items-center space-x-4 px-4 py-3 rounded-2xl text-base font-semibold transition-all duration-300 group relative overflow-hidden",
+                  "flex items-center rounded-2xl text-base font-semibold transition-all duration-300 group relative overflow-hidden",
+                  sidebarOpen ? "space-x-4 px-4 py-3" : "justify-center px-2 py-3",
                   isActive
                     ? "bg-gradient-to-r from-primary via-primary/90 to-primary text-primary-foreground shadow-elegant transform hover:scale-[1.02] hover:shadow-glow"
                     : "text-muted-foreground hover:text-foreground hover:bg-gradient-to-r hover:from-brand-cream/40 hover:to-accent/20 hover:shadow-md hover:transform hover:scale-[1.02]"
@@ -189,7 +185,7 @@ const Layout = ({ children }: LayoutProps) => {
       <main
         className={cn(
           "bg-gradient-to-br from-brand-cream/30 via-background to-accent/15 p-8 pt-28 transition-all duration-500 ease-in-out min-h-screen relative",
-          sidebarOpen ? "ml-72" : "ml-18"
+          sidebarOpen ? "ml-72" : "ml-20"
         )}
       >
         {/* Background decoration */}

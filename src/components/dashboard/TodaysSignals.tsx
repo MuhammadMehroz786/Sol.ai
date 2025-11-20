@@ -143,24 +143,19 @@ export const TodaysSignals = () => {
       console.log('🔄 Starting loadInitialSignals...');
       setIsLoadingAllSignals(true);
 
-      console.log('📥 Loading signals from database...');
-      const loadedSignals = await ScoutGptService.loadSignalsFromDatabase();
-      console.log('📊 Loaded signals count:', loadedSignals.length);
+      console.log('📡 Fetching fresh signals from Scout GPT on login...');
+      const newSignals = await ScoutGptService.fetchAndSaveSignals();
+      console.log('📊 Fetched new signals count:', newSignals.length);
 
-      if (loadedSignals.length === 0) {
-        console.log('📭 No signals in database, fetching from Scout GPT...');
-        const newSignals = await ScoutGptService.fetchAndSaveSignals();
-        console.log('📡 Fetched new signals count:', newSignals.length);
-        // Sort signals by score (highest first) before setting state
-        const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
-        setSignals(sortedSignals);
-        console.log('✅ Set new signals to state (sorted by score)');
-      } else {
-        console.log('✅ Setting loaded signals to state');
-        // Sort signals by score (highest first) before setting state
-        const sortedSignals = [...loadedSignals].sort((a, b) => b.score - a.score);
-        setSignals(sortedSignals);
-      }
+      // Sort signals by score (highest first) before setting state
+      const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
+      setSignals(sortedSignals);
+      console.log('✅ Set new signals to state (sorted by score)');
+
+      toast({
+        title: "Signals loaded",
+        description: `Loaded ${newSignals.length} fresh signals`,
+      });
     } catch (error) {
       console.error('❌ Error loading initial signals:', error);
       setSignals([]); // Set empty array on error
@@ -185,7 +180,7 @@ export const TodaysSignals = () => {
 
       toast({
         title: "Loading new signals...",
-        description: "Fetching latest signals from Scout GPT",
+        description: "Fetching latest signals",
       });
 
       console.log('📡 Calling ScoutGptService.fetchAndSaveSignals()...');
@@ -200,7 +195,7 @@ export const TodaysSignals = () => {
 
       toast({
         title: "Signals updated!",
-        description: `Loaded ${newSignals.length} signals from Scout GPT`,
+        description: `Loaded ${newSignals.length} signals`,
       });
     } catch (error) {
       console.error('❌ Error loading more signals:', error);
@@ -579,14 +574,14 @@ export const TodaysSignals = () => {
           </Badge>
         </CardTitle>
         <CardDescription className="text-base">
-          Priority signals ranked by Scout GPT
+          Priority signals ranked by relevance
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoadingAllSignals ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-            <span className="text-muted-foreground">Loading signals from Scout GPT...</span>
+            <span className="text-muted-foreground">Loading signals...</span>
           </div>
         ) : signals.length === 0 ? (
           <div className="text-center py-8">
@@ -700,7 +695,7 @@ export const TodaysSignals = () => {
             ) : (
               <>
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Load New Signals from Scout GPT
+                Load New Signals
               </>
             )}
           </Button>
