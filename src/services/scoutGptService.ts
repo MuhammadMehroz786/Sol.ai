@@ -33,7 +33,7 @@ export interface ProcessedSignal {
 // Use proxy endpoint for development to avoid CORS issues
 const SCOUT_GPT_ENDPOINT = process.env.NODE_ENV === 'development'
   ? '/api/scout-gpt'
-  : 'https://soleai.app.n8n.cloud/webhook/301d63b0-3049-420d-857e-d9dbcbdc7eaf';
+  : 'https://soleai.app.n8n.cloud/webhook/e104c437-3b72-4de2-8fc7-535d30fb57fb';
 
 export class ScoutGptService {
 
@@ -145,21 +145,43 @@ export class ScoutGptService {
 
       console.log('👤 User authenticated:', user.user.id);
 
+      // Delete old signals before saving new ones
+      console.log('🗑️ Deleting old signals from database...');
+      const { error: deleteError } = await supabase
+        .from('signals_ranked')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
+
+      if (deleteError) {
+        console.error('⚠️ Error deleting old signals:', deleteError);
+        // Continue anyway - not critical if delete fails
+      } else {
+        console.log('✅ Old signals deleted');
+      }
+
       const processedSignals = signals.map((signal, index) => {
         // Handle different field names from Scout GPT
         const headline = signal.headline || signal.topic || signal.title || 'Untitled Signal';
         const summary = signal.summary || signal.description || 'No summary available';
-        const score = signal.score || Math.floor(Math.random() * 100);
+
+        // Convert score from 0-10 scale to 0-100 scale
+        const rawScore = signal.score || 5;
+        const score = rawScore * 10;
+
+        // Convert single tag string to array
+        const tag = signal.tag
+          ? (typeof signal.tag === 'string' ? [signal.tag] : signal.tag)
+          : [];
 
         const processed = {
           headline: headline,
           summary: summary,
           url: signal.url || null,
           published_at: signal.published_at || signal.date ? new Date(signal.published_at || signal.date).toISOString() : new Date().toISOString(),
-          tag: signal.tag || signal.hashtag || [],
+          tag: tag,
           score: score,
           source: 'Scout GPT',
-          analyzed_at: new Date().toISOString(),
+          analyzed_at: signal.analyzed_at ? new Date(signal.analyzed_at).toISOString() : new Date().toISOString(),
           community_context: signal.community_context || null,
           narrative_stakes: signal.narrative_stakes || null,
           use_mode: signal.use_mode || null,
@@ -170,7 +192,8 @@ export class ScoutGptService {
         console.log(`📝 Processed signal ${index + 1}:`, {
           headline: processed.headline,
           score: processed.score,
-          source: processed.source
+          source: processed.source,
+          tags: tag
         });
 
         return processed;
@@ -219,7 +242,7 @@ export class ScoutGptService {
         .select('*')
         .order('score', { ascending: false })
         .order('analyzed_at', { ascending: false })
-        .limit(10);
+        .limit(3);
 
       if (error) {
         console.error('❌ Database query error:', error);
@@ -255,7 +278,7 @@ export class ScoutGptService {
         summary: signal.summary,
         tags: Array.isArray(signal.tag) ? signal.tag : [],
         priority: score >= 90 ? 'High' : score >= 70 ? 'Medium' : 'Low',
-        timestamp: this.formatTimestamp(signal.analyzed_at || signal.published_at),
+        timestamp: this.formatTimestamp(signal.published_at || signal.analyzed_at),
         source: signal.source || 'Scout GPT',
         score: score,
         engagement: `+${Math.floor(Math.random() * 50 + 20)}%`,

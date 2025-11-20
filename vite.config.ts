@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
       '/api/scout-gpt': {
         target: 'https://soleai.app.n8n.cloud',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/scout-gpt/, '/webhook/301d63b0-3049-420d-857e-d9dbcbdc7eaf'),
+        rewrite: (path) => path.replace(/^\/api\/scout-gpt/, '/webhook/e104c437-3b72-4de2-8fc7-535d30fb57fb'),
         secure: true,
       }
     }
