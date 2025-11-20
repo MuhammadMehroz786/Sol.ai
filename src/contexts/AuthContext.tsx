@@ -34,6 +34,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -41,11 +42,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        console.log('Initial session check:', session?.user?.email || 'No session');
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Error checking session:', error);
+        setLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -60,8 +67,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
+
+    // Step 1: Create the auth user
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -71,7 +79,57 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         },
       },
     });
-    return { error };
+
+    // Log detailed information for debugging
+    console.log('Signup response:', { data, error });
+
+    // Check for error
+    if (error) {
+      console.error('Signup error details:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        fullError: error
+      });
+      return { error };
+    }
+
+    // Check if user already exists (Supabase returns user but with identities empty for existing users)
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      console.log('User already exists - identities array is empty');
+      return {
+        error: {
+          message: 'User already registered',
+          name: 'AuthApiError',
+          status: 400
+        } as any
+      };
+    }
+
+    console.log('Auth user created successfully:', data);
+
+    // Step 2: Create the profile if user was created
+    if (data.user) {
+      const profileData = {
+        user_id: data.user.id,
+        email: data.user.email,
+        display_name: displayName || data.user.email?.split('@')[0] || 'User',
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert(profileData);
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Don't return this error - user was created successfully
+        // The profile can be created later if needed
+      } else {
+        console.log('Profile created successfully');
+      }
+    }
+
+    return { error: null };
   };
 
   const signOut = async () => {

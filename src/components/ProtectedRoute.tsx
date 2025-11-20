@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,6 +9,24 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
+  const [timeoutReached, setTimeoutReached] = useState(false);
+
+  // Add timeout fallback - if loading takes more than 3 seconds, redirect to auth
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => {
+        console.log('Auth loading timeout - redirecting to /auth');
+        setTimeoutReached(true);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
+  // If timeout reached while loading, redirect to auth
+  if (timeoutReached && loading) {
+    return <Navigate to="/auth" replace />;
+  }
 
   if (loading) {
     return (

@@ -5,12 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, User, Mail, ArrowLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Lock, User, Mail } from 'lucide-react';
 import soleLogoWithTagline from "@/assets/sole-logo-orange-brown-v2.png";
 
 const Auth = () => {
@@ -19,7 +17,8 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  const [activeTab, setActiveTab] = useState('signin');
+
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -56,16 +55,38 @@ const Auth = () => {
     setError('');
 
     const { error } = await signUp(email, password, displayName);
-    
+
     if (error) {
-      setError(error.message);
+      // Check if the error is about a duplicate user
+      const errorMessage = error.message.toLowerCase();
+      if (
+        errorMessage.includes('user already registered') ||
+        errorMessage.includes('already been registered') ||
+        errorMessage.includes('already exists')
+      ) {
+        toast({
+          title: "Account Already Exists",
+          description: "This email is already registered. Redirecting you to sign in...",
+          variant: "destructive",
+        });
+
+        // Switch to sign in tab after a short delay
+        setTimeout(() => {
+          setActiveTab('signin');
+          setPassword(''); // Clear password for security
+          setDisplayName(''); // Clear display name
+          setError('');
+        }, 2000);
+      } else {
+        setError(error.message);
+      }
     } else {
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account",
       });
     }
-    
+
     setLoading(false);
   };
 
@@ -75,11 +96,11 @@ const Auth = () => {
         {/* Header */}
         <div className="text-center space-y-1">
           <div className="mx-auto w-fit mt-1">
-            <div className="h-28 w-auto px-8 py-1 flex items-center justify-center">
-              <img 
-                src={soleLogoWithTagline} 
-                alt="SOLE - Born for Us. Raised by the Culture" 
-                className="h-28 w-auto"
+            <div className="h-40 w-auto px-8 py-1 flex items-center justify-center">
+              <img
+                src={soleLogoWithTagline}
+                alt="SOLE - Born for Us. Raised by the Culture"
+                className="h-40 w-auto"
               />
             </div>
           </div>
@@ -99,7 +120,7 @@ const Auth = () => {
           </CardHeader>
           
           <CardContent>
-            <Tabs defaultValue="signin" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -209,18 +230,6 @@ const Auth = () => {
                 </form>
               </TabsContent>
             </Tabs>
-
-            <Separator className="my-6" />
-
-            <div className="text-center">
-              <Link 
-                to="/" 
-                className="inline-flex items-center space-x-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Home</span>
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>
