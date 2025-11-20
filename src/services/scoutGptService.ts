@@ -42,42 +42,23 @@ export class ScoutGptService {
       console.log('🚀 Fetching signals from Scout GPT...');
       console.log('📡 Endpoint:', SCOUT_GPT_ENDPOINT);
 
-      // Try POST first (n8n webhooks often expect POST)
+      // Use GET request (n8n webhook is configured for GET only)
       const response = await fetch(SCOUT_GPT_ENDPOINT, {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          action: 'get_signals',
-          timestamp: new Date().toISOString()
-        })
       });
 
       console.log('📊 Response status:', response.status);
       console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
-        // If POST fails, try GET
-        console.log('⚠️ POST failed, trying GET...');
-        const getResponse = await fetch(SCOUT_GPT_ENDPOINT, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!getResponse.ok) {
-          throw new Error(`Scout GPT API error: POST ${response.status}, GET ${getResponse.status}`);
-        }
-
-        const getData = await getResponse.json();
-        console.log('✅ Scout GPT GET response:', getData);
-        return this.parseSignalsResponse(getData);
+        throw new Error(`Scout GPT API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('✅ Scout GPT POST response:', data);
+      console.log('✅ Scout GPT GET response:', data);
       console.log('📝 Response type:', typeof data);
       console.log('📝 Is array:', Array.isArray(data));
 
