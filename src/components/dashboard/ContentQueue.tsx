@@ -92,7 +92,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
   // Expose refresh function and openDraftModal globally
   useEffect(() => {
     (window as any).refreshContentQueue = fetchOutputs;
-    (window as any).openDraftModal = (contentId: string) => {
+    (window as any).openDraftModal = async (contentId: string) => {
       console.log('openDraftModal called with ID:', contentId);
       console.log('Current outputs:', outputs);
       const output = outputs.find(o => o.id === contentId);
@@ -101,19 +101,26 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
         console.log('Opening modal for output:', output.title);
         openContentModal(output);
       } else {
-        console.log('Output not found, will retry after refresh...');
-        // Retry after a brief delay to allow for data refresh
-        setTimeout(() => {
-          fetchOutputs().then(() => {
-            const refreshedOutput = outputs.find(o => o.id === contentId);
-            if (refreshedOutput) {
-              console.log('Found output after refresh, opening modal');
-              openContentModal(refreshedOutput);
-            } else {
-              console.log('Still no output found after refresh');
-            }
-          });
-        }, 500);
+        console.log('Output not found, fetching fresh data...');
+        // Fetch fresh data from database
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('content_outputs')
+          .select('*')
+          .eq('id', contentId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching content:', error);
+        } else if (data) {
+          console.log('Found output from database, opening modal');
+          openContentModal(data as ContentOutput);
+          // Also refresh the list in background
+          fetchOutputs();
+        } else {
+          console.log('Still no output found after database fetch');
+        }
       }
     };
     return () => {
@@ -747,15 +754,6 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Confirm Edits
                       </Button>
-                      <Button
-                        variant="outline"
-                        onClick={closeModal}
-                        disabled={!!isProcessingAction || isSaving}
-                        className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50 h-10"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Close
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -811,37 +809,13 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Status transition buttons - only for draft status */}
                     {selectedOutput.status === 'draft' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => updateStatus(selectedOutput.id, 'review')}
-                          className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
-                        >
-                          <ArrowRight className="h-4 w-4 mr-2" />
-                          Move to Review
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={closeModal}
-                          disabled={!!isProcessingAction || isSaving || isExporting || isSendingToCMS}
-                          className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50 h-10"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Close
-                        </Button>
-                      </>
-                    )}
-
-                    {/* Close button for final status */}
-                    {selectedOutput.status === 'final' && (
                       <Button
                         variant="outline"
-                        onClick={closeModal}
-                        disabled={!!isProcessingAction || isSaving || isExporting || isSendingToCMS}
-                        className="bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20 hover:border-destructive/50 h-10"
+                        onClick={() => updateStatus(selectedOutput.id, 'review')}
+                        className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
                       >
-                        <X className="h-4 w-4 mr-2" />
-                        Close
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        Move to Review
                       </Button>
                     )}
                   </div>
