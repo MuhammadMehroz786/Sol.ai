@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sparkles,
@@ -22,50 +24,183 @@ import {
   Download,
   RotateCcw,
   Scissors,
-  Loader2
+  Loader2,
+  Trash2,
+  Plus
 } from "lucide-react";
 
-const personas = [
-  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader" },
-  { value: "ana", label: "Ana", description: "Cultural analyst" },
-  { value: "winston", label: "Winston", description: "Strategic narrator" },
-  { value: "custom", label: "Custom", description: "Define your own" }
+const defaultPersonas = [
+  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true },
+  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true },
+  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true }
 ];
 
 const tones = [
   { value: "poetic", label: "Poetic", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300" },
   { value: "urgent", label: "Urgent", color: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" },
   { value: "data-driven", label: "Data-driven", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" },
-  { value: "cultural", label: "Cultural", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" }
+  { value: "cultural", label: "Cultural", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" },
+  { value: "custom", label: "Custom", color: "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-300" }
 ];
 
 const outputTypes = [
-  { value: "article", label: "Article", icon: FileText, description: "Article (350–500 words)" },
+  { value: "article", label: "Article", icon: FileText, description: "Written article content" },
   { value: "tweet-thread", label: "Tweet Thread", icon: Twitter, description: "Tweet thread (7–10 posts)" },
   { value: "script", label: "Script", icon: Video, description: "Script (voiceover or video narration)" },
-  { value: "prompt", label: "Daily Prompt", icon: ScrollText, description: "Daily Prompt (short-form idea/question)" },
-  { value: "longform", label: "Longform", icon: BookOpen, description: "Deep analysis (Phase 2)" },
-  { value: "whitepaper", label: "White Paper", icon: FileImage, description: "Technical document (Phase 2)" }
+  { value: "prompt", label: "Daily Prompt", icon: ScrollText, description: "Daily Prompt (short-form idea/question)" }
 ];
+
+const articleLengths = [
+  { value: "short", label: "Short", description: "500-700 words" },
+  { value: "medium", label: "Medium", description: "700-1600 words" },
+  { value: "long", label: "Long", description: "1600+ words" }
+];
+
+interface CustomPersona {
+  value: string;
+  label: string;
+  description: string;
+  isDefault: boolean;
+}
+
+const PERSONAS_STORAGE_KEY = 'sole-custom-personas';
 
 export const ContentGenerator = () => {
   const [selectedPersona, setSelectedPersona] = useState("");
   const [selectedTone, setSelectedTone] = useState("");
+  const [customTone, setCustomTone] = useState("");
   const [selectedOutputType, setSelectedOutputType] = useState("");
+  const [selectedArticleLength, setSelectedArticleLength] = useState("");
   const [topic, setTopic] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState("");
 
+  // Custom persona management
+  const [personas, setPersonas] = useState<CustomPersona[]>(defaultPersonas);
+  const [personaModalOpen, setPersonaModalOpen] = useState(false);
+  const [editingPersona, setEditingPersona] = useState<CustomPersona | null>(null);
+  const [newPersonaName, setNewPersonaName] = useState("");
+  const [newPersonaDescription, setNewPersonaDescription] = useState("");
+
+  // Article submenu hover state
+  const [showArticleSubmenu, setShowArticleSubmenu] = useState(false);
+  const [articleItemRef, setArticleItemRef] = useState<HTMLDivElement | null>(null);
+  const [hideTimeout, setHideTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Load custom personas from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(PERSONAS_STORAGE_KEY);
+    if (stored) {
+      try {
+        const customPersonas = JSON.parse(stored);
+        setPersonas([...defaultPersonas, ...customPersonas]);
+      } catch (e) {
+        console.error('Failed to load custom personas:', e);
+      }
+    }
+  }, []);
+
+  // Save custom personas to localStorage
+  const saveCustomPersonas = (allPersonas: CustomPersona[]) => {
+    const customOnly = allPersonas.filter(p => !p.isDefault);
+    localStorage.setItem(PERSONAS_STORAGE_KEY, JSON.stringify(customOnly));
+  };
+
+  const handlePersonaChange = (value: string) => {
+    if (value === "create-custom") {
+      setEditingPersona(null);
+      setNewPersonaName("");
+      setNewPersonaDescription("");
+      setPersonaModalOpen(true);
+    } else {
+      setSelectedPersona(value);
+    }
+  };
+
+  const handleSavePersona = () => {
+    if (!newPersonaName.trim() || !newPersonaDescription.trim()) return;
+
+    const personaValue = newPersonaName.toLowerCase().replace(/\s+/g, '-');
+
+    if (editingPersona) {
+      // Edit existing persona
+      const updatedPersonas = personas.map(p =>
+        p.value === editingPersona.value
+          ? { ...p, label: newPersonaName, description: newPersonaDescription }
+          : p
+      );
+      setPersonas(updatedPersonas);
+      saveCustomPersonas(updatedPersonas);
+
+      // Update selection if editing the currently selected persona
+      if (selectedPersona === editingPersona.value) {
+        setSelectedPersona(personaValue);
+      }
+    } else {
+      // Create new persona
+      const newPersona: CustomPersona = {
+        value: personaValue,
+        label: newPersonaName,
+        description: newPersonaDescription,
+        isDefault: false
+      };
+      const updatedPersonas = [...personas, newPersona];
+      setPersonas(updatedPersonas);
+      saveCustomPersonas(updatedPersonas);
+      setSelectedPersona(personaValue);
+    }
+
+    setPersonaModalOpen(false);
+    setNewPersonaName("");
+    setNewPersonaDescription("");
+    setEditingPersona(null);
+  };
+
+  const handleEditPersona = (persona: CustomPersona) => {
+    setEditingPersona(persona);
+    setNewPersonaName(persona.label);
+    setNewPersonaDescription(persona.description);
+    setPersonaModalOpen(true);
+  };
+
+  const handleDeletePersona = (personaValue: string) => {
+    const updatedPersonas = personas.filter(p => p.value !== personaValue);
+    setPersonas(updatedPersonas);
+    saveCustomPersonas(updatedPersonas);
+
+    // Clear selection if deleting the currently selected persona
+    if (selectedPersona === personaValue) {
+      setSelectedPersona("");
+    }
+  };
+
 
   const handleGenerate = async () => {
-    if (!selectedPersona || !selectedOutputType || !selectedTone || !topic.trim()) return;
-    
+    const needsTone = !selectedTone || (selectedTone === "custom" && !customTone.trim());
+
+    if (!selectedPersona || !selectedOutputType || needsTone || !topic.trim()) return;
+
     setIsGenerating(true);
-    
+
     try {
       console.log('Starting editorial request...');
+
+      // Use custom tone if selected, otherwise use the tone value
+      const effectiveTone = selectedTone === "custom" ? customTone : selectedTone;
+
+      // Extract base output type and article length if applicable
+      let baseOutputType = selectedOutputType;
+      let articleLength = selectedArticleLength;
+
+      if (selectedOutputType.startsWith('article-')) {
+        baseOutputType = 'article';
+        articleLength = selectedOutputType.replace('article-', '');
+      }
+
+      // Get persona details
+      const personaDetails = personas.find(p => p.value === selectedPersona);
 
       const payload = {
         signal: {
@@ -79,8 +214,11 @@ export const ContentGenerator = () => {
           engagement: "+25%"
         },
         persona: selectedPersona,
-        outputType: selectedOutputType,
-        tone: selectedTone
+        personaName: personaDetails?.label || selectedPersona,
+        personaDescription: personaDetails?.description || "",
+        outputType: baseOutputType,
+        tone: effectiveTone,
+        articleLength: articleLength || undefined
       };
 
       console.log('Sending payload:', payload);
@@ -375,7 +513,8 @@ export const ContentGenerator = () => {
     URL.revokeObjectURL(url);
   };
 
-  const canGenerate = selectedPersona && selectedOutputType && selectedTone && topic.trim();
+  const needsTone = !selectedTone || (selectedTone === "custom" && !customTone.trim());
+  const canGenerate = selectedPersona && selectedOutputType && !needsTone && topic.trim();
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
@@ -400,19 +539,57 @@ export const ContentGenerator = () => {
             <User className="h-4 w-4" />
             <span>Persona</span>
           </Label>
-          <Select value={selectedPersona} onValueChange={setSelectedPersona}>
+          <Select value={selectedPersona} onValueChange={handlePersonaChange}>
             <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Select a persona..." />
+              <SelectValue placeholder="Select a persona...">
+                {selectedPersona && personas.find(p => p.value === selectedPersona)?.label}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {personas.map((persona) => (
                 <SelectItem key={persona.value} value={persona.value}>
-                  <div>
-                    <div className="font-medium">{persona.label}</div>
-                    <div className="text-sm text-muted-foreground">{persona.description}</div>
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium">{persona.label}</div>
+                      <div className="text-sm text-muted-foreground">{persona.description}</div>
+                    </div>
+                    {!persona.isDefault && (
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 hover:bg-primary/20"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleEditPersona(persona);
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 hover:bg-destructive/20"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeletePersona(persona.value);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </SelectItem>
               ))}
+              <SelectItem value="create-custom">
+                <div className="flex items-center gap-2 text-primary font-medium">
+                  <Plus className="h-4 w-4" />
+                  <span>Create Custom Persona</span>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -441,6 +618,19 @@ export const ContentGenerator = () => {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Custom tone input - shown when Custom is selected */}
+          {selectedTone === "custom" && (
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Custom Tone Description</Label>
+              <Input
+                placeholder="Enter your custom tone (e.g., 'Professional yet casual', 'Inspiring and motivational')"
+                value={customTone}
+                onChange={(e) => setCustomTone(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+          )}
         </div>
 
         <Separator />
@@ -451,16 +641,33 @@ export const ContentGenerator = () => {
             <FileText className="h-4 w-4" />
             <span>Output Type</span>
           </Label>
-          <Select value={selectedOutputType} onValueChange={setSelectedOutputType}>
+          <Select
+            value={selectedOutputType.startsWith('article-') ? 'article' : selectedOutputType}
+            onValueChange={(value) => {
+              if (value === 'article') {
+                // Set to article so the size buttons appear
+                setSelectedOutputType('article');
+                setSelectedArticleLength("");
+                return;
+              }
+              setSelectedOutputType(value);
+              setSelectedArticleLength("");
+            }}
+          >
             <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Select output type..." />
+              <SelectValue placeholder="Select output type...">
+                {selectedOutputType && (
+                  selectedOutputType.startsWith('article-')
+                    ? `Article - ${articleLengths.find(l => l.value === selectedOutputType.replace('article-', ''))?.label}`
+                    : outputTypes.find(t => t.value === selectedOutputType)?.label
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-popover border border-border shadow-lg z-50">
               {outputTypes.map((type) => (
-                <SelectItem 
-                  key={type.value} 
+                <SelectItem
+                  key={type.value}
                   value={type.value}
-                  disabled={type.value === "longform" || type.value === "whitepaper"}
                   className="hover:bg-accent"
                 >
                   <div className="flex items-center space-x-3">
@@ -474,6 +681,35 @@ export const ContentGenerator = () => {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Article Size Selection - appears when Article is selected */}
+          {(selectedOutputType === 'article' || selectedOutputType.startsWith('article-')) && (
+            <div className="flex gap-2">
+              {articleLengths.map((length) => {
+                const articleValue = `article-${length.value}`;
+                const isSelected = selectedOutputType === articleValue;
+
+                return (
+                  <button
+                    key={length.value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOutputType(articleValue);
+                      setSelectedArticleLength(length.value);
+                    }}
+                    className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground shadow-md"
+                        : "border-border hover:border-primary/50 hover:bg-accent"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm">{length.label}</div>
+                    <div className="text-xs opacity-80 mt-0.5">{length.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <Separator />
@@ -512,8 +748,9 @@ export const ContentGenerator = () => {
         {/* Status Info */}
         {canGenerate && (
           <div className="text-xs text-muted-foreground text-center">
-            Ready to generate {selectedOutputType.replace('-', ' ')} content with {selectedPersona} persona
-            {selectedTone && ` in ${tones.find(t => t.value === selectedTone)?.label} tone`}
+            Ready to generate {selectedOutputType.replace(/-/g, ' ')} content with {selectedPersona} persona
+            {selectedTone && selectedTone !== "custom" && ` in ${tones.find(t => t.value === selectedTone)?.label} tone`}
+            {selectedTone === "custom" && customTone && ` in ${customTone} tone`}
           </div>
         )}
       </CardContent>
@@ -621,6 +858,67 @@ export const ContentGenerator = () => {
               className="bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Persona Modal */}
+      <Dialog open={personaModalOpen} onOpenChange={setPersonaModalOpen}>
+        <DialogContent className="sm:max-w-md bg-gradient-card border-border/50 shadow-elegant">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary">
+              {editingPersona ? "Edit Persona" : "Create Custom Persona"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {editingPersona
+                ? "Update your custom persona details"
+                : "Create a custom persona profile for content generation"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="persona-name">Persona Name</Label>
+              <Input
+                id="persona-name"
+                placeholder="e.g., Tech Innovator, Brand Strategist"
+                value={newPersonaName}
+                onChange={(e) => setNewPersonaName(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="persona-description">Persona Description</Label>
+              <Input
+                id="persona-description"
+                placeholder="e.g., Expert in emerging technologies and innovation"
+                value={newPersonaDescription}
+                onChange={(e) => setNewPersonaDescription(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPersonaModalOpen(false);
+                setNewPersonaName("");
+                setNewPersonaDescription("");
+                setEditingPersona(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePersona}
+              disabled={!newPersonaName.trim() || !newPersonaDescription.trim()}
+              className="bg-gradient-primary hover:shadow-glow"
+            >
+              {editingPersona ? "Update" : "Create"} Persona
             </Button>
           </DialogFooter>
         </DialogContent>
