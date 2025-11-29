@@ -35,22 +35,30 @@ const SCOUT_GPT_ENDPOINT = process.env.NODE_ENV === 'development'
   ? '/api/scout-gpt'
   : 'https://soleai.app.n8n.cloud/webhook/e104c437-3b72-4de2-8fc7-535d30fb57fb';
 
+// Topic-based search endpoint
+const TOPIC_SEARCH_ENDPOINT = 'https://soleai.app.n8n.cloud/webhook/f95c5ec4-91b5-42f3-91d5-fce635b46e58';
+
 export class ScoutGptService {
 
-  static async fetchSignalsFromScoutGpt(): Promise<ScoutGptSignal[]> {
+  static async fetchSignalsFromScoutGpt(topic?: string): Promise<ScoutGptSignal[]> {
     try {
+      // Use different endpoint if topic is provided
+      const endpoint = topic ? TOPIC_SEARCH_ENDPOINT : SCOUT_GPT_ENDPOINT;
+
       console.log('🚀 Fetching signals from Scout GPT...');
-      console.log('📡 Endpoint:', SCOUT_GPT_ENDPOINT);
+      console.log('📡 Endpoint:', endpoint);
+      console.log('🎯 Topic filter:', topic);
 
       // Use POST request (n8n webhook is configured for POST)
-      const response = await fetch(SCOUT_GPT_ENDPOINT, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           action: 'get_signals',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          topic: topic || undefined
         })
       });
 
@@ -300,12 +308,13 @@ export class ScoutGptService {
     }
   }
 
-  static async fetchAndSaveSignals(): Promise<ProcessedSignal[]> {
+  static async fetchAndSaveSignals(topic?: string): Promise<ProcessedSignal[]> {
     try {
       console.log('Starting fetchAndSaveSignals process...');
+      console.log('🎯 Topic filter:', topic);
 
       // Fetch new signals from Scout GPT
-      const scoutSignals = await this.fetchSignalsFromScoutGpt();
+      const scoutSignals = await this.fetchSignalsFromScoutGpt(topic);
 
       if (scoutSignals.length === 0) {
         console.log('No new signals from Scout GPT, loading from database...');

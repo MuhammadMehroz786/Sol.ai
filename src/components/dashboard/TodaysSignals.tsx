@@ -1,11 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw } from "lucide-react";
+import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
@@ -31,39 +32,43 @@ export const TodaysSignals = () => {
   const [editableContent, setEditableContent] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState("");
   const [fullResponse, setFullResponse] = useState<any>(null);
+  const [topicSearch, setTopicSearch] = useState("");
+  const [isFilteringByTopic, setIsFilteringByTopic] = useState(false);
   const { toast } = useToast();
 
   const personas = [
-    "Malcolm",
-    "Ana",
-    "Winston",
-    "Business Analyst",
-    "Content Creator",
-    "Marketing Manager",
-    "Social Media Manager",
-    "Technical Writer",
-    "Brand Strategist",
-    "Communications Director"
+    { value: "Malcolm", label: "Malcolm", icon: Briefcase, description: "Strategic business perspective", color: "from-blue-500 to-blue-600" },
+    { value: "Ana", label: "Ana", icon: Palette, description: "Creative and artistic approach", color: "from-purple-500 to-pink-500" },
+    { value: "Winston", label: "Winston", icon: Target, description: "Results-driven strategist", color: "from-orange-500 to-red-500" },
+    { value: "Business Analyst", label: "Business Analyst", icon: BarChart3, description: "Data and metrics focused", color: "from-emerald-500 to-teal-500" },
+    { value: "Content Creator", label: "Content Creator", icon: FileEdit, description: "Engaging content specialist", color: "from-indigo-500 to-purple-500" },
+    { value: "Marketing Manager", label: "Marketing Manager", icon: Users, description: "Audience-focused marketer", color: "from-pink-500 to-rose-500" },
+    { value: "Social Media Manager", label: "Social Media Manager", icon: MessageSquare, description: "Social engagement expert", color: "from-cyan-500 to-blue-500" },
+    { value: "Technical Writer", label: "Technical Writer", icon: BookOpen, description: "Clear technical documentation", color: "from-slate-500 to-gray-600" },
+    { value: "Brand Strategist", label: "Brand Strategist", icon: Star, description: "Brand identity expert", color: "from-yellow-500 to-orange-500" },
+    { value: "Communications Director", label: "Communications Director", icon: Globe, description: "Corporate communications", color: "from-teal-500 to-cyan-500" }
   ];
 
   const outputTypes = [
-    "Article",
-    "Tweet thread",
-    "Script",
-    "Prompt",
-    "Longform (future)",
-    "White paper (future)"
+    { value: "Article", label: "Article", icon: FileText, description: "In-depth written content", color: "from-blue-500 to-cyan-500", available: true },
+    { value: "Tweet thread", label: "Tweet thread", icon: MessageSquare, description: "Threaded social posts", color: "from-sky-500 to-blue-500", available: true },
+    { value: "Script", label: "Script", icon: Video, description: "Video or audio script", color: "from-purple-500 to-pink-500", available: true },
+    { value: "Prompt", label: "Prompt", icon: Lightbulb, description: "AI prompt template", color: "from-yellow-500 to-orange-500", available: true },
+    { value: "Longform (future)", label: "Longform", icon: BookOpen, description: "Extended article format", color: "from-gray-400 to-gray-500", available: false },
+    { value: "White paper (future)", label: "White paper", icon: ScrollText, description: "Professional report", color: "from-gray-400 to-gray-500", available: false }
   ];
 
   const tones = [
-    { value: "poetic", label: "Poetic" },
-    { value: "urgent", label: "Urgent" },
-    { value: "data-driven", label: "Data-driven" },
-    { value: "cultural", label: "Cultural" }
+    { value: "poetic", label: "Poetic", icon: Palette, description: "Creative and artistic expression", color: "from-purple-500 to-pink-500" },
+    { value: "urgent", label: "Urgent", icon: AlertCircle, description: "Time-sensitive and compelling", color: "from-orange-500 to-red-500" },
+    { value: "data-driven", label: "Data-driven", icon: BarChart3, description: "Facts and analytics focused", color: "from-blue-500 to-cyan-500" },
+    { value: "cultural", label: "Cultural", icon: Globe, description: "Socially aware perspective", color: "from-emerald-500 to-teal-500" }
   ];
 
   // Load signals on component mount
   useEffect(() => {
+    // Load topic search from localStorage
+    loadTopicFromLocalStorage();
     initializeSignals();
 
     // Listen for signal updates from scheduler
@@ -138,13 +143,56 @@ export const TodaysSignals = () => {
     await loadInitialSignals();
   };
 
+  // Topic search management functions
+  const loadTopicFromLocalStorage = () => {
+    try {
+      const saved = localStorage.getItem('user_signal_topic');
+      if (saved) {
+        setTopicSearch(saved);
+      }
+    } catch (error) {
+      console.error('Error loading topic from localStorage:', error);
+    }
+  };
+
+  const saveTopicToLocalStorage = (topic: string) => {
+    try {
+      localStorage.setItem('user_signal_topic', topic);
+    } catch (error) {
+      console.error('Error saving topic to localStorage:', error);
+    }
+  };
+
+  const handleSearchWithTopic = async () => {
+    if (!topicSearch.trim()) {
+      toast({
+        title: "Topic required",
+        description: "Please enter a topic to search for signals",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    saveTopicToLocalStorage(topicSearch);
+    setIsFilteringByTopic(true);
+    await loadInitialSignals();
+    setIsFilteringByTopic(false);
+  };
+
+  const handleClearTopic = () => {
+    setTopicSearch("");
+    saveTopicToLocalStorage("");
+    loadInitialSignals();
+  };
+
   const loadInitialSignals = async () => {
     try {
       console.log('🔄 Starting loadInitialSignals...');
       setIsLoadingAllSignals(true);
 
       console.log('📡 Fetching fresh signals from Scout GPT on login...');
-      const newSignals = await ScoutGptService.fetchAndSaveSignals();
+      console.log('🎯 Using topic filter:', topicSearch);
+      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim() ? topicSearch.trim() : undefined);
       console.log('📊 Fetched new signals count:', newSignals.length);
 
       // Sort signals by score (highest first) before setting state
@@ -184,7 +232,8 @@ export const TodaysSignals = () => {
       });
 
       console.log('📡 Calling ScoutGptService.fetchAndSaveSignals()...');
-      const newSignals = await ScoutGptService.fetchAndSaveSignals();
+      console.log('🎯 Using topic filter:', topicSearch);
+      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim() ? topicSearch.trim() : undefined);
       console.log('✅ Received signals:', newSignals.length);
       console.log('📝 Signal details:', newSignals);
 
@@ -568,7 +617,7 @@ export const TodaysSignals = () => {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary">
             <TrendingUp className="h-4 w-4 text-white" />
           </div>
-          <span>Today's Signals</span>
+          <span>Trending Signals</span>
           <Badge className="ml-auto bg-primary/10 text-primary border-primary/20 text-sm">
             {isLoadingAllSignals ? '...' : signals.length}
           </Badge>
@@ -578,6 +627,78 @@ export const TodaysSignals = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Topic Filter Section */}
+        <div className="relative mb-4">
+          {/* Multi-layer glow effects */}
+          <div className="absolute inset-0 -m-2 bg-gradient-to-br from-primary/15 via-accent/10 to-primary/15 blur-2xl opacity-30 rounded-2xl" />
+
+          {/* Main container */}
+          <div className="relative bg-white/98 backdrop-blur-2xl rounded-2xl border-2 border-primary/20 p-4 shadow-[0_4px_20px_rgba(208,126,59,0.12),0_2px_8px_rgba(208,126,59,0.08)] overflow-hidden">
+            {/* Animated gradient border effect */}
+            <div className="absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 -z-10 animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
+
+            {/* Header */}
+            <div className="flex items-center space-x-2 mb-3">
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-primary">
+                <Search className="h-3.5 w-3.5 text-white" />
+              </div>
+              <h3 className="font-bold text-sm text-foreground">Filter by Topic</h3>
+            </div>
+
+            {/* Input section */}
+            <div className="flex space-x-2">
+              <Input
+                type="text"
+                placeholder="Enter topic (e.g., AI, Sneakers, Fashion)..."
+                value={topicSearch}
+                onChange={(e) => setTopicSearch(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearchWithTopic();
+                  }
+                }}
+                className="flex-1 bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/30 rounded-xl text-sm placeholder:text-muted-foreground/70 transition-all duration-300"
+              />
+              {topicSearch && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleClearTopic}
+                  className="hover:bg-destructive/10 hover:text-destructive transition-all duration-300 rounded-xl px-3"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={handleSearchWithTopic}
+                disabled={isFilteringByTopic || !topicSearch.trim()}
+                className="bg-gradient-primary hover:shadow-glow transition-all duration-300 rounded-xl px-4"
+              >
+                {isFilteringByTopic ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Search
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Helper text */}
+            <p className="text-xs text-muted-foreground mt-2 ml-1">
+              {!topicSearch.trim()
+                ? "Enter a topic to filter signals or leave empty for general signals"
+                : `Ready to search for "${topicSearch}"`
+              }
+            </p>
+          </div>
+        </div>
+
         {isLoadingAllSignals ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
@@ -720,56 +841,128 @@ export const TodaysSignals = () => {
           </DialogHeader>
 
           {modalMode === 'form' ? (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Select Persona</label>
+            <div className="space-y-6 py-6">
+              {/* Progress Indicator */}
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedPersona ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+                <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedOutputType ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+                <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedTone ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+              </div>
+              <div className="text-center text-xs text-muted-foreground mb-4">
+                {!selectedPersona && !selectedOutputType && !selectedTone && "Start by selecting a persona"}
+                {selectedPersona && !selectedOutputType && !selectedTone && "Great! Now choose an output type"}
+                {selectedPersona && selectedOutputType && !selectedTone && "Almost there! Select a tone"}
+                {selectedPersona && selectedOutputType && selectedTone && "Perfect! Ready to generate"}
+              </div>
+
+              {/* Persona Selection */}
+              <div className="space-y-3 relative">
+                <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
+                <label className="text-sm font-semibold text-foreground flex items-center relative">
+                  <Users className="h-4 w-4 mr-2 text-primary" />
+                  Select Persona
+                  {selectedPersona && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+                </label>
                 <Select value={selectedPersona} onValueChange={setSelectedPersona}>
-                  <SelectTrigger className="bg-background border-border hover:border-primary/50 transition-colors">
+                  <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02] group">
                     <SelectValue placeholder="Choose a persona..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border/50">
-                    {personas.map((persona) => (
-                      <SelectItem key={persona} value={persona} className="hover:bg-accent/10">
-                        {persona}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+                    {personas.map((persona) => {
+                      const Icon = persona.icon;
+                      return (
+                        <SelectItem
+                          key={persona.value}
+                          value={persona.value}
+                          className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
+                        >
+                          <div className="flex items-center space-x-3 py-1">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${persona.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                              <Icon className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{persona.label}</span>
+                              <span className="text-xs text-muted-foreground">{persona.description}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Select Output Type</label>
+              {/* Output Type Selection */}
+              <div className="space-y-3 relative">
+                <div className="absolute inset-0 -m-4 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 blur-xl opacity-50 rounded-2xl" />
+                <label className="text-sm font-semibold text-foreground flex items-center relative">
+                  <FileText className="h-4 w-4 mr-2 text-accent" />
+                  Select Output Type
+                  {selectedOutputType && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+                </label>
                 <Select value={selectedOutputType} onValueChange={setSelectedOutputType}>
-                  <SelectTrigger className="bg-background border-border hover:border-primary/50 transition-colors">
+                  <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-accent/20 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 hover:scale-[1.02]">
                     <SelectValue placeholder="Choose output type..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border/50">
-                    {outputTypes.map((type) => (
-                      <SelectItem
-                        key={type}
-                        value={type}
-                        disabled={type.includes("(future)")}
-                        className="hover:bg-accent/10"
-                      >
-                        {type}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+                    {outputTypes.map((type) => {
+                      const Icon = type.icon;
+                      return (
+                        <SelectItem
+                          key={type.value}
+                          value={type.value}
+                          disabled={!type.available}
+                          className="hover:bg-gradient-to-r hover:from-accent/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <div className="flex items-center space-x-3 py-1">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${type.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                              <Icon className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{type.label}</span>
+                              <span className="text-xs text-muted-foreground">{type.description}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Select Tone</label>
+              {/* Tone Selection */}
+              <div className="space-y-3 relative">
+                <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
+                <label className="text-sm font-semibold text-foreground flex items-center relative">
+                  <Sparkles className="h-4 w-4 mr-2 text-warning" />
+                  Select Tone
+                  {selectedTone && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+                </label>
                 <Select value={selectedTone} onValueChange={setSelectedTone}>
-                  <SelectTrigger className="bg-background border-border hover:border-primary/50 transition-colors">
+                  <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-warning/20 hover:border-warning/50 hover:shadow-lg hover:shadow-warning/10 transition-all duration-300 hover:scale-[1.02]">
                     <SelectValue placeholder="Choose tone..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border/50">
-                    {tones.map((tone) => (
-                      <SelectItem key={tone.value} value={tone.value} className="hover:bg-accent/10">
-                        {tone.label}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+                    {tones.map((tone) => {
+                      const Icon = tone.icon;
+                      return (
+                        <SelectItem
+                          key={tone.value}
+                          value={tone.value}
+                          className="hover:bg-gradient-to-r hover:from-warning/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
+                        >
+                          <div className="flex items-center space-x-3 py-1">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${tone.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                              <Icon className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{tone.label}</span>
+                              <span className="text-xs text-muted-foreground">{tone.description}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
@@ -919,7 +1112,7 @@ export const TodaysSignals = () => {
           <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
             <DialogTitle className="text-xl font-bold text-primary flex items-center">
               <TrendingUp className="h-5 w-5 mr-2" />
-              All Today's Signals
+              All Trending Signals
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Complete list of {signals.length} signals ranked by Scout GPT score

@@ -26,28 +26,39 @@ import {
   Scissors,
   Loader2,
   Trash2,
-  Plus
+  Plus,
+  Briefcase,
+  Target,
+  BarChart3,
+  FileEdit,
+  Users,
+  MessageSquare,
+  Globe,
+  Star,
+  AlertCircle,
+  CheckCircle2,
+  Lightbulb
 } from "lucide-react";
 
 const defaultPersonas = [
-  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true },
-  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true },
-  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true }
+  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true, icon: Briefcase, color: "from-blue-500 to-blue-600" },
+  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true, icon: Palette, color: "from-purple-500 to-pink-500" },
+  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true, icon: Target, color: "from-orange-500 to-red-500" }
 ];
 
 const tones = [
-  { value: "poetic", label: "Poetic", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300" },
-  { value: "urgent", label: "Urgent", color: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" },
-  { value: "data-driven", label: "Data-driven", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" },
-  { value: "cultural", label: "Cultural", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" },
-  { value: "custom", label: "Custom", color: "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-300" }
+  { value: "poetic", label: "Poetic", icon: Palette, description: "Creative and artistic expression", color: "from-purple-500 to-pink-500", badgeColor: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300" },
+  { value: "urgent", label: "Urgent", icon: AlertCircle, description: "Time-sensitive and compelling", color: "from-orange-500 to-red-500", badgeColor: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" },
+  { value: "data-driven", label: "Data-driven", icon: BarChart3, description: "Facts and analytics focused", color: "from-blue-500 to-cyan-500", badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" },
+  { value: "cultural", label: "Cultural", icon: Globe, description: "Socially aware perspective", color: "from-emerald-500 to-teal-500", badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" },
+  { value: "custom", label: "Custom", icon: Edit, description: "Your own tone style", color: "from-slate-500 to-gray-600", badgeColor: "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-300" }
 ];
 
 const outputTypes = [
-  { value: "article", label: "Article", icon: FileText, description: "Written article content" },
-  { value: "tweet-thread", label: "Tweet Thread", icon: Twitter, description: "Tweet thread (7–10 posts)" },
-  { value: "script", label: "Script", icon: Video, description: "Script (voiceover or video narration)" },
-  { value: "prompt", label: "Daily Prompt", icon: ScrollText, description: "Daily Prompt (short-form idea/question)" }
+  { value: "article", label: "Article", icon: FileText, description: "Written article content", color: "from-blue-500 to-cyan-500" },
+  { value: "tweet-thread", label: "Tweet Thread", icon: Twitter, description: "Tweet thread (7–10 posts)", color: "from-sky-500 to-blue-500" },
+  { value: "script", label: "Script", icon: Video, description: "Script (voiceover or video narration)", color: "from-purple-500 to-pink-500" },
+  { value: "prompt", label: "Daily Prompt", icon: Lightbulb, description: "Daily Prompt (short-form idea/question)", color: "from-yellow-500 to-orange-500" }
 ];
 
 const articleLengths = [
@@ -61,6 +72,8 @@ interface CustomPersona {
   label: string;
   description: string;
   isDefault: boolean;
+  icon?: any;
+  color?: string;
 }
 
 const PERSONAS_STORAGE_KEY = 'sole-custom-personas';
@@ -533,32 +546,63 @@ export const ContentGenerator = () => {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Progress Indicator */}
+        <div className="flex items-center justify-center space-x-2 mb-2">
+          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedPersona ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedTone ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedOutputType ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${topic.trim() ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+        </div>
+        <div className="text-center text-xs text-muted-foreground mb-4">
+          {!selectedPersona && "Start by selecting a persona"}
+          {selectedPersona && !selectedTone && "Great! Now choose a tone"}
+          {selectedPersona && selectedTone && !selectedOutputType && "Excellent! Select an output type"}
+          {selectedPersona && selectedTone && selectedOutputType && !topic.trim() && "Almost there! Add your topic"}
+          {selectedPersona && selectedTone && selectedOutputType && topic.trim() && "Perfect! Ready to generate"}
+        </div>
+
         {/* Persona Selector */}
-        <div className="space-y-3">
-          <Label className="text-base font-medium flex items-center space-x-2">
-            <User className="h-4 w-4" />
+        <div className="space-y-3 relative">
+          <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
+          <Label className="text-base font-semibold flex items-center space-x-2 relative">
+            <User className="h-4 w-4 text-primary" />
             <span>Persona</span>
+            {selectedPersona && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
           </Label>
           <Select value={selectedPersona} onValueChange={handlePersonaChange}>
-            <SelectTrigger className="bg-background">
+            <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02]">
               <SelectValue placeholder="Select a persona...">
                 {selectedPersona && personas.find(p => p.value === selectedPersona)?.label}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
-              {personas.map((persona) => (
-                <SelectItem key={persona.value} value={persona.value}>
-                  <div className="flex items-center justify-between w-full gap-2">
-                    <div className="flex-1">
-                      <div className="font-medium">{persona.label}</div>
-                      <div className="text-sm text-muted-foreground">{persona.description}</div>
-                    </div>
+            <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+              {personas.map((persona) => {
+                const Icon = persona.icon || User;
+                return (
+                  <div key={persona.value} className="relative group/item">
+                    <SelectItem
+                      value={persona.value}
+                      className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg pr-16"
+                    >
+                      <div className="flex items-center space-x-3 py-1">
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${persona.color || 'from-gray-400 to-gray-500'} shadow-md group-hover/item:scale-110 transition-transform duration-200`}>
+                          <Icon className="h-4 w-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">{persona.label}</div>
+                          <div className="text-xs text-muted-foreground">{persona.description}</div>
+                        </div>
+                      </div>
+                    </SelectItem>
                     {!persona.isDefault && (
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 hover:bg-primary/20"
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
+                        <button
+                          type="button"
+                          className="h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-primary/20 transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -566,11 +610,14 @@ export const ContentGenerator = () => {
                           }}
                         >
                           <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 hover:bg-destructive/20"
+                        </button>
+                        <button
+                          type="button"
+                          className="h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-destructive/20 transition-colors"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -578,13 +625,13 @@ export const ContentGenerator = () => {
                           }}
                         >
                           <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
+                        </button>
                       </div>
                     )}
                   </div>
-                </SelectItem>
-              ))}
-              <SelectItem value="create-custom">
+                );
+              })}
+              <SelectItem value="create-custom" className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg">
                 <div className="flex items-center gap-2 text-primary font-medium">
                   <Plus className="h-4 w-4" />
                   <span>Create Custom Persona</span>
@@ -597,37 +644,50 @@ export const ContentGenerator = () => {
         <Separator />
 
         {/* Tone Modifiers */}
-        <div className="space-y-3">
-          <Label className="text-base font-medium flex items-center space-x-2">
-            <Palette className="h-4 w-4" />
+        <div className="space-y-3 relative">
+          <div className="absolute inset-0 -m-4 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 blur-xl opacity-50 rounded-2xl" />
+          <Label className="text-base font-semibold flex items-center space-x-2 relative">
+            <Palette className="h-4 w-4 text-accent" />
             <span>Tone</span>
+            {selectedTone && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
           </Label>
           <Select value={selectedTone} onValueChange={setSelectedTone}>
-            <SelectTrigger className="bg-background">
+            <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-accent/20 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 hover:scale-[1.02]">
               <SelectValue placeholder="Select tone..." />
             </SelectTrigger>
-            <SelectContent className="bg-popover border border-border shadow-lg z-50">
-              {tones.map((tone) => (
-                <SelectItem
-                  key={tone.value}
-                  value={tone.value}
-                  className="hover:bg-accent"
-                >
-                  <div className="font-medium">{tone.label}</div>
-                </SelectItem>
-              ))}
+            <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+              {tones.map((tone) => {
+                const Icon = tone.icon;
+                return (
+                  <SelectItem
+                    key={tone.value}
+                    value={tone.value}
+                    className="hover:bg-gradient-to-r hover:from-accent/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
+                  >
+                    <div className="flex items-center space-x-3 py-1">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${tone.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                        <Icon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{tone.label}</span>
+                        <span className="text-xs text-muted-foreground">{tone.description}</span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
 
           {/* Custom tone input - shown when Custom is selected */}
           {selectedTone === "custom" && (
-            <div className="space-y-2">
+            <div className="space-y-2 animate-in slide-in-from-top duration-300 relative z-10">
               <Label className="text-sm text-muted-foreground">Custom Tone Description</Label>
               <Input
-                placeholder="Enter your custom tone (e.g., 'Professional yet casual', 'Inspiring and motivational')"
+                placeholder=""
                 value={customTone}
                 onChange={(e) => setCustomTone(e.target.value)}
-                className="bg-background"
+                className="bg-background border-2 border-warning/20 focus:border-warning/50 transition-colors relative z-10"
               />
             </div>
           )}
@@ -636,10 +696,12 @@ export const ContentGenerator = () => {
         <Separator />
 
         {/* Output Type */}
-        <div className="space-y-3">
-          <Label className="text-base font-medium flex items-center space-x-2">
-            <FileText className="h-4 w-4" />
+        <div className="space-y-3 relative">
+          <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
+          <Label className="text-base font-semibold flex items-center space-x-2 relative">
+            <FileText className="h-4 w-4 text-warning" />
             <span>Output Type</span>
+            {selectedOutputType && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
           </Label>
           <Select
             value={selectedOutputType.startsWith('article-') ? 'article' : selectedOutputType}
@@ -654,7 +716,7 @@ export const ContentGenerator = () => {
               setSelectedArticleLength("");
             }}
           >
-            <SelectTrigger className="bg-background">
+            <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-warning/20 hover:border-warning/50 hover:shadow-lg hover:shadow-warning/10 transition-all duration-300 hover:scale-[1.02]">
               <SelectValue placeholder="Select output type...">
                 {selectedOutputType && (
                   selectedOutputType.startsWith('article-')
@@ -663,28 +725,33 @@ export const ContentGenerator = () => {
                 )}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="bg-popover border border-border shadow-lg z-50">
-              {outputTypes.map((type) => (
-                <SelectItem
-                  key={type.value}
-                  value={type.value}
-                  className="hover:bg-accent"
-                >
-                  <div className="flex items-center space-x-3">
-                    <type.icon className="h-4 w-4" />
-                    <div className="text-left">
-                      <div className="text-base font-medium">{type.label}</div>
-                      <div className="text-sm text-muted-foreground">{type.description}</div>
+            <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+              {outputTypes.map((type) => {
+                const Icon = type.icon;
+                return (
+                  <SelectItem
+                    key={type.value}
+                    value={type.value}
+                    className="hover:bg-gradient-to-r hover:from-warning/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
+                  >
+                    <div className="flex items-center space-x-3 py-1">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${type.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                        <Icon className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{type.label}</span>
+                        <span className="text-xs text-muted-foreground">{type.description}</span>
+                      </div>
                     </div>
-                  </div>
-                </SelectItem>
-              ))}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
 
           {/* Article Size Selection - appears when Article is selected */}
           {(selectedOutputType === 'article' || selectedOutputType.startsWith('article-')) && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 animate-in slide-in-from-top duration-300 relative z-10">
               {articleLengths.map((length) => {
                 const articleValue = `article-${length.value}`;
                 const isSelected = selectedOutputType === articleValue;
@@ -697,10 +764,10 @@ export const ContentGenerator = () => {
                       setSelectedOutputType(articleValue);
                       setSelectedArticleLength(length.value);
                     }}
-                    className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all ${
+                    className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all duration-300 relative z-10 ${
                       isSelected
-                        ? "border-primary bg-primary text-primary-foreground shadow-md"
-                        : "border-border hover:border-primary/50 hover:bg-accent"
+                        ? "border-primary bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30 scale-105"
+                        : "border-border hover:border-primary/50 hover:bg-accent/10 hover:scale-102"
                     }`}
                   >
                     <div className="font-semibold text-sm">{length.label}</div>
@@ -882,7 +949,7 @@ export const ContentGenerator = () => {
               <Label htmlFor="persona-name">Persona Name</Label>
               <Input
                 id="persona-name"
-                placeholder="e.g., Tech Innovator, Brand Strategist"
+                placeholder=""
                 value={newPersonaName}
                 onChange={(e) => setNewPersonaName(e.target.value)}
                 className="bg-background"
@@ -893,7 +960,7 @@ export const ContentGenerator = () => {
               <Label htmlFor="persona-description">Persona Description</Label>
               <Input
                 id="persona-description"
-                placeholder="e.g., Expert in emerging technologies and innovation"
+                placeholder=""
                 value={newPersonaDescription}
                 onChange={(e) => setNewPersonaDescription(e.target.value)}
                 className="bg-background"
