@@ -40,19 +40,12 @@ import {
   Lightbulb
 } from "lucide-react";
 
-const defaultPersonas = [
+const defaultVoices = [
   { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true, icon: Briefcase, color: "from-blue-500 to-blue-600" },
   { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true, icon: Palette, color: "from-purple-500 to-pink-500" },
   { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true, icon: Target, color: "from-orange-500 to-red-500" }
 ];
 
-const tones = [
-  { value: "poetic", label: "Poetic", icon: Palette, description: "Creative and artistic expression", color: "from-purple-500 to-pink-500", badgeColor: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300" },
-  { value: "urgent", label: "Urgent", icon: AlertCircle, description: "Time-sensitive and compelling", color: "from-orange-500 to-red-500", badgeColor: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300" },
-  { value: "data-driven", label: "Data-driven", icon: BarChart3, description: "Facts and analytics focused", color: "from-blue-500 to-cyan-500", badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300" },
-  { value: "cultural", label: "Cultural", icon: Globe, description: "Socially aware perspective", color: "from-emerald-500 to-teal-500", badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300" },
-  { value: "custom", label: "Custom", icon: Edit, description: "Your own tone style", color: "from-slate-500 to-gray-600", badgeColor: "bg-slate-100 text-slate-800 dark:bg-slate-900/20 dark:text-slate-300" }
-];
 
 const outputTypes = [
   { value: "article", label: "Article", icon: FileText, description: "Written article content", color: "from-blue-500 to-cyan-500" },
@@ -67,21 +60,20 @@ const articleLengths = [
   { value: "long", label: "Long", description: "1600+ words" }
 ];
 
-interface CustomPersona {
+interface CustomVoice {
   value: string;
   label: string;
   description: string;
   isDefault: boolean;
   icon?: any;
   color?: string;
+  userId?: string;
 }
 
-const PERSONAS_STORAGE_KEY = 'sole-custom-personas';
+const VOICES_STORAGE_KEY = 'sole-custom-voices';
 
 export const ContentGenerator = () => {
-  const [selectedPersona, setSelectedPersona] = useState("");
-  const [selectedTone, setSelectedTone] = useState("");
-  const [customTone, setCustomTone] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState("");
   const [selectedOutputType, setSelectedOutputType] = useState("");
   const [selectedArticleLength, setSelectedArticleLength] = useState("");
   const [topic, setTopic] = useState("");
@@ -90,118 +82,211 @@ export const ContentGenerator = () => {
   const [generatedContent, setGeneratedContent] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState("");
 
-  // Custom persona management
-  const [personas, setPersonas] = useState<CustomPersona[]>(defaultPersonas);
-  const [personaModalOpen, setPersonaModalOpen] = useState(false);
-  const [editingPersona, setEditingPersona] = useState<CustomPersona | null>(null);
-  const [newPersonaName, setNewPersonaName] = useState("");
-  const [newPersonaDescription, setNewPersonaDescription] = useState("");
+  // Custom voice management
+  const [voices, setVoices] = useState<CustomVoice[]>(defaultVoices);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [voiceProfileModalOpen, setVoiceProfileModalOpen] = useState(false);
+  const [editingVoice, setEditingVoice] = useState<CustomVoice | null>(null);
+  const [newVoiceName, setNewVoiceName] = useState("");
+  const [newVoiceDescription, setNewVoiceDescription] = useState("");
+
+  // Voice profile generation
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [voiceProfileName, setVoiceProfileName] = useState("");
 
   // Article submenu hover state
   const [showArticleSubmenu, setShowArticleSubmenu] = useState(false);
   const [articleItemRef, setArticleItemRef] = useState<HTMLDivElement | null>(null);
   const [hideTimeout, setHideTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Load custom personas from localStorage on mount
+  // Load custom voices from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem(PERSONAS_STORAGE_KEY);
+    const stored = localStorage.getItem(VOICES_STORAGE_KEY);
     if (stored) {
       try {
-        const customPersonas = JSON.parse(stored);
-        setPersonas([...defaultPersonas, ...customPersonas]);
+        const customVoices = JSON.parse(stored);
+        setVoices([...defaultVoices, ...customVoices]);
       } catch (e) {
-        console.error('Failed to load custom personas:', e);
+        console.error('Failed to load custom voices:', e);
       }
     }
   }, []);
 
-  // Save custom personas to localStorage
-  const saveCustomPersonas = (allPersonas: CustomPersona[]) => {
-    const customOnly = allPersonas.filter(p => !p.isDefault);
-    localStorage.setItem(PERSONAS_STORAGE_KEY, JSON.stringify(customOnly));
+  // Save custom voices to localStorage
+  const saveCustomVoices = (allVoices: CustomVoice[]) => {
+    const customOnly = allVoices.filter(v => !v.isDefault);
+    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customOnly));
   };
 
-  const handlePersonaChange = (value: string) => {
-    if (value === "create-custom") {
-      setEditingPersona(null);
-      setNewPersonaName("");
-      setNewPersonaDescription("");
-      setPersonaModalOpen(true);
+  const handleVoiceChange = (value: string) => {
+    if (value === "create-voice-profile") {
+      setVoiceProfileModalOpen(true);
+    } else if (value === "create-custom") {
+      setEditingVoice(null);
+      setNewVoiceName("");
+      setNewVoiceDescription("");
+      setVoiceModalOpen(true);
     } else {
-      setSelectedPersona(value);
+      setSelectedVoice(value);
     }
   };
 
-  const handleSavePersona = () => {
-    if (!newPersonaName.trim() || !newPersonaDescription.trim()) return;
+  const handleSaveVoice = () => {
+    if (!newVoiceName.trim() || !newVoiceDescription.trim()) return;
 
-    const personaValue = newPersonaName.toLowerCase().replace(/\s+/g, '-');
+    const voiceValue = newVoiceName.toLowerCase().replace(/\s+/g, '-');
 
-    if (editingPersona) {
-      // Edit existing persona
-      const updatedPersonas = personas.map(p =>
-        p.value === editingPersona.value
-          ? { ...p, label: newPersonaName, description: newPersonaDescription }
-          : p
+    if (editingVoice) {
+      // Edit existing voice
+      const updatedVoices = voices.map(v =>
+        v.value === editingVoice.value
+          ? { ...v, label: newVoiceName, description: newVoiceDescription }
+          : v
       );
-      setPersonas(updatedPersonas);
-      saveCustomPersonas(updatedPersonas);
+      setVoices(updatedVoices);
+      saveCustomVoices(updatedVoices);
 
-      // Update selection if editing the currently selected persona
-      if (selectedPersona === editingPersona.value) {
-        setSelectedPersona(personaValue);
+      // Update selection if editing the currently selected voice
+      if (selectedVoice === editingVoice.value) {
+        setSelectedVoice(voiceValue);
       }
     } else {
-      // Create new persona
-      const newPersona: CustomPersona = {
-        value: personaValue,
-        label: newPersonaName,
-        description: newPersonaDescription,
+      // Create new voice
+      const newVoice: CustomVoice = {
+        value: voiceValue,
+        label: newVoiceName,
+        description: newVoiceDescription,
         isDefault: false
       };
-      const updatedPersonas = [...personas, newPersona];
-      setPersonas(updatedPersonas);
-      saveCustomPersonas(updatedPersonas);
-      setSelectedPersona(personaValue);
+      const updatedVoices = [...voices, newVoice];
+      setVoices(updatedVoices);
+      saveCustomVoices(updatedVoices);
+      setSelectedVoice(voiceValue);
     }
 
-    setPersonaModalOpen(false);
-    setNewPersonaName("");
-    setNewPersonaDescription("");
-    setEditingPersona(null);
+    setVoiceModalOpen(false);
+    setNewVoiceName("");
+    setNewVoiceDescription("");
+    setEditingVoice(null);
   };
 
-  const handleEditPersona = (persona: CustomPersona) => {
-    setEditingPersona(persona);
-    setNewPersonaName(persona.label);
-    setNewPersonaDescription(persona.description);
-    setPersonaModalOpen(true);
+  const handleEditVoice = (voice: CustomVoice) => {
+    setEditingVoice(voice);
+    setNewVoiceName(voice.label);
+    setNewVoiceDescription(voice.description);
+    setVoiceModalOpen(true);
   };
 
-  const handleDeletePersona = (personaValue: string) => {
-    const updatedPersonas = personas.filter(p => p.value !== personaValue);
-    setPersonas(updatedPersonas);
-    saveCustomPersonas(updatedPersonas);
+  const handleDeleteVoice = (voiceValue: string) => {
+    const updatedVoices = voices.filter(v => v.value !== voiceValue);
+    setVoices(updatedVoices);
+    saveCustomVoices(updatedVoices);
 
-    // Clear selection if deleting the currently selected persona
-    if (selectedPersona === personaValue) {
-      setSelectedPersona("");
+    // Clear selection if deleting the currently selected voice
+    if (selectedVoice === voiceValue) {
+      setSelectedVoice("");
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const validFiles = Array.from(files).filter(file => {
+        const isPdf = file.type === 'application/pdf';
+        const isText = file.type === 'text/plain';
+        return isPdf || isText;
+      });
+      setUploadedFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitVoiceProfile = async () => {
+    if (uploadedFiles.length === 0 || !voiceProfileName.trim()) return;
+
+    setIsUploadingProfile(true);
+
+    try {
+      const { data: user } = await supabase.auth.getUser();
+
+      if (!user.user) {
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Authentication required",
+          description: "Please log in to create a voice profile",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      uploadedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+      formData.append('voice_name', voiceProfileName.trim());
+      formData.append('user_id', user.user.id);
+
+      const webhookUrl = 'https://soleai.app.n8n.cloud/webhook/66bc4c62-262d-4a3c-8d18-098c97672ddd';
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        // Create voice profile in local state
+        const newVoice: CustomVoice = {
+          value: `voice-${Date.now()}`,
+          label: result.voiceName || 'My Voice Profile',
+          description: result.description || 'Custom voice profile',
+          isDefault: false,
+          userId: user.user.id
+        };
+
+        const updatedVoices = [...voices, newVoice];
+        setVoices(updatedVoices);
+        saveCustomVoices(updatedVoices);
+        setSelectedVoice(newVoice.value);
+
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Voice profile created!",
+          description: "Your personal voice profile has been generated successfully",
+        });
+
+        setVoiceProfileModalOpen(false);
+        setUploadedFiles([]);
+        setVoiceProfileName("");
+      } else {
+        throw new Error('Failed to upload voice profile');
+      }
+    } catch (error) {
+      console.error('Voice profile upload error:', error);
+      const { toast } = await import("@/hooks/use-toast");
+      toast({
+        title: "Upload failed",
+        description: "Failed to create voice profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingProfile(false);
     }
   };
 
 
   const handleGenerate = async () => {
-    const needsTone = !selectedTone || (selectedTone === "custom" && !customTone.trim());
-
-    if (!selectedPersona || !selectedOutputType || needsTone || !topic.trim()) return;
+    if (!selectedVoice || !selectedOutputType || !topic.trim()) return;
 
     setIsGenerating(true);
 
     try {
       console.log('Starting editorial request...');
-
-      // Use custom tone if selected, otherwise use the tone value
-      const effectiveTone = selectedTone === "custom" ? customTone : selectedTone;
 
       // Extract base output type and article length if applicable
       let baseOutputType = selectedOutputType;
@@ -212,8 +297,8 @@ export const ContentGenerator = () => {
         articleLength = selectedOutputType.replace('article-', '');
       }
 
-      // Get persona details
-      const personaDetails = personas.find(p => p.value === selectedPersona);
+      // Get voice details
+      const voiceDetails = voices.find(v => v.value === selectedVoice);
 
       const payload = {
         signal: {
@@ -226,11 +311,10 @@ export const ContentGenerator = () => {
           score: 85,
           engagement: "+25%"
         },
-        persona: selectedPersona,
-        personaName: personaDetails?.label || selectedPersona,
-        personaDescription: personaDetails?.description || "",
+        voice: selectedVoice,
+        voiceName: voiceDetails?.label || selectedVoice,
+        voiceDescription: voiceDetails?.description || "",
         outputType: baseOutputType,
-        tone: effectiveTone,
         articleLength: articleLength || undefined
       };
 
@@ -268,8 +352,7 @@ export const ContentGenerator = () => {
               user_id: user.user.id,
               title: `${selectedOutputType.replace('-', ' ')} about ${topic.substring(0, 50)}`,
               content: formattedContent,
-              persona: selectedPersona,
-              tones: [selectedTone],
+              persona: selectedVoice,
               output_type: selectedOutputType,
               status: 'draft',
               topic_context: topic
@@ -483,9 +566,8 @@ export const ContentGenerator = () => {
             score: 85,
             engagement: "+25%"
           },
-          persona: selectedPersona,
+          voice: selectedVoice,
           outputType: selectedOutputType,
-          tone: selectedTone,
           content: generatedContent,
           quickAction: action
         })
@@ -526,8 +608,7 @@ export const ContentGenerator = () => {
     URL.revokeObjectURL(url);
   };
 
-  const needsTone = !selectedTone || (selectedTone === "custom" && !customTone.trim());
-  const canGenerate = selectedPersona && selectedOutputType && !needsTone && topic.trim();
+  const canGenerate = selectedVoice && selectedOutputType && topic.trim();
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
@@ -548,53 +629,51 @@ export const ContentGenerator = () => {
       <CardContent className="space-y-6">
         {/* Progress Indicator */}
         <div className="flex items-center justify-center space-x-2 mb-2">
-          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedPersona ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
-          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedTone ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedVoice ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
           <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedOutputType ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
           <div className={`h-2 w-2 rounded-full transition-all duration-300 ${topic.trim() ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
         </div>
         <div className="text-center text-xs text-muted-foreground mb-4">
-          {!selectedPersona && "Start by selecting a persona"}
-          {selectedPersona && !selectedTone && "Great! Now choose a tone"}
-          {selectedPersona && selectedTone && !selectedOutputType && "Excellent! Select an output type"}
-          {selectedPersona && selectedTone && selectedOutputType && !topic.trim() && "Almost there! Add your topic"}
-          {selectedPersona && selectedTone && selectedOutputType && topic.trim() && "Perfect! Ready to generate"}
+          {!selectedVoice && "Start by selecting a voice"}
+          {selectedVoice && !selectedOutputType && "Great! Now select an output type"}
+          {selectedVoice && selectedOutputType && !topic.trim() && "Almost there! Add your topic"}
+          {selectedVoice && selectedOutputType && topic.trim() && "Perfect! Ready to generate"}
         </div>
 
-        {/* Persona Selector */}
+        {/* Voice Selector */}
         <div className="space-y-3 relative">
           <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
           <Label className="text-base font-semibold flex items-center space-x-2 relative">
             <User className="h-4 w-4 text-primary" />
-            <span>Persona</span>
-            {selectedPersona && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+            <span>Voice</span>
+            {selectedVoice && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
           </Label>
-          <Select value={selectedPersona} onValueChange={handlePersonaChange}>
+          <Select value={selectedVoice} onValueChange={handleVoiceChange}>
             <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02]">
-              <SelectValue placeholder="Select a persona...">
-                {selectedPersona && personas.find(p => p.value === selectedPersona)?.label}
+              <SelectValue placeholder="Select a voice...">
+                {selectedVoice && voices.find(v => v.value === selectedVoice)?.label}
               </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
-              {personas.map((persona) => {
-                const Icon = persona.icon || User;
+              {voices.map((voice) => {
+                const Icon = voice.icon || User;
                 return (
-                  <div key={persona.value} className="relative group/item">
+                  <div key={voice.value} className="relative group/item">
                     <SelectItem
-                      value={persona.value}
+                      value={voice.value}
                       className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg pr-16"
                     >
                       <div className="flex items-center space-x-3 py-1">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${persona.color || 'from-gray-400 to-gray-500'} shadow-md group-hover/item:scale-110 transition-transform duration-200`}>
+                        <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${voice.color || 'from-gray-400 to-gray-500'} shadow-md group-hover/item:scale-110 transition-transform duration-200`}>
                           <Icon className="h-4 w-4 text-white" />
                         </div>
                         <div className="flex-1">
-                          <div className="font-medium">{persona.label}</div>
-                          <div className="text-xs text-muted-foreground">{persona.description}</div>
+                          <div className="font-medium">{voice.label}</div>
+                          <div className="text-xs text-muted-foreground">{voice.description}</div>
                         </div>
                       </div>
                     </SelectItem>
-                    {!persona.isDefault && (
+                    {!voice.isDefault && (
                       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
                         <button
                           type="button"
@@ -606,7 +685,7 @@ export const ContentGenerator = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleEditPersona(persona);
+                            handleEditVoice(voice);
                           }}
                         >
                           <Edit className="h-3 w-3" />
@@ -621,7 +700,7 @@ export const ContentGenerator = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleDeletePersona(persona.value);
+                            handleDeleteVoice(voice.value);
                           }}
                         >
                           <Trash2 className="h-3 w-3 text-destructive" />
@@ -631,66 +710,15 @@ export const ContentGenerator = () => {
                   </div>
                 );
               })}
-              <SelectItem value="create-custom" className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg">
-                <div className="flex items-center gap-2 text-primary font-medium">
-                  <Plus className="h-4 w-4" />
-                  <span>Create Custom Persona</span>
+              <Separator className="my-2" />
+              <SelectItem value="create-voice-profile" className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg">
+                <div className="flex items-center gap-2 font-medium">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Create Personal Voice</span>
                 </div>
               </SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        <Separator />
-
-        {/* Tone Modifiers */}
-        <div className="space-y-3 relative">
-          <div className="absolute inset-0 -m-4 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 blur-xl opacity-50 rounded-2xl" />
-          <Label className="text-base font-semibold flex items-center space-x-2 relative">
-            <Palette className="h-4 w-4 text-accent" />
-            <span>Tone</span>
-            {selectedTone && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
-          </Label>
-          <Select value={selectedTone} onValueChange={setSelectedTone}>
-            <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-accent/20 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 hover:scale-[1.02]">
-              <SelectValue placeholder="Select tone..." />
-            </SelectTrigger>
-            <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
-              {tones.map((tone) => {
-                const Icon = tone.icon;
-                return (
-                  <SelectItem
-                    key={tone.value}
-                    value={tone.value}
-                    className="hover:bg-gradient-to-r hover:from-accent/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
-                  >
-                    <div className="flex items-center space-x-3 py-1">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${tone.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
-                        <Icon className="h-4 w-4 text-white" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{tone.label}</span>
-                        <span className="text-xs text-muted-foreground">{tone.description}</span>
-                      </div>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-
-          {/* Custom tone input - shown when Custom is selected */}
-          {selectedTone === "custom" && (
-            <div className="space-y-2 animate-in slide-in-from-top duration-300 relative z-10">
-              <Label className="text-sm text-muted-foreground">Custom Tone Description</Label>
-              <Input
-                placeholder=""
-                value={customTone}
-                onChange={(e) => setCustomTone(e.target.value)}
-                className="bg-background border-2 border-warning/20 focus:border-warning/50 transition-colors relative z-10"
-              />
-            </div>
-          )}
         </div>
 
         <Separator />
@@ -815,9 +843,7 @@ export const ContentGenerator = () => {
         {/* Status Info */}
         {canGenerate && (
           <div className="text-xs text-muted-foreground text-center">
-            Ready to generate {selectedOutputType.replace(/-/g, ' ')} content with {selectedPersona} persona
-            {selectedTone && selectedTone !== "custom" && ` in ${tones.find(t => t.value === selectedTone)?.label} tone`}
-            {selectedTone === "custom" && customTone && ` in ${customTone} tone`}
+            Ready to generate {selectedOutputType.replace(/-/g, ' ')} content with {voices.find(v => v.value === selectedVoice)?.label || selectedVoice} voice
           </div>
         )}
       </CardContent>
@@ -830,7 +856,7 @@ export const ContentGenerator = () => {
               Generated Content
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Generated by <strong className="text-primary">{selectedPersona}</strong> as <strong className="text-accent">{selectedOutputType}</strong> with <strong className="text-warning">{tones.find(t => t.value === selectedTone)?.label}</strong> tone for: <strong className="text-foreground">{topic}</strong>
+              Generated by <strong className="text-primary">{voices.find(v => v.value === selectedVoice)?.label || selectedVoice}</strong> voice as <strong className="text-accent">{selectedOutputType}</strong> for: <strong className="text-foreground">{topic}</strong>
             </DialogDescription>
           </DialogHeader>
 
@@ -930,39 +956,39 @@ export const ContentGenerator = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Custom Persona Modal */}
-      <Dialog open={personaModalOpen} onOpenChange={setPersonaModalOpen}>
+      {/* Custom Voice Modal */}
+      <Dialog open={voiceModalOpen} onOpenChange={setVoiceModalOpen}>
         <DialogContent className="sm:max-w-md bg-gradient-card border-border/50 shadow-elegant">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-primary">
-              {editingPersona ? "Edit Persona" : "Create Custom Persona"}
+              {editingVoice ? "Edit Voice" : "Create Custom Voice"}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {editingPersona
-                ? "Update your custom persona details"
-                : "Create a custom persona profile for content generation"}
+              {editingVoice
+                ? "Update your custom voice details"
+                : "Create a custom voice profile for content generation"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="persona-name">Persona Name</Label>
+              <Label htmlFor="voice-name">Voice Name</Label>
               <Input
-                id="persona-name"
-                placeholder=""
-                value={newPersonaName}
-                onChange={(e) => setNewPersonaName(e.target.value)}
+                id="voice-name"
+                placeholder="Enter voice name"
+                value={newVoiceName}
+                onChange={(e) => setNewVoiceName(e.target.value)}
                 className="bg-background"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="persona-description">Persona Description</Label>
+              <Label htmlFor="voice-description">Voice Description</Label>
               <Input
-                id="persona-description"
-                placeholder=""
-                value={newPersonaDescription}
-                onChange={(e) => setNewPersonaDescription(e.target.value)}
+                id="voice-description"
+                placeholder="Describe the voice style"
+                value={newVoiceDescription}
+                onChange={(e) => setNewVoiceDescription(e.target.value)}
                 className="bg-background"
               />
             </div>
@@ -972,20 +998,132 @@ export const ContentGenerator = () => {
             <Button
               variant="outline"
               onClick={() => {
-                setPersonaModalOpen(false);
-                setNewPersonaName("");
-                setNewPersonaDescription("");
-                setEditingPersona(null);
+                setVoiceModalOpen(false);
+                setNewVoiceName("");
+                setNewVoiceDescription("");
+                setEditingVoice(null);
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleSavePersona}
-              disabled={!newPersonaName.trim() || !newPersonaDescription.trim()}
+              onClick={handleSaveVoice}
+              disabled={!newVoiceName.trim() || !newVoiceDescription.trim()}
               className="bg-gradient-primary hover:shadow-glow"
             >
-              {editingPersona ? "Update" : "Create"} Persona
+              {editingVoice ? "Update" : "Create"} Voice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Voice Profile Generation Modal */}
+      <Dialog open={voiceProfileModalOpen} onOpenChange={setVoiceProfileModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-gradient-card border-border/50 shadow-elegant">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Voice Profile Generation
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Upload your articles to create a personalized voice profile
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="voice-profile-name">Your Name</Label>
+              <Input
+                id="voice-profile-name"
+                placeholder="Enter your name"
+                value={voiceProfileName}
+                onChange={(e) => setVoiceProfileName(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Upload your articles</Label>
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                <input
+                  type="file"
+                  id="voice-file-upload"
+                  multiple
+                  accept=".pdf,.txt"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="voice-file-upload"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                  <div className="text-sm font-medium">Click to upload articles</div>
+                  <div className="text-xs text-muted-foreground">PDF or TXT files only</div>
+                </label>
+              </div>
+            </div>
+
+            {/* Uploaded Files List */}
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-2">
+                <Label>Uploaded Files ({uploadedFiles.length})</Label>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-background rounded-lg border border-border"
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span className="text-sm truncate">{file.name}</span>
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleRemoveFile(index)}
+                        className="h-6 w-6 p-0 flex-shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setVoiceProfileModalOpen(false);
+                setUploadedFiles([]);
+                setVoiceProfileName("");
+              }}
+              disabled={isUploadingProfile}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitVoiceProfile}
+              disabled={uploadedFiles.length === 0 || !voiceProfileName.trim() || isUploadingProfile}
+              className="bg-gradient-primary hover:shadow-glow"
+            >
+              {isUploadingProfile ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Voice Profile
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
