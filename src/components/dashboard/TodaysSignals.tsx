@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +46,9 @@ export const TodaysSignals = () => {
   const [selectedOutputType, setSelectedOutputType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [voices, setVoices] = useState<CustomVoice[]>(defaultVoices);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [voiceToDelete, setVoiceToDelete] = useState<CustomVoice | null>(null);
+  const [isDeletingVoice, setIsDeletingVoice] = useState(false);
   const [modalMode, setModalMode] = useState<'form' | 'results'>('form');
   const [generatedContent, setGeneratedContent] = useState("");
   const [editableContent, setEditableContent] = useState("");
@@ -435,64 +439,64 @@ export const TodaysSignals = () => {
     window.dispatchEvent(new Event('voicesUpdated'));
   };
 
-  const handleDeleteVoice = async (voiceValue: string) => {
-    const voiceToDelete = voices.find(v => v.value === voiceValue);
+  const handleDeleteVoice = (voiceValue: string) => {
+    const voice = voices.find(v => v.value === voiceValue);
+    if (voice && !voice.isDefault) {
+      setVoiceToDelete(voice);
+      setDeleteConfirmOpen(true);
+    }
+  };
 
-    // Delete from Supabase
-    if (voiceToDelete && !voiceToDelete.isDefault) {
-      try {
-        let deleteError = null;
+  const confirmDeleteVoice = async () => {
+    if (!voiceToDelete) return;
 
-        // Try to delete by database ID if available
-        if (voiceToDelete.databaseId) {
-          const { error } = await supabase
-            .from('voice_profiles')
-            .delete()
-            .eq('id', voiceToDelete.databaseId);
-          deleteError = error;
-        } else {
-          // Fallback: try to find and delete by profile_name for old voice profiles
-          const { error } = await supabase
-            .from('voice_profiles')
-            .delete()
-            .eq('profile_name', voiceToDelete.label);
-          deleteError = error;
-        }
+    setIsDeletingVoice(true);
 
-        if (deleteError) {
-          console.error('Error deleting voice profile from database:', deleteError);
-          toast({
-            title: "Delete failed",
-            description: "Failed to delete voice profile from database",
-            variant: "destructive",
-          });
-          return;
-        }
-      } catch (error) {
-        console.error('Error deleting voice profile:', error);
-        toast({
-          title: "Delete failed",
-          description: "An error occurred while deleting the voice profile",
-          variant: "destructive",
-        });
-        return;
+    try {
+      // Call webhook to delete from database
+      const webhookUrl = 'https://soleai.app.n8n.cloud/webhook/4d473f2d-67af-4144-b217-0cb9440124a8';
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          voice_name: voiceToDelete.label
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Webhook deletion failed:', response.statusText);
       }
+
+      // Delete from local state regardless of webhook success
+      const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
+      setVoices(updatedVoices);
+      saveCustomVoices(updatedVoices);
+
+      // Clear selection if deleting the currently selected voice
+      if (selectedVoice === voiceToDelete.value) {
+        setSelectedVoice("");
+      }
+
+      toast({
+        title: "Voice deleted",
+        description: "Voice profile has been removed successfully",
+      });
+
+      setDeleteConfirmOpen(false);
+      setVoiceToDelete(null);
+    } catch (error) {
+      console.error('Error deleting voice profile:', error);
+      toast({
+        title: "Delete failed",
+        description: "An error occurred while deleting the voice profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingVoice(false);
     }
-
-    // Delete from local state
-    const updatedVoices = voices.filter(v => v.value !== voiceValue);
-    setVoices(updatedVoices);
-    saveCustomVoices(updatedVoices);
-
-    // Clear selection if deleting the currently selected voice
-    if (selectedVoice === voiceValue) {
-      setSelectedVoice("");
-    }
-
-    toast({
-      title: "Voice deleted",
-      description: "Voice profile has been removed successfully",
-    });
   };
 
   const sendToEditorial = async () => {
@@ -1500,6 +1504,35 @@ export const TodaysSignals = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Voice Profile</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{voiceToDelete?.label}"? This action cannot be undone and will permanently remove this voice profile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingVoice}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteVoice}
+              disabled={isDeletingVoice}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingVoice ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
