@@ -68,6 +68,7 @@ interface CustomVoice {
   icon?: any;
   color?: string;
   userId?: string;
+  databaseId?: string; // Supabase voice_profiles table ID
 }
 
 const VOICES_STORAGE_KEY = 'sole-custom-voices';
@@ -100,23 +101,62 @@ export const ContentGenerator = () => {
   const [articleItemRef, setArticleItemRef] = useState<HTMLDivElement | null>(null);
   const [hideTimeout, setHideTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Load custom voices from localStorage on mount
+  // Load custom voices from localStorage and listen for changes
   useEffect(() => {
-    const stored = localStorage.getItem(VOICES_STORAGE_KEY);
-    if (stored) {
-      try {
-        const customVoices = JSON.parse(stored);
-        setVoices([...defaultVoices, ...customVoices]);
-      } catch (e) {
-        console.error('Failed to load custom voices:', e);
+    const loadVoices = () => {
+      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
+      if (stored) {
+        try {
+          let customVoices = JSON.parse(stored);
+
+          // Clean up old voice profiles with "My Voice Profile" label
+          const cleanedVoices = customVoices.filter((v: CustomVoice) => v.label !== 'My Voice Profile');
+
+          // If we removed any, save the cleaned version
+          if (cleanedVoices.length !== customVoices.length) {
+            localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(cleanedVoices));
+            customVoices = cleanedVoices;
+          }
+
+          setVoices([...defaultVoices, ...customVoices]);
+        } catch (e) {
+          console.error('Failed to load custom voices:', e);
+        }
+      } else {
+        setVoices(defaultVoices);
       }
-    }
+    };
+
+    // Initial load
+    loadVoices();
+
+    // Listen for storage changes (from other components)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === VOICES_STORAGE_KEY) {
+        loadVoices();
+      }
+    };
+
+    // Listen for custom event (for same-page updates)
+    const handleVoiceUpdate = () => {
+      loadVoices();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('voicesUpdated', handleVoiceUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('voicesUpdated', handleVoiceUpdate);
+    };
   }, []);
 
   // Save custom voices to localStorage
   const saveCustomVoices = (allVoices: CustomVoice[]) => {
     const customOnly = allVoices.filter(v => !v.isDefault);
     localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customOnly));
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new Event('voicesUpdated'));
   };
 
   const handleVoiceChange = (value: string) => {
@@ -178,7 +218,53 @@ export const ContentGenerator = () => {
     setVoiceModalOpen(true);
   };
 
-  const handleDeleteVoice = (voiceValue: string) => {
+  const handleDeleteVoice = async (voiceValue: string) => {
+    const voiceToDelete = voices.find(v => v.value === voiceValue);
+
+    // Delete from Supabase
+    if (voiceToDelete && !voiceToDelete.isDefault) {
+      try {
+        let deleteError = null;
+
+        // Try to delete by database ID if available
+        if (voiceToDelete.databaseId) {
+          const { error } = await supabase
+            .from('voice_profiles')
+            .delete()
+            .eq('id', voiceToDelete.databaseId);
+          deleteError = error;
+        } else {
+          // Fallback: try to find and delete by profile_name for old voice profiles
+          const { error } = await supabase
+            .from('voice_profiles')
+            .delete()
+            .eq('profile_name', voiceToDelete.label);
+          deleteError = error;
+        }
+
+        if (deleteError) {
+          console.error('Error deleting voice profile from database:', deleteError);
+          const { toast } = await import("@/hooks/use-toast");
+          toast({
+            title: "Delete failed",
+            description: "Failed to delete voice profile from database",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error deleting voice profile:', error);
+        const { toast } = await import("@/hooks/use-toast");
+        toast({
+          title: "Delete failed",
+          description: "An error occurred while deleting the voice profile",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Delete from local state
     const updatedVoices = voices.filter(v => v.value !== voiceValue);
     setVoices(updatedVoices);
     saveCustomVoices(updatedVoices);
@@ -187,6 +273,12 @@ export const ContentGenerator = () => {
     if (selectedVoice === voiceValue) {
       setSelectedVoice("");
     }
+
+    const { toast } = await import("@/hooks/use-toast");
+    toast({
+      title: "Voice deleted",
+      description: "Voice profile has been removed successfully",
+    });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,13 +332,37 @@ export const ContentGenerator = () => {
       if (response.ok) {
         const result = await response.json();
 
+        let voiceProfileId: string | undefined;
+
+        // Try to save to Supabase voice_profiles table (optional)
+        try {
+          const { data: voiceProfileData, error: dbError } = await supabase
+            .from('voice_profiles')
+            .insert({
+              profile_name: voiceProfileName.trim(),
+              style_json: result.style_json || {},
+              samples: result.samples || []
+            })
+            .select()
+            .single();
+
+          if (dbError) {
+            console.warn('Could not save voice profile to database:', dbError);
+          } else {
+            voiceProfileId = voiceProfileData?.id;
+          }
+        } catch (dbError) {
+          console.warn('Error saving voice profile to database (non-fatal):', dbError);
+        }
+
         // Create voice profile in local state
         const newVoice: CustomVoice = {
           value: `voice-${Date.now()}`,
-          label: result.voiceName || 'My Voice Profile',
+          label: voiceProfileName,
           description: result.description || 'Custom voice profile',
           isDefault: false,
-          userId: user.user.id
+          userId: user.user.id,
+          databaseId: voiceProfileId
         };
 
         const updatedVoices = [...voices, newVoice];
@@ -300,23 +416,19 @@ export const ContentGenerator = () => {
       // Get voice details
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
-      const payload = {
+      const payload: any = {
+        voice_name: voiceDetails?.label || selectedVoice,
         signal: {
-          id: Date.now(),
           headline: topic,
-          summary: topic,
-          tags: ["Generated Content"],
-          priority: "Medium",
-          source: "Content Generator",
-          score: 85,
-          engagement: "+25%"
+          summary: topic
         },
-        voice: selectedVoice,
-        voiceName: voiceDetails?.label || selectedVoice,
-        voiceDescription: voiceDetails?.description || "",
-        outputType: baseOutputType,
-        articleLength: articleLength || undefined
+        output_type: baseOutputType
       };
+
+      // Add article_length only if it exists
+      if (articleLength) {
+        payload.article_length = articleLength;
+      }
 
       console.log('Sending payload:', payload);
 
@@ -550,26 +662,22 @@ export const ContentGenerator = () => {
     setIsProcessingAction(action);
 
     try {
+      const voiceDetails = voices.find(v => v.value === selectedVoice);
+
       const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          voice_name: voiceDetails?.label || selectedVoice,
           signal: {
-            id: Date.now(),
             headline: topic,
-            summary: topic,
-            tags: ["Generated Content"],
-            priority: "Medium",
-            source: "Content Generator",
-            score: 85,
-            engagement: "+25%"
+            summary: topic
           },
-          voice: selectedVoice,
-          outputType: selectedOutputType,
+          output_type: selectedOutputType,
           content: generatedContent,
-          quickAction: action
+          quick_action: action
         })
       });
 
@@ -1032,10 +1140,10 @@ export const ContentGenerator = () => {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="voice-profile-name">Your Name</Label>
+              <Label htmlFor="voice-profile-name">Name your voice</Label>
               <Input
                 id="voice-profile-name"
-                placeholder="Enter your name"
+                placeholder="Name your voice..."
                 value={voiceProfileName}
                 onChange={(e) => setVoiceProfileName(e.target.value)}
                 className="bg-background"

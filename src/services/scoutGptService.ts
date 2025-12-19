@@ -7,6 +7,7 @@ export interface ScoutGptSignal {
   published_at: string;
   tag?: string[];
   score: number;
+  source?: string;
 }
 
 export interface ProcessedSignal {
@@ -49,8 +50,15 @@ export class ScoutGptService {
       console.log('📡 Endpoint:', endpoint);
       console.log('🎯 Topic filter:', topic);
 
+      // Create a timeout promise (3 minutes = 180000ms)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('Request timeout: The search took longer than 3 minutes and has been cancelled.'));
+        }, 180000); // 3 minutes
+      });
+
       // Use POST request (n8n webhook is configured for POST)
-      const response = await fetch(endpoint, {
+      const fetchPromise = fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,6 +69,9 @@ export class ScoutGptService {
           topic: topic || undefined
         })
       });
+
+      // Race between fetch and timeout
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
 
       console.log('📊 Response status:', response.status);
       console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
@@ -83,32 +94,64 @@ export class ScoutGptService {
 
   static parseSignalsResponse(data: any): ScoutGptSignal[] {
     console.log('🔍 Parsing signals response...');
+    console.log('🔍 Full response data:', JSON.stringify(data, null, 2));
 
     // Handle different response formats
     let signals: ScoutGptSignal[] = [];
 
     if (Array.isArray(data)) {
       console.log('📋 Response is array with', data.length, 'items');
-      signals = data;
+
+      // Check if items have 'output' wrapper (n8n format)
+      if (data.length > 0 && data[0].output) {
+        console.log('📋 Detected n8n output wrapper format');
+        signals = data.map(item => item.output);
+      } else {
+        signals = data;
+      }
     } else if (data.signals && Array.isArray(data.signals)) {
       console.log('📋 Response has signals array with', data.signals.length, 'items');
       signals = data.signals;
     } else if (data.data && Array.isArray(data.data)) {
       console.log('📋 Response has data array with', data.data.length, 'items');
       signals = data.data;
+    } else if (data.results && Array.isArray(data.results)) {
+      console.log('📋 Response has results array with', data.results.length, 'items');
+      signals = data.results;
+    } else if (data.items && Array.isArray(data.items)) {
+      console.log('📋 Response has items array with', data.items.length, 'items');
+      signals = data.items;
+    } else if (data.output) {
+      console.log('📋 Response is single object with output wrapper');
+      signals = [data.output];
     } else if (data.topic && data.summary) {
       console.log('📋 Response is single signal object');
+      signals = [data];
+    } else if (data.headline && data.summary) {
+      console.log('📋 Response is single signal object with headline');
       signals = [data];
     } else {
       console.log('⚠️ Unknown response format:', data);
       // Log all keys for debugging
       if (typeof data === 'object' && data !== null) {
         console.log('🔑 Available keys:', Object.keys(data));
+        console.log('🔑 Full data structure:', JSON.stringify(data, null, 2));
+
+        // Try to find any array in the response
+        for (const key of Object.keys(data)) {
+          if (Array.isArray(data[key])) {
+            console.log(`🔍 Found array in key "${key}" with ${data[key].length} items`);
+            signals = data[key];
+            break;
+          }
+        }
       }
-      signals = [];
     }
 
     console.log('🎯 Found', signals.length, 'raw signals');
+    if (signals.length > 0) {
+      console.log('📝 First signal structure:', JSON.stringify(signals[0], null, 2));
+    }
 
     // Filter and validate signals
     const validSignals = signals.filter(signal => {
@@ -118,12 +161,16 @@ export class ScoutGptService {
 
       if (!isValid) {
         console.log('❌ Invalid signal:', signal);
+        console.log('❌ Signal keys:', signal ? Object.keys(signal) : 'null');
       }
 
       return isValid;
     });
 
     console.log('✅ Valid signals:', validSignals.length);
+    if (validSignals.length > 0) {
+      console.log('✅ Sample valid signal:', JSON.stringify(validSignals[0], null, 2));
+    }
     return validSignals;
   }
 
@@ -173,7 +220,7 @@ export class ScoutGptService {
           published_at: signal.published_at || signal.date ? new Date(signal.published_at || signal.date).toISOString() : new Date().toISOString(),
           tag: tag,
           score: score,
-          source: 'Scout GPT',
+          source: signal.source || 'Scout GPT',
           analyzed_at: signal.analyzed_at ? new Date(signal.analyzed_at).toISOString() : new Date().toISOString(),
           community_context: signal.community_context || null,
           narrative_stakes: signal.narrative_stakes || null,
@@ -234,8 +281,7 @@ export class ScoutGptService {
         .from('signals_ranked')
         .select('*')
         .order('score', { ascending: false })
-        .order('analyzed_at', { ascending: false })
-        .limit(3);
+        .order('analyzed_at', { ascending: false });
 
       if (error) {
         console.error('❌ Database query error:', error);
@@ -317,8 +363,8 @@ export class ScoutGptService {
       const scoutSignals = await this.fetchSignalsFromScoutGpt(topic);
 
       if (scoutSignals.length === 0) {
-        console.log('No new signals from Scout GPT, loading from database...');
-        return await this.loadSignalsFromDatabase();
+        console.log('⚠️ No signals returned from Scout GPT');
+        throw new Error(`No signals found for topic: ${topic || 'general trends'}. Please try a different topic or try again later.`);
       }
 
       // Save to database and return processed signals
@@ -328,22 +374,15 @@ export class ScoutGptService {
       return processedSignals;
 
     } catch (error) {
-      console.error('Error in fetchAndSaveSignals, falling back to database:', error);
+      console.error('Error in fetchAndSaveSignals:', error);
 
-      // Fallback to database signals
-      try {
-        const dbSignals = await this.loadSignalsFromDatabase();
-        if (dbSignals.length > 0) {
-          return dbSignals;
-        }
-      } catch (dbError) {
-        console.error('Database fallback also failed:', dbError);
+      // Check if it's a timeout error
+      if (error.message && error.message.includes('timeout')) {
+        throw new Error('Search timed out after 3 minutes. Scout GPT is taking longer than expected to analyze this topic. This could mean the topic is very broad or the service is currently busy. Please try again with a more specific topic or wait a few minutes.');
       }
 
-      // If both API and database fail, create mock signals for testing
-      console.log('Creating mock signals for testing...');
-      const { createMockSignals } = await import('./mockSignals');
-      return createMockSignals();
+      // Re-throw the original error with context
+      throw error;
     }
   }
 }

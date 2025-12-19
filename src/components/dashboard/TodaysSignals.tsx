@@ -3,10 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2 } from "lucide-react";
+import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
@@ -15,6 +15,24 @@ import { DatabaseTest } from "@/services/testDatabase";
 import { quickDatabaseTest } from "@/services/quickTest";
 import { testScoutGptApi } from "@/services/testScoutGpt";
 
+interface CustomVoice {
+  value: string;
+  label: string;
+  description: string;
+  isDefault: boolean;
+  icon?: any;
+  color?: string;
+  userId?: string;
+  databaseId?: string; // Supabase voice_profiles table ID
+}
+
+const defaultVoices: CustomVoice[] = [
+  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true, icon: Briefcase, color: "from-blue-500 to-blue-600" },
+  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true, icon: Palette, color: "from-purple-500 to-pink-500" },
+  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true, icon: Target, color: "from-orange-500 to-red-500" }
+];
+
+const VOICES_STORAGE_KEY = 'sole-custom-voices';
 
 export const TodaysSignals = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -23,10 +41,10 @@ export const TodaysSignals = () => {
   const [allSignalsModalOpen, setAllSignalsModalOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
-  const [selectedPersona, setSelectedPersona] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState("");
   const [selectedOutputType, setSelectedOutputType] = useState("");
-  const [selectedTone, setSelectedTone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [voices, setVoices] = useState<CustomVoice[]>(defaultVoices);
   const [modalMode, setModalMode] = useState<'form' | 'results'>('form');
   const [generatedContent, setGeneratedContent] = useState("");
   const [editableContent, setEditableContent] = useState("");
@@ -34,36 +52,105 @@ export const TodaysSignals = () => {
   const [fullResponse, setFullResponse] = useState<any>(null);
   const [topicSearch, setTopicSearch] = useState("");
   const [isFilteringByTopic, setIsFilteringByTopic] = useState(false);
+  const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const { toast } = useToast();
-
-  const personas = [
-    { value: "Malcolm", label: "Malcolm", icon: Briefcase, description: "Strategic business perspective", color: "from-blue-500 to-blue-600" },
-    { value: "Ana", label: "Ana", icon: Palette, description: "Creative and artistic approach", color: "from-purple-500 to-pink-500" },
-    { value: "Winston", label: "Winston", icon: Target, description: "Results-driven strategist", color: "from-orange-500 to-red-500" },
-    { value: "Business Analyst", label: "Business Analyst", icon: BarChart3, description: "Data and metrics focused", color: "from-emerald-500 to-teal-500" },
-    { value: "Content Creator", label: "Content Creator", icon: FileEdit, description: "Engaging content specialist", color: "from-indigo-500 to-purple-500" },
-    { value: "Marketing Manager", label: "Marketing Manager", icon: Users, description: "Audience-focused marketer", color: "from-pink-500 to-rose-500" },
-    { value: "Social Media Manager", label: "Social Media Manager", icon: MessageSquare, description: "Social engagement expert", color: "from-cyan-500 to-blue-500" },
-    { value: "Technical Writer", label: "Technical Writer", icon: BookOpen, description: "Clear technical documentation", color: "from-slate-500 to-gray-600" },
-    { value: "Brand Strategist", label: "Brand Strategist", icon: Star, description: "Brand identity expert", color: "from-yellow-500 to-orange-500" },
-    { value: "Communications Director", label: "Communications Director", icon: Globe, description: "Corporate communications", color: "from-teal-500 to-cyan-500" }
-  ];
 
   const outputTypes = [
     { value: "Article", label: "Article", icon: FileText, description: "In-depth written content", color: "from-blue-500 to-cyan-500", available: true },
     { value: "Tweet thread", label: "Tweet thread", icon: MessageSquare, description: "Threaded social posts", color: "from-sky-500 to-blue-500", available: true },
     { value: "Script", label: "Script", icon: Video, description: "Video or audio script", color: "from-purple-500 to-pink-500", available: true },
-    { value: "Prompt", label: "Prompt", icon: Lightbulb, description: "AI prompt template", color: "from-yellow-500 to-orange-500", available: true },
-    { value: "Longform (future)", label: "Longform", icon: BookOpen, description: "Extended article format", color: "from-gray-400 to-gray-500", available: false },
-    { value: "White paper (future)", label: "White paper", icon: ScrollText, description: "Professional report", color: "from-gray-400 to-gray-500", available: false }
+    { value: "Prompt", label: "Prompt", icon: Lightbulb, description: "AI prompt template", color: "from-yellow-500 to-orange-500", available: true }
   ];
 
-  const tones = [
-    { value: "poetic", label: "Poetic", icon: Palette, description: "Creative and artistic expression", color: "from-purple-500 to-pink-500" },
-    { value: "urgent", label: "Urgent", icon: AlertCircle, description: "Time-sensitive and compelling", color: "from-orange-500 to-red-500" },
-    { value: "data-driven", label: "Data-driven", icon: BarChart3, description: "Facts and analytics focused", color: "from-blue-500 to-cyan-500" },
-    { value: "cultural", label: "Cultural", icon: Globe, description: "Socially aware perspective", color: "from-emerald-500 to-teal-500" }
+  const topicGroups = [
+    {
+      label: "Technology & Innovation",
+      icon: Globe,
+      color: "from-blue-500 to-cyan-500",
+      topics: ["ai", "tech", "data", "algorithms", "digital", "internet", "network", "innovation"]
+    },
+    {
+      label: "Business & Career",
+      icon: Briefcase,
+      color: "from-orange-500 to-amber-500",
+      topics: ["business", "career", "startups", "funding", "enterprise", "entrepreneurship", "strategy", "leadership"]
+    },
+    {
+      label: "Society & Culture",
+      icon: Users,
+      color: "from-purple-500 to-pink-500",
+      topics: ["culture", "society", "community", "equity", "race", "women", "latinx", "public opinion", "history"]
+    },
+    {
+      label: "Media & Entertainment",
+      icon: Video,
+      color: "from-rose-500 to-red-500",
+      topics: ["media", "entertainment", "music", "hip hop", "art", "artists", "clubs"]
+    },
+    {
+      label: "Knowledge & Research",
+      icon: BookOpen,
+      color: "from-emerald-500 to-teal-500",
+      topics: ["education", "research", "data justice", "ethics", "policy", "investigations"]
+    },
+    {
+      label: "Lifestyle & Personal",
+      icon: Star,
+      color: "from-indigo-500 to-purple-500",
+      topics: ["life", "lifestyle", "beauty", "interviews", "process", "news"]
+    }
   ];
+
+  // Load custom voices from localStorage and listen for changes
+  useEffect(() => {
+    const loadVoices = () => {
+      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
+      if (stored) {
+        try {
+          let customVoices = JSON.parse(stored);
+
+          // Clean up old voice profiles with "My Voice Profile" label
+          const cleanedVoices = customVoices.filter((v: CustomVoice) => v.label !== 'My Voice Profile');
+
+          // If we removed any, save the cleaned version
+          if (cleanedVoices.length !== customVoices.length) {
+            localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(cleanedVoices));
+            customVoices = cleanedVoices;
+          }
+
+          setVoices([...defaultVoices, ...customVoices]);
+        } catch (e) {
+          console.error('Failed to load custom voices:', e);
+        }
+      } else {
+        setVoices(defaultVoices);
+      }
+    };
+
+    // Initial load
+    loadVoices();
+
+    // Listen for storage changes (from other components)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === VOICES_STORAGE_KEY) {
+        loadVoices();
+      }
+    };
+
+    // Listen for custom event (for same-page updates)
+    const handleVoiceUpdate = () => {
+      loadVoices();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('voicesUpdated', handleVoiceUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('voicesUpdated', handleVoiceUpdate);
+    };
+  }, []);
 
   // Load signals on component mount
   useEffect(() => {
@@ -73,8 +160,14 @@ export const TodaysSignals = () => {
 
     // Listen for signal updates from scheduler
     const handleSignalsUpdated = () => {
-      console.log('Signals updated event received, reloading...');
-      loadInitialSignals();
+      console.log('Signals updated event received');
+      // Only reload if a topic is already selected
+      if (topicSearch.trim()) {
+        console.log('Reloading signals for topic:', topicSearch);
+        loadInitialSignals();
+      } else {
+        console.log('No topic selected, skipping automatic reload');
+      }
     };
 
     window.addEventListener('signalsUpdated', handleSignalsUpdated);
@@ -139,8 +232,9 @@ export const TodaysSignals = () => {
       return;
     }
 
-    // If all tests pass, load signals
-    await loadInitialSignals();
+    // Don't automatically load signals - wait for user to search
+    setIsLoadingAllSignals(false);
+    console.log('✅ Ready for user to search signals');
   };
 
   // Topic search management functions
@@ -173,54 +267,109 @@ export const TodaysSignals = () => {
       return;
     }
 
+    console.log('🔍 Search button clicked with topic:', topicSearch);
     saveTopicToLocalStorage(topicSearch);
     setIsFilteringByTopic(true);
-    await loadInitialSignals();
-    setIsFilteringByTopic(false);
+
+    try {
+      await loadInitialSignals();
+      console.log('✅ Search completed successfully');
+    } catch (error) {
+      console.error('❌ Search failed:', error);
+      const errorMessage = error.message || "Failed to search for signals";
+      const isTimeout = errorMessage.toLowerCase().includes("timeout");
+
+      toast({
+        title: isTimeout ? "Search Timed Out" : "Search Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsFilteringByTopic(false);
+    }
   };
 
   const handleClearTopic = () => {
     setTopicSearch("");
     saveTopicToLocalStorage("");
-    loadInitialSignals();
+    setSignals([]); // Clear signals instead of reloading
   };
 
   const loadInitialSignals = async () => {
+    // Require topic to be selected
+    if (!topicSearch.trim()) {
+      console.log('⚠️ No topic selected, skipping signal fetch');
+      setIsLoadingAllSignals(false);
+      return;
+    }
+
     try {
       console.log('🔄 Starting loadInitialSignals...');
+      console.log('🔄 Current signals in state:', signals.length);
       setIsLoadingAllSignals(true);
 
-      console.log('📡 Fetching fresh signals from Scout GPT on login...');
+      console.log('📡 Fetching fresh signals from Scout GPT...');
       console.log('🎯 Using topic filter:', topicSearch);
-      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim() ? topicSearch.trim() : undefined);
+      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim());
       console.log('📊 Fetched new signals count:', newSignals.length);
+      console.log('📊 New signals data:', JSON.stringify(newSignals.slice(0, 2), null, 2));
+
+      if (newSignals.length === 0) {
+        console.warn('⚠️ No signals returned from ScoutGptService');
+        toast({
+          title: "No signals found",
+          description: `No signals found for topic: ${topicSearch}`,
+          variant: "destructive",
+        });
+        setSignals([]);
+        return;
+      }
 
       // Sort signals by score (highest first) before setting state
       const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
+      console.log('📊 Sorted signals count:', sortedSignals.length);
+      console.log('📊 Top signal after sort:', sortedSignals[0]?.headline, 'Score:', sortedSignals[0]?.score);
+
       setSignals(sortedSignals);
       console.log('✅ Set new signals to state (sorted by score)');
+      console.log('✅ State should now have', sortedSignals.length, 'signals');
 
       toast({
         title: "Signals loaded",
-        description: `Loaded ${newSignals.length} fresh signals`,
+        description: `Loaded ${newSignals.length} fresh signals for "${topicSearch}"`,
       });
     } catch (error) {
       console.error('❌ Error loading initial signals:', error);
+      console.error('❌ Error stack:', error.stack);
       setSignals([]); // Set empty array on error
 
+      const errorMessage = error.message || "Failed to load signals";
+      const isTimeout = errorMessage.toLowerCase().includes("timeout");
+
       toast({
-        title: "Error loading signals",
-        description: error.message || "Failed to load signals. Please try again.",
+        title: isTimeout ? "Search Timed Out" : "Error Loading Signals",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsLoadingAllSignals(false);
       console.log('🏁 loadInitialSignals completed');
+      console.log('🏁 Final signals in state:', signals.length);
     }
   };
 
   const handleLoadMoreSignals = async () => {
     console.log('🔄 Load More Signals button clicked!');
+
+    // Require topic to be selected
+    if (!topicSearch.trim()) {
+      toast({
+        title: "Topic required",
+        description: "Please select a topic before loading signals",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       console.log('🚀 Starting manual signal fetch...');
@@ -233,7 +382,7 @@ export const TodaysSignals = () => {
 
       console.log('📡 Calling ScoutGptService.fetchAndSaveSignals()...');
       console.log('🎯 Using topic filter:', topicSearch);
-      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim() ? topicSearch.trim() : undefined);
+      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim());
       console.log('✅ Received signals:', newSignals.length);
       console.log('📝 Signal details:', newSignals);
 
@@ -254,9 +403,12 @@ export const TodaysSignals = () => {
         name: error.name
       });
 
+      const errorMessage = error.message || "Failed to load signals";
+      const isTimeout = errorMessage.toLowerCase().includes("timeout");
+
       toast({
-        title: "Error",
-        description: `Failed to load new signals: ${error.message}`,
+        title: isTimeout ? "Search Timed Out" : "Error Loading Signals",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -267,9 +419,8 @@ export const TodaysSignals = () => {
 
   const openEditorialModal = (signal: Signal) => {
     setSelectedSignal(signal);
-    setSelectedPersona("");
+    setSelectedVoice("");
     setSelectedOutputType("");
-    setSelectedTone("");
     setModalMode('form');
     setGeneratedContent("");
     setEditableContent("");
@@ -277,9 +428,76 @@ export const TodaysSignals = () => {
     setModalOpen(true);
   };
 
+  const saveCustomVoices = (allVoices: CustomVoice[]) => {
+    const customOnly = allVoices.filter(v => !v.isDefault);
+    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customOnly));
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new Event('voicesUpdated'));
+  };
+
+  const handleDeleteVoice = async (voiceValue: string) => {
+    const voiceToDelete = voices.find(v => v.value === voiceValue);
+
+    // Delete from Supabase
+    if (voiceToDelete && !voiceToDelete.isDefault) {
+      try {
+        let deleteError = null;
+
+        // Try to delete by database ID if available
+        if (voiceToDelete.databaseId) {
+          const { error } = await supabase
+            .from('voice_profiles')
+            .delete()
+            .eq('id', voiceToDelete.databaseId);
+          deleteError = error;
+        } else {
+          // Fallback: try to find and delete by profile_name for old voice profiles
+          const { error } = await supabase
+            .from('voice_profiles')
+            .delete()
+            .eq('profile_name', voiceToDelete.label);
+          deleteError = error;
+        }
+
+        if (deleteError) {
+          console.error('Error deleting voice profile from database:', deleteError);
+          toast({
+            title: "Delete failed",
+            description: "Failed to delete voice profile from database",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error deleting voice profile:', error);
+        toast({
+          title: "Delete failed",
+          description: "An error occurred while deleting the voice profile",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // Delete from local state
+    const updatedVoices = voices.filter(v => v.value !== voiceValue);
+    setVoices(updatedVoices);
+    saveCustomVoices(updatedVoices);
+
+    // Clear selection if deleting the currently selected voice
+    if (selectedVoice === voiceValue) {
+      setSelectedVoice("");
+    }
+
+    toast({
+      title: "Voice deleted",
+      description: "Voice profile has been removed successfully",
+    });
+  };
+
   const sendToEditorial = async () => {
-    if (!selectedSignal || !selectedPersona || !selectedOutputType || !selectedTone) {
-      console.log('Missing required fields:', { selectedSignal, selectedPersona, selectedOutputType, selectedTone });
+    if (!selectedSignal || !selectedVoice || !selectedOutputType) {
+      console.log('Missing required fields:', { selectedSignal, selectedVoice, selectedOutputType });
       return;
     }
 
@@ -287,20 +505,16 @@ export const TodaysSignals = () => {
     setIsSubmitting(true);
 
     try {
+      // Get voice details
+      const voiceDetails = voices.find(v => v.value === selectedVoice);
+
       const payload = {
+        voice_name: voiceDetails?.label || selectedVoice,
         signal: {
-          id: selectedSignal.id,
           headline: selectedSignal.headline,
-          summary: selectedSignal.summary,
-          tags: selectedSignal.tags,
-          priority: selectedSignal.priority,
-          source: selectedSignal.source,
-          score: selectedSignal.score,
-          engagement: selectedSignal.engagement
+          summary: selectedSignal.summary
         },
-        persona: selectedPersona,
-        outputType: selectedOutputType,
-        tone: selectedTone
+        output_type: selectedOutputType
       };
 
       console.log('Sending payload:', payload);
@@ -341,8 +555,7 @@ export const TodaysSignals = () => {
                 user_id: user.user.id,
                 title: `${selectedOutputType.replace('-', ' ')} about ${selectedSignal.headline.substring(0, 50)}`,
                 content: formattedContent,
-                persona: selectedPersona,
-                tones: [selectedTone],
+                persona: selectedVoice,
                 output_type: selectedOutputType,
                 status: 'draft',
                 topic_context: selectedSignal.headline
@@ -417,27 +630,23 @@ export const TodaysSignals = () => {
     setIsProcessingAction(action);
 
     try {
+      // Get voice details
+      const voiceDetails = voices.find(v => v.value === selectedVoice);
+
       const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          voice_name: voiceDetails?.label || selectedVoice,
           signal: {
-            id: selectedSignal.id,
             headline: selectedSignal.headline,
-            summary: selectedSignal.summary,
-            tags: selectedSignal.tags,
-            priority: selectedSignal.priority,
-            source: selectedSignal.source,
-            score: selectedSignal.score,
-            engagement: selectedSignal.engagement
+            summary: selectedSignal.summary
           },
-          persona: selectedPersona,
-          outputType: selectedOutputType,
-          tone: selectedTone,
+          output_type: selectedOutputType,
           content: editableContent,
-          quickAction: action
+          quick_action: action
         })
       });
 
@@ -584,9 +793,8 @@ export const TodaysSignals = () => {
 
   const goBackToForm = () => {
     setModalMode('form');
-    setSelectedPersona("");
+    setSelectedVoice("");
     setSelectedOutputType("");
-    setSelectedTone("");
     setGeneratedContent("");
     setEditableContent("");
     setIsProcessingAction("");
@@ -628,12 +836,12 @@ export const TodaysSignals = () => {
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Topic Filter Section */}
-        <div className="relative mb-4">
+        <div className="relative mb-4 z-50">
           {/* Multi-layer glow effects */}
           <div className="absolute inset-0 -m-2 bg-gradient-to-br from-primary/15 via-accent/10 to-primary/15 blur-2xl opacity-30 rounded-2xl" />
 
           {/* Main container */}
-          <div className="relative bg-white/98 backdrop-blur-2xl rounded-2xl border-2 border-primary/20 p-4 shadow-[0_4px_20px_rgba(208,126,59,0.12),0_2px_8px_rgba(208,126,59,0.08)] overflow-hidden">
+          <div className="relative bg-white/98 backdrop-blur-2xl rounded-2xl border-2 border-primary/20 p-4 shadow-[0_4px_20px_rgba(208,126,59,0.12),0_2px_8px_rgba(208,126,59,0.08)]">
             {/* Animated gradient border effect */}
             <div className="absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 -z-10 animate-gradient-shift" style={{ backgroundSize: '200% 200%' }} />
 
@@ -642,23 +850,24 @@ export const TodaysSignals = () => {
               <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-primary">
                 <Search className="h-3.5 w-3.5 text-white" />
               </div>
-              <h3 className="font-bold text-sm text-foreground">Filter by Topic</h3>
+              <h3 className="font-bold text-sm text-foreground">Search by Topic</h3>
             </div>
 
             {/* Input section */}
-            <div className="flex space-x-2">
-              <Input
-                type="text"
-                placeholder="Enter topic (e.g., AI, Sneakers, Fashion)..."
-                value={topicSearch}
-                onChange={(e) => setTopicSearch(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearchWithTopic();
-                  }
-                }}
-                className="flex-1 bg-background/50 border-primary/20 focus:border-primary/50 focus:ring-primary/30 rounded-xl text-sm placeholder:text-muted-foreground/70 transition-all duration-300"
-              />
+            <div className="flex space-x-2 relative z-[60]">
+              {/* Custom Dropdown */}
+              <div className="relative flex-1">
+                <button
+                  onClick={() => setIsTopicDropdownOpen(!isTopicDropdownOpen)}
+                  className="w-full bg-white border-2 border-primary/20 focus:border-primary/50 hover:border-primary/40 rounded-xl text-sm transition-all duration-300 px-4 py-2 text-left flex items-center justify-between"
+                >
+                  <span className={topicSearch ? "text-foreground capitalize" : "text-muted-foreground"}>
+                    {topicSearch || "Select a topic..."}
+                  </span>
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+
               {topicSearch && (
                 <Button
                   size="sm"
@@ -692,30 +901,138 @@ export const TodaysSignals = () => {
             {/* Helper text */}
             <p className="text-xs text-muted-foreground mt-2 ml-1">
               {!topicSearch.trim()
-                ? "Enter a topic to filter signals or leave empty for general signals"
+                ? "Select a topic to filter signals from specific feeds"
                 : `Ready to search for "${topicSearch}"`
               }
             </p>
           </div>
         </div>
 
+        {/* Dropdown Panel - Rendered outside container at root level */}
+        {isTopicDropdownOpen && (
+          <div className="fixed inset-0 z-[998]" onClick={() => {
+            setIsTopicDropdownOpen(false);
+            setHoveredCategory(null);
+          }}>
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+
+            {/* Dropdown Panel */}
+            <div
+              className="absolute bg-white border-2 border-primary/30 rounded-xl shadow-2xl z-[999] overflow-hidden"
+              style={{
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 'calc(100% - 32px)',
+                maxWidth: '600px'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex min-h-[320px]">
+                {/* Left Side: Categories */}
+                <div className="w-1/2 border-r border-border/30 p-3 bg-gradient-to-br from-gray-50 to-white">
+                  <p className="text-xs font-bold text-muted-foreground px-3 py-2 mb-1">CATEGORIES</p>
+                  <div className="space-y-1">
+                    {topicGroups.map((group) => {
+                      const Icon = group.icon;
+                      return (
+                        <div
+                          key={group.label}
+                          onMouseEnter={() => setHoveredCategory(group.label)}
+                          className={`flex items-center space-x-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                            hoveredCategory === group.label
+                              ? 'bg-gradient-to-r ' + group.color + ' text-white shadow-lg scale-[1.02]'
+                              : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 shadow-sm ${
+                            hoveredCategory === group.label
+                              ? 'bg-white/20'
+                              : 'bg-gradient-to-r ' + group.color
+                          }`}>
+                            <Icon className="h-4 w-4 text-white" />
+                          </div>
+                          <span className="text-sm font-medium">{group.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Side: Topics */}
+                <div className="w-1/2 p-3 bg-white">
+                  {hoveredCategory ? (
+                    <>
+                      <p className="text-xs font-bold text-primary px-3 py-2 mb-1 bg-primary/5 rounded-lg">
+                        {hoveredCategory.toUpperCase()}
+                      </p>
+                      <div className="space-y-0.5 max-h-[260px] overflow-y-auto pr-2">
+                        {topicGroups
+                          .find((g) => g.label === hoveredCategory)
+                          ?.topics.map((topic, index) => (
+                            <button
+                              key={topic}
+                              onClick={() => {
+                                setTopicSearch(topic);
+                                setIsTopicDropdownOpen(false);
+                                setHoveredCategory(null);
+                              }}
+                              className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 transition-all duration-200 text-sm capitalize group border-b border-gray-100 last:border-b-0 hover:border-primary/20"
+                            >
+                              <span className="group-hover:text-primary group-hover:font-medium transition-all">
+                                {topic}
+                              </span>
+                            </button>
+                          ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-center px-4">
+                      <p className="text-sm text-muted-foreground">
+                        ← Hover over a category to see topics
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isLoadingAllSignals ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-            <span className="text-muted-foreground">Loading signals...</span>
+          <div className="flex flex-col items-center justify-center py-8 space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="text-center space-y-1">
+              <p className="text-base font-medium text-foreground">Discovering trending signals...</p>
+              <p className="text-sm text-muted-foreground">
+                {topicSearch ? `Analyzing signals about "${topicSearch}"` : 'Scanning the latest conversations and trends'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">This usually takes 30-60 seconds</p>
+            </div>
           </div>
         ) : signals.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-muted-foreground mb-4">No signals available</div>
-            <Button
-              size="sm"
-              onClick={handleLoadMoreSignals}
-              disabled={isLoadingAllSignals}
-              className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Load Signals from Scout GPT
-            </Button>
+          <div className="text-center py-12 px-6">
+            <div className="mb-6 flex justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-primary blur-xl opacity-30 rounded-full"></div>
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-lg">
+                  <Search className="h-8 w-8 text-white" />
+                </div>
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-2">
+              Discover Trending Signals
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+              Select a topic from the categories above to discover the latest trending signals and conversations. Scout GPT will analyze and rank the most relevant content for you.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
+                <span>Ready to search</span>
+              </div>
+            </div>
           </div>
         ) : (
           // Always display only top 3 signals in main view
@@ -771,7 +1088,7 @@ export const TodaysSignals = () => {
                   onClick={() => openEditorialModal(signal)}
                 >
                   <Zap className="h-4 w-4 mr-1" />
-                  Send to Editorial GPT
+                  Generate Content
                 </Button>
                 <Button size="sm" variant="outline" className="hover:bg-accent/10 text-sm px-3 py-2 h-8">
                   Chain
@@ -786,39 +1103,16 @@ export const TodaysSignals = () => {
           ))
         )}
 
-        {/* Show All Signals Modal Button */}
-        {signals.length > 3 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-sm text-muted-foreground hover:text-foreground hover:bg-accent/10 mt-3 py-2"
-            onClick={() => setAllSignalsModalOpen(true)}
-          >
-            <ArrowRight className="h-4 w-4 mr-2" />
-            Show All Signals ({signals.length} total)
-          </Button>
-        )}
-
         {/* Load New Signals Button */}
-        {signals.length > 0 && (
+        {signals.length > 0 && !isLoadingAllSignals && (
           <Button
             variant="ghost"
             size="sm"
             className="w-full text-sm text-accent hover:text-accent-foreground hover:bg-accent/10 mt-2 py-2"
             onClick={handleLoadMoreSignals}
-            disabled={isLoadingAllSignals}
           >
-            {isLoadingAllSignals ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Loading New Signals...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Load New Signals
-              </>
-            )}
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Load New Signals
           </Button>
         )}
       </CardContent>
@@ -828,13 +1122,13 @@ export const TodaysSignals = () => {
         <DialogContent className={`${modalMode === 'results' ? "sm:max-w-4xl" : "sm:max-w-md"} bg-gradient-card border-border/50 shadow-elegant`}>
           <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
             <DialogTitle className="text-xl font-bold text-primary">
-              {modalMode === 'form' ? 'Send to Editorial GPT' : 'Generated Content'}
+              {modalMode === 'form' ? 'Generate Content' : 'Generated Content'}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               {modalMode === 'form'
                 ? <>Configure content generation for: <strong className="text-foreground">{selectedSignal?.headline}</strong></>
                 : <>
-                    Generated by <strong className="text-primary">{selectedPersona}</strong> as <strong className="text-accent">{selectedOutputType}</strong> with <strong className="text-warning">{tones.find(t => t.value === selectedTone)?.label}</strong> tone for: <strong className="text-foreground">{selectedSignal?.headline}</strong>
+                    Generated by <strong className="text-primary">{voices.find(v => v.value === selectedVoice)?.label || selectedVoice}</strong> as <strong className="text-accent">{selectedOutputType}</strong> for: <strong className="text-foreground">{selectedSignal?.headline}</strong>
                   </>
               }
             </DialogDescription>
@@ -844,48 +1138,68 @@ export const TodaysSignals = () => {
             <div className="space-y-6 py-6">
               {/* Progress Indicator */}
               <div className="flex items-center justify-center space-x-2 mb-2">
-                <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedPersona ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
+                <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedVoice ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
                 <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedOutputType ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
-                <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedTone ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
               </div>
               <div className="text-center text-xs text-muted-foreground mb-4">
-                {!selectedPersona && !selectedOutputType && !selectedTone && "Start by selecting a persona"}
-                {selectedPersona && !selectedOutputType && !selectedTone && "Great! Now choose an output type"}
-                {selectedPersona && selectedOutputType && !selectedTone && "Almost there! Select a tone"}
-                {selectedPersona && selectedOutputType && selectedTone && "Perfect! Ready to generate"}
+                {!selectedVoice && "Start by selecting a voice"}
+                {selectedVoice && !selectedOutputType && "Great! Now choose an output type"}
+                {selectedVoice && selectedOutputType && "Perfect! Ready to generate"}
               </div>
 
-              {/* Persona Selection */}
+              {/* Voice Selection */}
               <div className="space-y-3 relative">
                 <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
                 <label className="text-sm font-semibold text-foreground flex items-center relative">
-                  <Users className="h-4 w-4 mr-2 text-primary" />
-                  Select Persona
-                  {selectedPersona && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+                  <User className="h-4 w-4 mr-2 text-primary" />
+                  Select Voice
+                  {selectedVoice && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
                 </label>
-                <Select value={selectedPersona} onValueChange={setSelectedPersona}>
-                  <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02] group">
-                    <SelectValue placeholder="Choose a persona..." />
+                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                  <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02]">
+                    <SelectValue placeholder="Select a voice...">
+                      {selectedVoice && voices.find(v => v.value === selectedVoice)?.label}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
-                    {personas.map((persona) => {
-                      const Icon = persona.icon;
+                    {voices.map((voice) => {
+                      const Icon = voice.icon || User;
                       return (
-                        <SelectItem
-                          key={persona.value}
-                          value={persona.value}
-                          className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
-                        >
-                          <div className="flex items-center space-x-3 py-1">
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${persona.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
-                              <Icon className="h-4 w-4 text-white" />
+                        <div key={voice.value} className="relative group/item">
+                          <SelectItem
+                            value={voice.value}
+                            className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg pr-16"
+                          >
+                            <div className="flex items-center space-x-3 py-1">
+                              <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${voice.color || 'from-gray-400 to-gray-500'} shadow-md group-hover/item:scale-110 transition-transform duration-200`}>
+                                <Icon className="h-4 w-4 text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium">{voice.label}</div>
+                                <div className="text-xs text-muted-foreground">{voice.description}</div>
+                              </div>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{persona.label}</span>
-                              <span className="text-xs text-muted-foreground">{persona.description}</span>
+                          </SelectItem>
+                          {!voice.isDefault && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
+                              <button
+                                type="button"
+                                className="h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-destructive/20 transition-colors"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDeleteVoice(voice.value);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </button>
                             </div>
-                          </div>
-                        </SelectItem>
+                          )}
+                        </div>
                       );
                     })}
                   </SelectContent>
@@ -921,43 +1235,6 @@ export const TodaysSignals = () => {
                             <div className="flex flex-col">
                               <span className="font-medium">{type.label}</span>
                               <span className="text-xs text-muted-foreground">{type.description}</span>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Tone Selection */}
-              <div className="space-y-3 relative">
-                <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
-                <label className="text-sm font-semibold text-foreground flex items-center relative">
-                  <Sparkles className="h-4 w-4 mr-2 text-warning" />
-                  Select Tone
-                  {selectedTone && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
-                </label>
-                <Select value={selectedTone} onValueChange={setSelectedTone}>
-                  <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-warning/20 hover:border-warning/50 hover:shadow-lg hover:shadow-warning/10 transition-all duration-300 hover:scale-[1.02]">
-                    <SelectValue placeholder="Choose tone..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
-                    {tones.map((tone) => {
-                      const Icon = tone.icon;
-                      return (
-                        <SelectItem
-                          key={tone.value}
-                          value={tone.value}
-                          className="hover:bg-gradient-to-r hover:from-warning/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group"
-                        >
-                          <div className="flex items-center space-x-3 py-1">
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${tone.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
-                              <Icon className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{tone.label}</span>
-                              <span className="text-xs text-muted-foreground">{tone.description}</span>
                             </div>
                           </div>
                         </SelectItem>
@@ -1065,7 +1342,7 @@ export const TodaysSignals = () => {
                 </Button>
                 <Button
                   onClick={sendToEditorial}
-                  disabled={!selectedPersona || !selectedOutputType || !selectedTone || isSubmitting}
+                  disabled={!selectedVoice || !selectedOutputType || isSubmitting}
                   className="bg-gradient-primary hover:shadow-glow hover:scale-105 transition-all duration-300 font-medium px-6"
                 >
                   {isSubmitting ? (
@@ -1176,7 +1453,7 @@ export const TodaysSignals = () => {
                         }}
                       >
                         <Zap className="h-4 w-4 mr-1" />
-                        Send to Editorial GPT
+                        Generate Content
                       </Button>
                       <Button size="sm" variant="outline" className="hover:bg-accent/10 text-sm px-3 py-2 h-8">
                         Chain
