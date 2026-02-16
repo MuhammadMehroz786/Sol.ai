@@ -16,7 +16,12 @@
       "Bash(npx tsc:*)",
       "Bash(git status:*)",
       "Bash(npx vite build)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" log --oneline --all -- .env)",
+      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" ls-files --others --exclude-standard)",
+      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" ls-files)",
+      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" status --short)",
+      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" show --stat HEAD:_ul)"
     ],
     "deny": [],
     "ask": []
