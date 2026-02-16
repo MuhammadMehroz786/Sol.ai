@@ -7,6 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
 import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ScoutGptService } from "@/services/scoutGptService";
@@ -454,7 +455,7 @@ export const TodaysSignals = () => {
 
     try {
       // Call webhook to delete from database
-      const webhookUrl = 'https://soleai.app.n8n.cloud/webhook/4d473f2d-67af-4144-b217-0cb9440124a8';
+      const webhookUrl = WEBHOOK_VOICE_PROFILE_DELETE;
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -523,7 +524,7 @@ export const TodaysSignals = () => {
 
       console.log('Sending payload:', payload);
 
-      const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
+      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -637,7 +638,7 @@ export const TodaysSignals = () => {
       // Get voice details
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
-      const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
+      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -859,17 +860,20 @@ export const TodaysSignals = () => {
 
             {/* Input section */}
             <div className="flex space-x-2 relative z-[60]">
-              {/* Custom Dropdown */}
+              {/* Simple Text Input */}
               <div className="relative flex-1">
-                <button
-                  onClick={() => setIsTopicDropdownOpen(!isTopicDropdownOpen)}
-                  className="w-full bg-white border-2 border-primary/20 focus:border-primary/50 hover:border-primary/40 rounded-xl text-sm transition-all duration-300 px-4 py-2 text-left flex items-center justify-between"
-                >
-                  <span className={topicSearch ? "text-foreground capitalize" : "text-muted-foreground"}>
-                    {topicSearch || "Select a topic..."}
-                  </span>
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                </button>
+                <Input
+                  value={topicSearch}
+                  onChange={(e) => setTopicSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && topicSearch.trim()) {
+                      handleSearchWithTopic();
+                    }
+                  }}
+                  placeholder="Enter a topic to search..."
+                  className="w-full bg-white border-2 border-primary/20 focus:border-primary/50 hover:border-primary/40 rounded-xl text-sm transition-all duration-300 px-4 py-2 pr-10"
+                />
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               </div>
 
               {topicSearch && (
@@ -905,104 +909,13 @@ export const TodaysSignals = () => {
             {/* Helper text */}
             <p className="text-xs text-muted-foreground mt-2 ml-1">
               {!topicSearch.trim()
-                ? "Select a topic to filter signals from specific feeds"
+                ? "Enter any topic to search for trending signals"
                 : `Ready to search for "${topicSearch}"`
               }
             </p>
           </div>
         </div>
 
-        {/* Dropdown Panel - Rendered outside container at root level */}
-        {isTopicDropdownOpen && (
-          <div className="fixed inset-0 z-[998]" onClick={() => {
-            setIsTopicDropdownOpen(false);
-            setHoveredCategory(null);
-          }}>
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
-
-            {/* Dropdown Panel */}
-            <div
-              className="absolute bg-white border-2 border-primary/30 rounded-xl shadow-2xl z-[999] overflow-hidden"
-              style={{
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 'calc(100% - 32px)',
-                maxWidth: '600px'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex min-h-[320px]">
-                {/* Left Side: Categories */}
-                <div className="w-1/2 border-r border-border/30 p-3 bg-gradient-to-br from-gray-50 to-white">
-                  <p className="text-xs font-bold text-muted-foreground px-3 py-2 mb-1">CATEGORIES</p>
-                  <div className="space-y-1">
-                    {topicGroups.map((group) => {
-                      const Icon = group.icon;
-                      return (
-                        <div
-                          key={group.label}
-                          onMouseEnter={() => setHoveredCategory(group.label)}
-                          className={`flex items-center space-x-3 px-3 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                            hoveredCategory === group.label
-                              ? 'bg-gradient-to-r ' + group.color + ' text-white shadow-lg scale-[1.02]'
-                              : 'hover:bg-gray-100'
-                          }`}
-                        >
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 shadow-sm ${
-                            hoveredCategory === group.label
-                              ? 'bg-white/20'
-                              : 'bg-gradient-to-r ' + group.color
-                          }`}>
-                            <Icon className="h-4 w-4 text-white" />
-                          </div>
-                          <span className="text-sm font-medium">{group.label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Right Side: Topics */}
-                <div className="w-1/2 p-3 bg-white">
-                  {hoveredCategory ? (
-                    <>
-                      <p className="text-xs font-bold text-primary px-3 py-2 mb-1 bg-primary/5 rounded-lg">
-                        {hoveredCategory.toUpperCase()}
-                      </p>
-                      <div className="space-y-0.5 max-h-[260px] overflow-y-auto pr-2">
-                        {topicGroups
-                          .find((g) => g.label === hoveredCategory)
-                          ?.topics.map((topic, index) => (
-                            <button
-                              key={topic}
-                              onClick={() => {
-                                setTopicSearch(topic);
-                                setIsTopicDropdownOpen(false);
-                                setHoveredCategory(null);
-                              }}
-                              className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 transition-all duration-200 text-sm capitalize group border-b border-gray-100 last:border-b-0 hover:border-primary/20"
-                            >
-                              <span className="group-hover:text-primary group-hover:font-medium transition-all">
-                                {topic}
-                              </span>
-                            </button>
-                          ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-center px-4">
-                      <p className="text-sm text-muted-foreground">
-                        ← Hover over a category to see topics
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {isLoadingAllSignals ? (
           <div className="flex flex-col items-center justify-center py-8 space-y-3">
@@ -1029,7 +942,7 @@ export const TodaysSignals = () => {
               Discover Trending Signals
             </h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              Select a topic from the categories above to discover the latest trending signals and conversations. Scout GPT will analyze and rank the most relevant content for you.
+              Enter any topic in the search bar above to discover the latest trending signals and conversations. Scout GPT will analyze and rank the most relevant content for you.
             </p>
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-1">

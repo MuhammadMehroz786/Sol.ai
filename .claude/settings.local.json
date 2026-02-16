@@ -8,7 +8,15 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(curl:*)",
+      "Bash(tee:*)",
+      "Bash(tasklist:*)",
+      "Bash(netstat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git status:*)",
+      "Bash(npx vite build)",
+      "Bash(npx vite:*)"
     ],
     "deny": [],
     "ask": []

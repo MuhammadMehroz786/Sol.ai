@@ -8,8 +8,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import AgentRegistry from "./pages/AgentRegistry";
-import APIMonitor from "./pages/APIMonitor";
+import AgentHub from "./pages/AgentHub";
+import SocialAlchemist from "./pages/SocialAlchemist";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -35,14 +35,21 @@ const App = () => (
               <Route path="/agents" element={
                 <ProtectedRoute>
                   <Layout>
-                    <AgentRegistry />
+                    <AgentHub />
                   </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/monitor" element={
                 <ProtectedRoute>
                   <Layout>
-                    <APIMonitor />
+                    <AgentHub />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/social-alchemist" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SocialAlchemist />
                   </Layout>
                 </ProtectedRoute>
               } />

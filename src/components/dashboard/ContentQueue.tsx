@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -30,7 +32,8 @@ import {
   Sparkles,
   RotateCcw,
   Scissors,
-  X
+  X,
+  Wand2
 } from "lucide-react";
 
 interface ContentOutput {
@@ -88,6 +91,30 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
   const [isSendingToCMS, setIsSendingToCMS] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Send content to Social Alchemist
+  const sendToSocialAlchemist = () => {
+    if (!selectedOutput) return;
+
+    // Close the modal first
+    closeModal();
+
+    // Navigate to Social Alchemist
+    navigate('/social-alchemist');
+
+    // Dispatch event with content after a short delay to ensure page is loaded
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('editorialToSocialAlchemist', {
+        detail: { content: selectedOutput.content }
+      }));
+    }, 100);
+
+    toast({
+      title: "Content sent to Social Alchemist",
+      description: "Generate social assets from your content",
+    });
+  };
 
   // Expose refresh function and openDraftModal globally
   useEffect(() => {
@@ -260,7 +287,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
     setIsProcessingAction(action);
 
     try {
-      const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
+      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -515,8 +542,8 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-2">
                             <h4 className="font-medium text-sm truncate">{output.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              {output.output_type.replace('-', ' ')}
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {output.output_type.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                             </Badge>
                           </div>
                           
@@ -526,8 +553,8 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                           
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {output.persona}
+                              <Badge variant="secondary" className="text-xs capitalize">
+                                {output.persona.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                               </Badge>
                               {output.tones.length > 0 && (
                                 <Badge variant="outline" className="text-xs">
@@ -626,11 +653,11 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
               </div>
               <DialogDescription className="text-muted-foreground">
                 <div className="flex items-center space-x-4">
-                  <Badge variant="outline" className="text-xs">
-                    {selectedOutput.output_type.replace('-', ' ')}
+                  <Badge variant="outline" className="text-xs capitalize">
+                    {selectedOutput.output_type.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {selectedOutput.persona}
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {selectedOutput.persona.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     Created: {new Date(selectedOutput.created_at).toLocaleDateString()}
@@ -768,6 +795,14 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                     {/* Export/CMS buttons only for final status */}
                     {selectedOutput.status === 'final' && (
                       <>
+                        <Button
+                          variant="outline"
+                          onClick={sendToSocialAlchemist}
+                          className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/50 text-purple-700 hover:from-purple-500/30 hover:to-pink-500/30 hover:border-purple-500/70 font-medium shadow-sm h-10"
+                        >
+                          <Wand2 className="h-4 w-4 mr-2" />
+                          Create Social Assets
+                        </Button>
                         <Button
                           variant="outline"
                           onClick={() => updateStatus(selectedOutput.id, 'review')}

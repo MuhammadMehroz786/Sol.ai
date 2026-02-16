@@ -15,15 +15,16 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import soleLogoWithTagline from "@/assets/sole-logo-orange-brown-v2.png";
 import soleLogoBlack from "@/assets/SOLE LOGO - BLACK WO BG.png";
-import { 
-  LayoutDashboard, 
-  Settings, 
-  Activity, 
+import {
+  LayoutDashboard,
+  Settings,
+  Activity,
   Menu,
   X,
   User,
   LogOut,
-  UserCircle
+  UserCircle,
+  Wand2
 } from "lucide-react";
 
 interface LayoutProps {
@@ -45,8 +46,8 @@ const Layout = ({ children }: LayoutProps) => {
   
   const navigation = [
     { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Agent Registry", href: "/agents", icon: Settings },
-    { name: "API Monitor", href: "/monitor", icon: Activity },
+    { name: "Social Alchemist", href: "/social-alchemist", icon: Wand2 },
+    { name: "Agent Hub", href: "/agents", icon: Settings },
   ];
 
   return (

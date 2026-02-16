@@ -1,8 +1,10 @@
+import { WEBHOOK_SCOUT_GPT_TEST } from "@/constants/webhooks";
+
 // Simple test to directly call Scout GPT API
 // Use proxy endpoint for development to avoid CORS issues
 const SCOUT_GPT_ENDPOINT = process.env.NODE_ENV === 'development'
   ? '/api/scout-gpt'
-  : 'https://soleai.app.n8n.cloud/webhook/301d63b0-3049-420d-857e-d9dbcbdc7eaf';
+  : WEBHOOK_SCOUT_GPT_TEST;
 
 export const testScoutGptApi = async () => {
   console.log('🧪 Testing Scout GPT API directly...');
@@ -72,9 +74,4 @@ export const testScoutGptApi = async () => {
   }
 };
 
-// Auto-run test when module loads (only in browser)
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    testScoutGptApi();
-  }, 3000);
-}
+// Removed auto-run: call testScoutGptApi() explicitly where needed

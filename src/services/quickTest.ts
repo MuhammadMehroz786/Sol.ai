@@ -68,9 +68,4 @@ export const quickDatabaseTest = async () => {
   }
 };
 
-// Auto-run test when module loads (only in browser)
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    quickDatabaseTest();
-  }, 2000);
-}
+// Removed auto-run: call quickDatabaseTest() explicitly where needed

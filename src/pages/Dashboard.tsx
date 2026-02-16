@@ -5,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { TodaysSignals } from "@/components/dashboard/TodaysSignals";
 import { ContentQueue } from "@/components/dashboard/ContentQueue";
-import { InputPanel } from "@/components/dashboard/InputPanel";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_VOICE_PROFILE_CREATE, WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
 import {
   Sparkles,
   User,
@@ -239,7 +240,7 @@ export const ContentGenerator = () => {
 
     try {
       // Call webhook to delete from database
-      const webhookUrl = 'https://soleai.app.n8n.cloud/webhook/4d473f2d-67af-4144-b217-0cb9440124a8';
+      const webhookUrl = WEBHOOK_VOICE_PROFILE_DELETE;
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -327,7 +328,7 @@ export const ContentGenerator = () => {
       formData.append('voice_name', voiceProfileName.trim());
       formData.append('user_id', user.user.id);
 
-      const webhookUrl = 'https://soleai.app.n8n.cloud/webhook/66bc4c62-262d-4a3c-8d18-098c97672ddd';
+      const webhookUrl = WEBHOOK_VOICE_PROFILE_CREATE;
 
       const response = await fetch(webhookUrl, {
         method: 'POST',
@@ -437,7 +438,7 @@ export const ContentGenerator = () => {
 
       console.log('Sending payload:', payload);
 
-      const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
+      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -465,11 +466,12 @@ export const ContentGenerator = () => {
           console.log('User data:', user);
 
           if (user.user) {
+            const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
             const insertData = {
               user_id: user.user.id,
               title: `${selectedOutputType.replace('-', ' ')} about ${topic.substring(0, 50)}`,
               content: formattedContent,
-              persona: selectedVoice,
+              persona: voiceName,
               output_type: selectedOutputType,
               status: 'draft',
               topic_context: topic
@@ -669,7 +671,7 @@ export const ContentGenerator = () => {
     try {
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
-      const response = await fetch('https://soleai.app.n8n.cloud/webhook/ac317b82-2163-44ea-8324-5727d9d29a85', {
+      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

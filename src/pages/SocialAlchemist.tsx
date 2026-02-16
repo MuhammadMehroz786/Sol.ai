@@ -41,6 +41,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { WEBHOOK_SOCIAL_ALCHEMIST_GENERATE, WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
 import {
   FileText,
   Link as LinkIcon,
@@ -161,7 +162,7 @@ const defaultVoices: CustomVoice[] = [
 const VOICES_STORAGE_KEY = 'sole-custom-voices';
 
 // Webhook URL for content generation
-const WEBHOOK_URL = "https://soleai.app.n8n.cloud/webhook/ab4dc726-d881-46c6-bcc3-3b1bffd2c7c4";
+const WEBHOOK_URL = WEBHOOK_SOCIAL_ALCHEMIST_GENERATE;
 
 // Platform configurations
 const platformConfigs = {
@@ -426,7 +427,7 @@ const SocialAlchemist = () => {
     setIsDeletingVoice(true);
 
     try {
-      const webhookUrl = 'https://soleai.app.n8n.cloud/webhook/4d473f2d-67af-4144-b217-0cb9440124a8';
+      const webhookUrl = WEBHOOK_VOICE_PROFILE_DELETE;
       await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -479,7 +480,7 @@ const SocialAlchemist = () => {
       formData.append('voice_name', voiceProfileName.trim());
       formData.append('user_id', userData.user.id);
 
-      const response = await fetch('https://soleai.app.n8n.cloud/webhook/66bc4c62-262d-4a3c-8d18-098c97672ddd', {
+      const response = await fetch(WEBHOOK_VOICE_PROFILE_CREATE, {
         method: 'POST',
         body: formData
       });

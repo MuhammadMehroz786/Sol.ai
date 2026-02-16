@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { WEBHOOK_SCOUT_GPT_SIGNALS, WEBHOOK_SCOUT_GPT_TOPIC_SEARCH } from "@/constants/webhooks";
 
 export interface ScoutGptSignal {
   headline: string;
@@ -34,10 +35,10 @@ export interface ProcessedSignal {
 // Use proxy endpoint for development to avoid CORS issues
 const SCOUT_GPT_ENDPOINT = process.env.NODE_ENV === 'development'
   ? '/api/scout-gpt'
-  : 'https://soleai.app.n8n.cloud/webhook/e104c437-3b72-4de2-8fc7-535d30fb57fb';
+  : WEBHOOK_SCOUT_GPT_SIGNALS;
 
 // Topic-based search endpoint
-const TOPIC_SEARCH_ENDPOINT = 'https://soleai.app.n8n.cloud/webhook/f95c5ec4-91b5-42f3-91d5-fce635b46e58';
+const TOPIC_SEARCH_ENDPOINT = WEBHOOK_SCOUT_GPT_TOPIC_SEARCH;
 
 export class ScoutGptService {
 
@@ -50,11 +51,11 @@ export class ScoutGptService {
       console.log('📡 Endpoint:', endpoint);
       console.log('🎯 Topic filter:', topic);
 
-      // Create a timeout promise (3 minutes = 180000ms)
+      // Create a timeout promise (5 minutes = 300000ms)
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Request timeout: The search took longer than 3 minutes and has been cancelled.'));
-        }, 180000); // 3 minutes
+          reject(new Error('Request timeout: The search took longer than 5 minutes and has been cancelled.'));
+        }, 300000); // 5 minutes
       });
 
       // Use POST request (n8n webhook is configured for POST)
@@ -320,7 +321,7 @@ export class ScoutGptService {
         timestamp: this.formatTimestamp(signal.published_at || signal.analyzed_at),
         source: signal.source || 'Scout GPT',
         score: score,
-        engagement: `+${Math.floor(Math.random() * 50 + 20)}%`,
+        engagement: signal.engagement || (score > 0 ? `+${score}%` : null),
         url: signal.url,
         published_at: signal.published_at,
         analyzed_at: signal.analyzed_at,
@@ -378,7 +379,7 @@ export class ScoutGptService {
 
       // Check if it's a timeout error
       if (error.message && error.message.includes('timeout')) {
-        throw new Error('Search timed out after 3 minutes. Scout GPT is taking longer than expected to analyze this topic. This could mean the topic is very broad or the service is currently busy. Please try again with a more specific topic or wait a few minutes.');
+        throw new Error('Search timed out after 5 minutes. Scout GPT is taking longer than expected to analyze this topic. This could mean the topic is very broad or the service is currently busy. Please try again with a more specific topic or wait a few minutes.');
       }
 
       // Re-throw the original error with context
@@ -483,10 +484,4 @@ export class SignalScheduler {
   }
 }
 
-// Initialize scheduler when the module loads (only in browser)
-if (typeof window !== 'undefined') {
-  // Wait a bit to ensure the app is loaded
-  setTimeout(() => {
-    SignalScheduler.initializeScheduler();
-  }, 1000);
-}
+// Removed auto-run: call SignalScheduler.initializeScheduler() or enableScheduler() explicitly where needed

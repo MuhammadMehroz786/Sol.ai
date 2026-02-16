@@ -138,7 +138,3 @@ export const formatSignalTimestamp = (dateString: string): string => {
   }
 };
 
-export const generateEngagementScore = (): string => {
-  const percentage = Math.floor(Math.random() * 50 + 20);
-  return `+${percentage}%`;
-};
