@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
 import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
-import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2 } from "lucide-react";
+import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2, Link2, Wand2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
 import { useToast } from "@/hooks/use-toast";
@@ -18,10 +19,13 @@ import { useToast } from "@/hooks/use-toast";
 type CustomVoice = VoiceOption;
 
 export const TodaysSignals = () => {
+  const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [loadingSignals, setLoadingSignals] = useState<{ [key: string]: boolean }>({});
   const [isLoadingAllSignals, setIsLoadingAllSignals] = useState(true);
   const [allSignalsModalOpen, setAllSignalsModalOpen] = useState(false);
+  const [agentLinkModalOpen, setAgentLinkModalOpen] = useState(false);
+  const [signalForLink, setSignalForLink] = useState<Signal | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [selectedVoice, setSelectedVoice] = useState("");
@@ -806,32 +810,31 @@ export const TodaysSignals = () => {
                   <Zap className="h-4 w-4 mr-1" />
                   Generate Content
                 </Button>
-                {signal.url && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
-                    onClick={() => window.open(signal.url, '_blank', 'noopener,noreferrer')}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
+                  title="Send to agent"
+                  onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
+                >
+                  <Link2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
           ))
         )}
 
-        {/* Load New Signals Button */}
+        {/* View All Signals Button */}
         {signals.length > 0 && !isLoadingAllSignals && (
           <Button
             variant="ghost"
             size="sm"
             className="w-full text-sm text-accent hover:text-accent-foreground hover:bg-accent/10 mt-2 py-2"
-            onClick={handleLoadMoreSignals}
+            onClick={() => setAllSignalsModalOpen(true)}
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Load New Signals
+            <BarChart3 className="h-4 w-4 mr-2" />
+            View All Signals ({signals.length})
           </Button>
         )}
       </CardContent>
@@ -1111,7 +1114,7 @@ export const TodaysSignals = () => {
               All Trending Signals
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Complete list of {signals.length} signals ranked by Scout GPT score
+              Complete list of {signals.length} signals ranked by score
             </DialogDescription>
           </DialogHeader>
 
@@ -1174,16 +1177,15 @@ export const TodaysSignals = () => {
                         <Zap className="h-4 w-4 mr-1" />
                         Generate Content
                       </Button>
-                      {signal.url && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
-                          onClick={() => window.open(signal.url, '_blank', 'noopener,noreferrer')}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
+                        title="Send to agent"
+                        onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
+                      >
+                        <Link2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -1220,6 +1222,81 @@ export const TodaysSignals = () => {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Agent Link Modal */}
+      <Dialog open={agentLinkModalOpen} onOpenChange={setAgentLinkModalOpen}>
+        <DialogContent className="sm:max-w-sm bg-gradient-card border-border/50 shadow-elegant">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-lg font-bold text-primary flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              Send to Agent
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground line-clamp-2">
+              {signalForLink?.headline}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            {/* Social Alchemist */}
+            <button
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-left group"
+              onClick={() => {
+                setAgentLinkModalOpen(false);
+                setAllSignalsModalOpen(false);
+                navigate('/social-alchemist', {
+                  state: {
+                    signal: {
+                      headline: signalForLink?.headline,
+                      summary: signalForLink?.summary,
+                      url: signalForLink?.url,
+                    }
+                  }
+                });
+              }}
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 shrink-0">
+                <Wand2 className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">Social Alchemist</div>
+                <div className="text-xs text-muted-foreground">Repurpose into social assets</div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+            </button>
+
+            {/* Open source URL if available */}
+            {signalForLink?.url && (
+              <button
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-left group"
+                onClick={() => {
+                  window.open(signalForLink.url, '_blank', 'noopener,noreferrer');
+                  setAgentLinkModalOpen(false);
+                }}
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-slate-500 to-slate-600 shrink-0">
+                  <ExternalLink className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">Open Source</div>
+                  <div className="text-xs text-muted-foreground truncate">{signalForLink.url}</div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+              </button>
+            )}
+
+            {/* Placeholder for future agents */}
+            <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-border/50 opacity-40 cursor-not-allowed">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted shrink-0">
+                <Sparkles className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm text-muted-foreground">More agents</div>
+                <div className="text-xs text-muted-foreground">Coming soon</div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

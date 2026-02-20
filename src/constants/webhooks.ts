@@ -10,15 +10,11 @@
  *  5. (reserved for future workflow)
  */
 
-if (!import.meta.env.VITE_N8N_BASE) {
-  throw new Error('VITE_N8N_BASE environment variable is required');
-}
-
-const N8N_BASE = import.meta.env.VITE_N8N_BASE as string;
+const N8N_BASE = (import.meta.env.VITE_N8N_BASE as string) || '';
 
 // ─── Workflow 1: Scout GPT (signal ingestion) ───
 // Handles both general signals and topic-specific searches via the `topic` field
-export const WEBHOOK_SCOUT_GPT = `${N8N_BASE}/e104c437-3b72-4de2-8fc7-535d30fb57fb`;
+export const WEBHOOK_SCOUT_GPT = `${N8N_BASE}/f95c5ec4-91b5-42f3-91d5-fce635b46e58`;
 
 // ─── Workflow 2: Editorial GPT (content generation) ───
 export const WEBHOOK_EDITORIAL_GPT = `${N8N_BASE}/ac317b82-2163-44ea-8324-5727d9d29a85`;

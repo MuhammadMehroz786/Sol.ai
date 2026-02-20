@@ -5,10 +5,18 @@ export interface ScoutGptSignal {
   headline: string;
   summary: string;
   url?: string;
-  published_at: string;
+  published_at?: string;
+  date?: string;
   tag?: string[];
-  score: number;
+  narrative_stakes?: string[];
+  score: number | string;
   source?: string;
+  why_it_matters?: string;
+  community_context?: string;
+  confidence?: number;
+  rationale?: string;
+  use_mode?: string;
+  analyzed_at?: string;
 }
 
 export interface ProcessedSignal {
@@ -64,7 +72,7 @@ export class ScoutGptService {
       const response = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (!response.ok) {
-        throw new Error(`Scout GPT API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Sole Intelligence API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -127,28 +135,52 @@ export class ScoutGptService {
     const processedSignals = signals.map((signal) => {
       const headline = signal.headline || signal.topic || signal.title || 'Untitled Signal';
       const summary = signal.summary || signal.description || 'No summary available';
-      const rawScore = signal.score || 5;
+
+      // score arrives as string "9" or number — normalise to 0–100
+      const rawScore = Number(signal.score) || 5;
       const score = rawScore * 10;
-      const tag = signal.tag
-        ? (typeof signal.tag === 'string' ? [signal.tag] : signal.tag)
-        : [];
+
+      // date field is the real publish date; fall back to published_at then now
+      const rawDate = signal.date || signal.published_at;
+      const published_at = rawDate
+        ? new Date(rawDate).toISOString()
+        : new Date().toISOString();
+
+      // url: treat empty string as null
+      const url = signal.url && signal.url.trim() !== '' ? signal.url.trim() : null;
+
+      // source: extract domain from url when present, otherwise fall back
+      const source = signal.source || ScoutGptService.extractDomain(url) || 'Sole Intelligence';
+
+      // why_it_matters maps to rationale
+      const rationale = signal.why_it_matters || signal.rationale || null;
+
+      // tag (DB column) is string | null — join narrative_stakes array to CSV string
+      const tag = signal.narrative_stakes && signal.narrative_stakes.length > 0
+        ? signal.narrative_stakes.join(', ')
+        : signal.tag
+          ? (Array.isArray(signal.tag) ? signal.tag.join(', ') : signal.tag)
+          : null;
+
+      // narrative_stakes (DB column) is string[] | null — keep as array
+      const narrative_stakes = Array.isArray(signal.narrative_stakes) && signal.narrative_stakes.length > 0
+        ? signal.narrative_stakes
+        : null;
 
       return {
         headline,
         summary,
-        url: signal.url || null,
-        published_at: signal.published_at || signal.date
-          ? new Date(signal.published_at || signal.date).toISOString()
-          : new Date().toISOString(),
+        url,
+        published_at,
         tag,
         score,
-        source: signal.source || 'Scout GPT',
+        source,
         analyzed_at: signal.analyzed_at ? new Date(signal.analyzed_at).toISOString() : new Date().toISOString(),
         community_context: signal.community_context || null,
-        narrative_stakes: signal.narrative_stakes || null,
-        use_mode: signal.use_mode || null,
-        rationale: signal.rationale || null,
-        confidence: signal.confidence || null,
+        narrative_stakes,
+        use_mode: null,
+        rationale,
+        confidence: signal.confidence ?? null,
         user_id: user.user.id,
       };
     });
@@ -189,10 +221,10 @@ export class ScoutGptService {
         rank: index + 1,
         headline: signal.headline,
         summary: signal.summary,
-        tags: Array.isArray(signal.tag) ? signal.tag : [],
+        tags: signal.tag ? signal.tag.split(', ').filter(Boolean) : [],
         priority: score >= 90 ? 'High' : score >= 70 ? 'Medium' : 'Low',
         timestamp: this.formatTimestamp(signal.published_at || signal.analyzed_at),
-        source: signal.source || 'Scout GPT',
+        source: signal.source || 'Sole Intelligence',
         score: score,
         engagement: signal.engagement || (score > 0 ? `+${score}%` : null),
         url: signal.url,
@@ -205,6 +237,17 @@ export class ScoutGptService {
         confidence: signal.confidence,
       };
     });
+  }
+
+  static extractDomain(url: string | null): string {
+    if (!url) return '';
+    try {
+      const hostname = new URL(url).hostname.replace(/^www\./, '');
+      const label = hostname.split('.')[0];
+      return label.charAt(0).toUpperCase() + label.slice(1);
+    } catch {
+      return '';
+    }
   }
 
   static formatTimestamp(dateString: string): string {

@@ -27,6 +27,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,6 +237,7 @@ const modalPlatformConfigs: Record<string, {
 
 const SocialAlchemist = () => {
   const { toast } = useToast();
+  const location = useLocation();
   const [selectedVoice, setSelectedVoice] = useState("");
   const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
   const [sourceType, setSourceType] = useState<SourceType>("paste");
@@ -415,8 +417,22 @@ const SocialAlchemist = () => {
 
     return () => {
       window.removeEventListener('editorialToSocialAlchemist', handleEditorialContent as EventListener);
+
     };
   }, [toast]);
+
+  // Pre-populate source content when navigated from a signal link
+  useEffect(() => {
+    const signal = (location.state as any)?.signal;
+    if (signal?.headline) {
+      setSourceType("paste");
+      setSourceContent(`${signal.headline}\n\n${signal.summary || ''}`);
+      toast({
+        title: "Signal loaded",
+        description: "Select a voice and platforms to generate social assets.",
+      });
+    }
+  }, [location.state]);
 
   const saveCustomVoices = (allVoices: CustomVoice[]) => {
     const customOnly = allVoices.filter(v => !v.isDefault);
