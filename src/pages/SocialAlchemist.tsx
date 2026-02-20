@@ -41,7 +41,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { WEBHOOK_SOCIAL_ALCHEMIST_GENERATE, WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
+import { WEBHOOK_SOCIAL_ALCHEMIST, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
 import { DEFAULT_VOICES, VOICES_STORAGE_KEY } from "@/constants/voices";
 import {
   FileText,
@@ -152,7 +152,7 @@ interface CustomVoice {
 
 
 // Webhook URL for content generation
-const WEBHOOK_URL = WEBHOOK_SOCIAL_ALCHEMIST_GENERATE;
+const WEBHOOK_URL = WEBHOOK_SOCIAL_ALCHEMIST;
 
 // Platform configurations
 const platformConfigs = {
@@ -444,37 +444,14 @@ const SocialAlchemist = () => {
     if (!voiceToDelete) return;
     setIsDeletingVoice(true);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const response = await fetch(WEBHOOK_VOICE_PROFILE_DELETE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          voice_name: voiceToDelete.label,
-          user_id: authData.user?.id,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Delete failed: HTTP ${response.status}`);
-      }
-
-      // Delete from Supabase if we have a database record
       if (voiceToDelete.databaseId) {
         const { error: dbError } = await supabase
           .from('voice_profiles')
           .delete()
           .eq('id', voiceToDelete.databaseId);
 
-        if (dbError) {
-          // non-blocking — remove from local state regardless
-        }
+        if (dbError) throw dbError;
       }
 
       const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
@@ -487,11 +464,7 @@ const SocialAlchemist = () => {
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
     } catch (error: any) {
-      clearTimeout(timeoutId);
-      const message = error?.name === 'AbortError'
-        ? 'Request timed out. Please try again.'
-        : error?.message || 'Failed to delete voice profile';
-      toast({ title: "Delete failed", description: message, variant: "destructive" });
+      toast({ title: "Delete failed", description: error?.message || 'Failed to delete voice profile', variant: "destructive" });
     } finally {
       setIsDeletingVoice(false);
     }

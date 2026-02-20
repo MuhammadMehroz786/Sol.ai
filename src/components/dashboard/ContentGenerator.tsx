@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_VOICE_PROFILE_CREATE, WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
+import { WEBHOOK_VOICE_PROFILE_CREATE, WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
 import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
 import {
   Sparkles,
@@ -222,27 +222,19 @@ export const ContentGenerator = () => {
     setIsDeletingVoice(true);
 
     try {
-      // Call webhook to delete from database
-      const webhookUrl = WEBHOOK_VOICE_PROFILE_DELETE;
+      if (voiceToDelete.databaseId) {
+        const { error: dbError } = await supabase
+          .from('voice_profiles')
+          .delete()
+          .eq('id', voiceToDelete.databaseId);
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          voice_name: voiceToDelete.label
-        })
-      });
+        if (dbError) throw dbError;
+      }
 
-      // webhook deletion best-effort — continue regardless
-
-      // Delete from local state regardless of webhook success
       const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
       setVoices(updatedVoices);
       saveCustomVoices(updatedVoices);
 
-      // Clear selection if deleting the currently selected voice
       if (selectedVoice === voiceToDelete.value) {
         setSelectedVoice("");
       }
@@ -255,11 +247,11 @@ export const ContentGenerator = () => {
 
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch {
+    } catch (error: any) {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Delete failed",
-        description: "An error occurred while deleting the voice profile",
+        description: error?.message || "An error occurred while deleting the voice profile",
         variant: "destructive",
       });
     } finally {
@@ -414,7 +406,7 @@ export const ContentGenerator = () => {
         payload.article_length = articleLength;
       }
 
-      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
+      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -582,7 +574,7 @@ export const ContentGenerator = () => {
     try {
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
-      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
+      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_SCOUT_GPT_SIGNALS, WEBHOOK_SCOUT_GPT_TOPIC_SEARCH } from "@/constants/webhooks";
+import { WEBHOOK_SCOUT_GPT } from "@/constants/webhooks";
 
 export interface ScoutGptSignal {
   headline: string;
@@ -32,15 +32,13 @@ export interface ProcessedSignal {
   confidence?: number;
 }
 
-const SCOUT_GPT_ENDPOINT = WEBHOOK_SCOUT_GPT_SIGNALS;
-const TOPIC_SEARCH_ENDPOINT = WEBHOOK_SCOUT_GPT_TOPIC_SEARCH;
+const SCOUT_GPT_ENDPOINT = WEBHOOK_SCOUT_GPT;
 
 export class ScoutGptService {
 
   static async fetchSignalsFromScoutGpt(topic?: string): Promise<ScoutGptSignal[]> {
     try {
-      // Use different endpoint if topic is provided
-      const endpoint = topic ? TOPIC_SEARCH_ENDPOINT : SCOUT_GPT_ENDPOINT;
+      const endpoint = SCOUT_GPT_ENDPOINT;
 
       // Create a timeout promise (5 minutes = 300000ms)
       const timeoutPromise = new Promise<never>((_, reject) => {

@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
+import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
 import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
 import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -326,27 +326,19 @@ export const TodaysSignals = () => {
     setIsDeletingVoice(true);
 
     try {
-      // Call webhook to delete from database
-      const webhookUrl = WEBHOOK_VOICE_PROFILE_DELETE;
+      if (voiceToDelete.databaseId) {
+        const { error: dbError } = await supabase
+          .from('voice_profiles')
+          .delete()
+          .eq('id', voiceToDelete.databaseId);
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          voice_name: voiceToDelete.label
-        })
-      });
+        if (dbError) throw dbError;
+      }
 
-      // webhook deletion best-effort — continue regardless
-
-      // Delete from local state regardless of webhook success
       const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
       setVoices(updatedVoices);
       saveCustomVoices(updatedVoices);
 
-      // Clear selection if deleting the currently selected voice
       if (selectedVoice === voiceToDelete.value) {
         setSelectedVoice("");
       }
@@ -358,10 +350,10 @@ export const TodaysSignals = () => {
 
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch {
+    } catch (error: any) {
       toast({
         title: "Delete failed",
-        description: "An error occurred while deleting the voice profile",
+        description: error?.message || "An error occurred while deleting the voice profile",
         variant: "destructive",
       });
     } finally {
@@ -387,7 +379,7 @@ export const TodaysSignals = () => {
         output_type: selectedOutputType
       };
 
-      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
+      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -461,7 +453,7 @@ export const TodaysSignals = () => {
       // Get voice details
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
-      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
+      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

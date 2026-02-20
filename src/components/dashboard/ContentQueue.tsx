@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
+import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -276,7 +276,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
     setIsProcessingAction(action);
 
     try {
-      const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
+      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

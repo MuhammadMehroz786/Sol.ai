@@ -1,6 +1,13 @@
 /**
  * Centralized n8n webhook URL constants.
  * Update URLs here — every feature across the app imports from this file.
+ *
+ * Active workflows (5 total):
+ *  1. WEBHOOK_SCOUT_GPT        — signal ingestion (general + topic search)
+ *  2. WEBHOOK_EDITORIAL_GPT    — content generation (Editorial GPT)
+ *  3. WEBHOOK_VOICE_PROFILE_CREATE — voice profile generation from sample articles
+ *  4. WEBHOOK_SOCIAL_ALCHEMIST — social asset generation (TBD)
+ *  5. (reserved for future workflow)
  */
 
 if (!import.meta.env.VITE_N8N_BASE) {
@@ -9,17 +16,15 @@ if (!import.meta.env.VITE_N8N_BASE) {
 
 const N8N_BASE = import.meta.env.VITE_N8N_BASE as string;
 
-// ─── Scout GPT ───
-export const WEBHOOK_SCOUT_GPT_SIGNALS = `${N8N_BASE}/e104c437-3b72-4de2-8fc7-535d30fb57fb`;
-export const WEBHOOK_SCOUT_GPT_TOPIC_SEARCH = `${N8N_BASE}/f95c5ec4-91b5-42f3-91d5-fce635b46e58`;
-export const WEBHOOK_SCOUT_GPT_TEST = `${N8N_BASE}/301d63b0-3049-420d-857e-d9dbcbdc7eaf`;
+// ─── Workflow 1: Scout GPT (signal ingestion) ───
+// Handles both general signals and topic-specific searches via the `topic` field
+export const WEBHOOK_SCOUT_GPT = `${N8N_BASE}/e104c437-3b72-4de2-8fc7-535d30fb57fb`;
 
-// ─── Social Alchemist / Content Generation ───
-export const WEBHOOK_SOCIAL_ALCHEMIST_GENERATE = `${N8N_BASE}/ab4dc726-d881-46c6-bcc3-3b1bffd2c7c4`;
+// ─── Workflow 2: Editorial GPT (content generation) ───
+export const WEBHOOK_EDITORIAL_GPT = `${N8N_BASE}/ac317b82-2163-44ea-8324-5727d9d29a85`;
 
-// ─── Voice Profiles ───
+// ─── Workflow 3: Voice Profile Generator ───
 export const WEBHOOK_VOICE_PROFILE_CREATE = `${N8N_BASE}/66bc4c62-262d-4a3c-8d18-098c97672ddd`;
-export const WEBHOOK_VOICE_PROFILE_DELETE = `${N8N_BASE}/4d473f2d-67af-4144-b217-0cb9440124a8`;
 
-// ─── Content Publishing ───
-export const WEBHOOK_CONTENT_PUBLISH = `${N8N_BASE}/ac317b82-2163-44ea-8324-5727d9d29a85`;
+// ─── Workflow 4: Social Alchemist ───
+export const WEBHOOK_SOCIAL_ALCHEMIST = `${N8N_BASE}/ab4dc726-d881-46c6-bcc3-3b1bffd2c7c4`;
