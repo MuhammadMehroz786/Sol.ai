@@ -13,17 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import soleLogoWithTagline from "@/assets/sole-logo-orange-brown-v2.png";
 import soleLogoBlack from "@/assets/SOLE LOGO - BLACK WO BG.png";
 import {
   LayoutDashboard,
   Settings,
-  Activity,
-  Menu,
-  X,
-  User,
+  Bot,
   LogOut,
-  UserCircle,
   Wand2
 } from "lucide-react";
 
@@ -37,17 +32,13 @@ const Layout = ({ children }: LayoutProps) => {
   const { user, signOut } = useAuth();
   
   const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    await signOut().catch(() => {});
   };
   
   const navigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Dashboard",        href: "/",                 icon: LayoutDashboard },
     { name: "Social Alchemist", href: "/social-alchemist", icon: Wand2 },
-    { name: "Agent Hub", href: "/agents", icon: Settings },
+    { name: "Agent Hub",        href: "/agents",           icon: Bot },
   ];
 
   return (
@@ -139,7 +130,7 @@ const Layout = ({ children }: LayoutProps) => {
 
                       {/* Avatar */}
                       <Avatar className="relative h-10 w-10 border-2 border-white shadow-[0_4px_16px_rgba(208,126,59,0.25)] group-hover/avatar:shadow-[0_6px_24px_rgba(208,126,59,0.35)] transition-all duration-300">
-                        <AvatarImage src="" />
+                        <AvatarImage src={user?.user_metadata?.avatar_url || undefined} />
                         <AvatarFallback className="bg-gradient-to-br from-primary via-[hsl(26,47%,70%)] to-primary text-primary-foreground text-base font-black">
                           {user?.email?.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -163,15 +154,7 @@ const Layout = ({ children }: LayoutProps) => {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-gradient-to-r from-transparent via-primary/50 to-transparent h-[3px] my-3 rounded-full" />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="flex items-center rounded-2xl hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/15 hover:shadow-[0_4px_12px_rgba(208,126,59,0.2)] transition-all duration-300 p-4 group/item cursor-pointer border-2 border-transparent hover:border-primary/20">
-                    <div className="mr-3 p-2 rounded-xl bg-primary/10 group-hover/item:bg-primary/20 transition-colors duration-300">
-                      <UserCircle className="h-5 w-5 text-primary group-hover/item:scale-110 transition-transform duration-300" />
-                    </div>
-                    <span className="font-bold text-[hsl(15,48%,25%)]">Profile Settings</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings" className="flex items-center rounded-2xl hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/15 hover:shadow-[0_4px_12px_rgba(208,126,59,0.2)] transition-all duration-300 p-4 group/item cursor-pointer border-2 border-transparent hover:border-primary/20 mt-2">
+                  <Link to="/settings" className="flex items-center rounded-2xl hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/15 hover:shadow-[0_4px_12px_rgba(208,126,59,0.2)] transition-all duration-300 p-4 group/item cursor-pointer border-2 border-transparent hover:border-primary/20">
                     <div className="mr-3 p-2 rounded-xl bg-primary/10 group-hover/item:bg-primary/20 transition-colors duration-300">
                       <Settings className="h-5 w-5 text-primary group-hover/item:scale-110 group-hover/item:rotate-180 transition-all duration-500" />
                     </div>

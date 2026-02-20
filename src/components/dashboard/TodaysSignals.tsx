@@ -8,33 +8,14 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
+import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
 import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
 import { useToast } from "@/hooks/use-toast";
-import { DatabaseTest } from "@/services/testDatabase";
-import { quickDatabaseTest } from "@/services/quickTest";
-import { testScoutGptApi } from "@/services/testScoutGpt";
 
-interface CustomVoice {
-  value: string;
-  label: string;
-  description: string;
-  isDefault: boolean;
-  icon?: any;
-  color?: string;
-  userId?: string;
-  databaseId?: string; // Supabase voice_profiles table ID
-}
-
-const defaultVoices: CustomVoice[] = [
-  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true, icon: Briefcase, color: "from-blue-500 to-blue-600" },
-  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true, icon: Palette, color: "from-purple-500 to-pink-500" },
-  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true, icon: Target, color: "from-orange-500 to-red-500" }
-];
-
-const VOICES_STORAGE_KEY = 'sole-custom-voices';
+type CustomVoice = VoiceOption;
 
 export const TodaysSignals = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -46,7 +27,7 @@ export const TodaysSignals = () => {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [selectedOutputType, setSelectedOutputType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voices, setVoices] = useState<CustomVoice[]>(defaultVoices);
+  const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [voiceToDelete, setVoiceToDelete] = useState<CustomVoice | null>(null);
   const [isDeletingVoice, setIsDeletingVoice] = useState(false);
@@ -124,12 +105,12 @@ export const TodaysSignals = () => {
             customVoices = cleanedVoices;
           }
 
-          setVoices([...defaultVoices, ...customVoices]);
-        } catch (e) {
-          console.error('Failed to load custom voices:', e);
+          setVoices([...DEFAULT_VOICES, ...customVoices]);
+        } catch {
+          // ignore malformed stored voices
         }
       } else {
-        setVoices(defaultVoices);
+        setVoices(DEFAULT_VOICES);
       }
     };
 
@@ -159,106 +140,48 @@ export const TodaysSignals = () => {
 
   // Load signals on component mount
   useEffect(() => {
-    // Load topic search from localStorage
     loadTopicFromLocalStorage();
     initializeSignals();
+  }, []);
 
-    // Listen for signal updates from scheduler
+  // Re-register signalsUpdated whenever topicSearch changes to avoid stale closure
+  useEffect(() => {
     const handleSignalsUpdated = () => {
-      console.log('Signals updated event received');
-      // Only reload if a topic is already selected
       if (topicSearch.trim()) {
-        console.log('Reloading signals for topic:', topicSearch);
         loadInitialSignals();
-      } else {
-        console.log('No topic selected, skipping automatic reload');
       }
     };
-
     window.addEventListener('signalsUpdated', handleSignalsUpdated);
+    return () => window.removeEventListener('signalsUpdated', handleSignalsUpdated);
+  }, [topicSearch]);
 
-    return () => {
-      window.removeEventListener('signalsUpdated', handleSignalsUpdated);
-    };
-  }, []);
-
-  // Expose modal function to Dashboard
+  // Listen for openAllSignalsModal custom event
   useEffect(() => {
-    (window as any).openAllSignalsModal = () => {
-      setAllSignalsModalOpen(true);
-    };
-
-    return () => {
-      delete (window as any).openAllSignalsModal;
-    };
+    const handler = () => setAllSignalsModalOpen(true);
+    window.addEventListener('openAllSignalsModal', handler);
+    return () => window.removeEventListener('openAllSignalsModal', handler);
   }, []);
 
-  const initializeSignals = async () => {
-    console.log('🚀 Initializing Today\'s Signals component...');
-
-    // Quick database functionality test
-    const quickTestPassed = await quickDatabaseTest();
-    console.log('🧪 Quick database test result:', quickTestPassed);
-
-    // Test Scout GPT API directly
-    const apiTestResult = await testScoutGptApi();
-    console.log('🧪 Scout GPT API test result:', apiTestResult);
-
-    // Run database tests first
-    const testResults = await DatabaseTest.runAllTests();
-
-    if (!testResults.connection) {
-      toast({
-        title: "Database Connection Error",
-        description: "Cannot connect to database. Please check your connection.",
-        variant: "destructive",
-      });
-      setIsLoadingAllSignals(false);
-      return;
-    }
-
-    if (!testResults.auth) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to view signals.",
-        variant: "destructive",
-      });
-      setIsLoadingAllSignals(false);
-      return;
-    }
-
-    if (!testResults.signalsTable) {
-      toast({
-        title: "Database Setup Required",
-        description: "Signals table not found. Please run the database migration.",
-        variant: "destructive",
-      });
-      setIsLoadingAllSignals(false);
-      return;
-    }
-
-    // Don't automatically load signals - wait for user to search
+  const initializeSignals = () => {
+    // Ready for user to search signals
     setIsLoadingAllSignals(false);
-    console.log('✅ Ready for user to search signals');
   };
 
   // Topic search management functions
   const loadTopicFromLocalStorage = () => {
     try {
       const saved = localStorage.getItem('user_signal_topic');
-      if (saved) {
-        setTopicSearch(saved);
-      }
-    } catch (error) {
-      console.error('Error loading topic from localStorage:', error);
+      if (saved) setTopicSearch(saved);
+    } catch {
+      // ignore
     }
   };
 
   const saveTopicToLocalStorage = (topic: string) => {
     try {
       localStorage.setItem('user_signal_topic', topic);
-    } catch (error) {
-      console.error('Error saving topic to localStorage:', error);
+    } catch {
+      // ignore
     }
   };
 
@@ -272,15 +195,12 @@ export const TodaysSignals = () => {
       return;
     }
 
-    console.log('🔍 Search button clicked with topic:', topicSearch);
     saveTopicToLocalStorage(topicSearch);
     setIsFilteringByTopic(true);
 
     try {
       await loadInitialSignals();
-      console.log('✅ Search completed successfully');
     } catch (error) {
-      console.error('❌ Search failed:', error);
       const errorMessage = error.message || "Failed to search for signals";
       const isTimeout = errorMessage.toLowerCase().includes("timeout");
 
@@ -301,26 +221,17 @@ export const TodaysSignals = () => {
   };
 
   const loadInitialSignals = async () => {
-    // Require topic to be selected
     if (!topicSearch.trim()) {
-      console.log('⚠️ No topic selected, skipping signal fetch');
       setIsLoadingAllSignals(false);
       return;
     }
 
     try {
-      console.log('🔄 Starting loadInitialSignals...');
-      console.log('🔄 Current signals in state:', signals.length);
       setIsLoadingAllSignals(true);
 
-      console.log('📡 Fetching fresh signals from Scout GPT...');
-      console.log('🎯 Using topic filter:', topicSearch);
       const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim());
-      console.log('📊 Fetched new signals count:', newSignals.length);
-      console.log('📊 New signals data:', JSON.stringify(newSignals.slice(0, 2), null, 2));
 
       if (newSignals.length === 0) {
-        console.warn('⚠️ No signals returned from ScoutGptService');
         toast({
           title: "No signals found",
           description: `No signals found for topic: ${topicSearch}`,
@@ -330,27 +241,17 @@ export const TodaysSignals = () => {
         return;
       }
 
-      // Sort signals by score (highest first) before setting state
       const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
-      console.log('📊 Sorted signals count:', sortedSignals.length);
-      console.log('📊 Top signal after sort:', sortedSignals[0]?.headline, 'Score:', sortedSignals[0]?.score);
-
       setSignals(sortedSignals);
-      console.log('✅ Set new signals to state (sorted by score)');
-      console.log('✅ State should now have', sortedSignals.length, 'signals');
 
       toast({
         title: "Signals loaded",
         description: `Loaded ${newSignals.length} fresh signals for "${topicSearch}"`,
       });
     } catch (error) {
-      console.error('❌ Error loading initial signals:', error);
-      console.error('❌ Error stack:', error.stack);
-      setSignals([]); // Set empty array on error
-
+      setSignals([]);
       const errorMessage = error.message || "Failed to load signals";
       const isTimeout = errorMessage.toLowerCase().includes("timeout");
-
       toast({
         title: isTimeout ? "Search Timed Out" : "Error Loading Signals",
         description: errorMessage,
@@ -358,15 +259,10 @@ export const TodaysSignals = () => {
       });
     } finally {
       setIsLoadingAllSignals(false);
-      console.log('🏁 loadInitialSignals completed');
-      console.log('🏁 Final signals in state:', signals.length);
     }
   };
 
   const handleLoadMoreSignals = async () => {
-    console.log('🔄 Load More Signals button clicked!');
-
-    // Require topic to be selected
     if (!topicSearch.trim()) {
       toast({
         title: "Topic required",
@@ -377,40 +273,17 @@ export const TodaysSignals = () => {
     }
 
     try {
-      console.log('🚀 Starting manual signal fetch...');
       setIsLoadingAllSignals(true);
+      toast({ title: "Loading new signals...", description: "Fetching latest signals" });
 
-      toast({
-        title: "Loading new signals...",
-        description: "Fetching latest signals",
-      });
-
-      console.log('📡 Calling ScoutGptService.fetchAndSaveSignals()...');
-      console.log('🎯 Using topic filter:', topicSearch);
       const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim());
-      console.log('✅ Received signals:', newSignals.length);
-      console.log('📝 Signal details:', newSignals);
-
-      // Sort signals by score (highest first) before setting state
       const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
       setSignals(sortedSignals);
-      console.log('✅ Updated state with new signals (sorted by score)');
 
-      toast({
-        title: "Signals updated!",
-        description: `Loaded ${newSignals.length} signals`,
-      });
+      toast({ title: "Signals updated!", description: `Loaded ${newSignals.length} signals` });
     } catch (error) {
-      console.error('❌ Error loading more signals:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-
       const errorMessage = error.message || "Failed to load signals";
       const isTimeout = errorMessage.toLowerCase().includes("timeout");
-
       toast({
         title: isTimeout ? "Search Timed Out" : "Error Loading Signals",
         description: errorMessage,
@@ -418,7 +291,6 @@ export const TodaysSignals = () => {
       });
     } finally {
       setIsLoadingAllSignals(false);
-      console.log('🏁 handleLoadMoreSignals completed');
     }
   };
 
@@ -467,9 +339,7 @@ export const TodaysSignals = () => {
         })
       });
 
-      if (!response.ok) {
-        console.error('Webhook deletion failed:', response.statusText);
-      }
+      // webhook deletion best-effort — continue regardless
 
       // Delete from local state regardless of webhook success
       const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
@@ -488,8 +358,7 @@ export const TodaysSignals = () => {
 
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch (error) {
-      console.error('Error deleting voice profile:', error);
+    } catch {
       toast({
         title: "Delete failed",
         description: "An error occurred while deleting the voice profile",
@@ -501,12 +370,8 @@ export const TodaysSignals = () => {
   };
 
   const sendToEditorial = async () => {
-    if (!selectedSignal || !selectedVoice || !selectedOutputType) {
-      console.log('Missing required fields:', { selectedSignal, selectedVoice, selectedOutputType });
-      return;
-    }
+    if (!selectedSignal || !selectedVoice || !selectedOutputType) return;
 
-    console.log('Starting editorial request...');
     setIsSubmitting(true);
 
     try {
@@ -522,8 +387,6 @@ export const TodaysSignals = () => {
         output_type: selectedOutputType
       };
 
-      console.log('Sending payload:', payload);
-
       const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
@@ -532,19 +395,10 @@ export const TodaysSignals = () => {
         body: JSON.stringify(payload)
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('Editorial response:', result);
-
-        // Store full response for display
         setFullResponse(result);
-
-        // Format the response data beautifully
         const formattedContent = formatResponseData(result);
-        console.log('Formatted content:', formattedContent);
 
         // Store generated content but don't show modal
         setGeneratedContent(formattedContent);
@@ -568,63 +422,32 @@ export const TodaysSignals = () => {
               .select();
 
             if (error) {
-              console.error('Error saving to database:', error);
+              // db save failed — content was generated but not persisted
             } else {
-              console.log('Content saved to database as draft, data:', data);
               const { toast } = await import("@/hooks/use-toast");
-              toast({
-                title: "Content saved!",
-                description: "Content has been added to your queue as draft",
-              });
+              toast({ title: "Content saved!", description: "Content has been added to your queue as draft" });
 
-              // Close modal first
               setModalOpen(false);
+              window.dispatchEvent(new CustomEvent('statsRefresh'));
 
-              // Refresh dashboard stats
-              if ((window as any).refreshDashboardStats) {
-                (window as any).refreshDashboardStats();
-              }
-
-              // Open the draft modal automatically
               if (data && data.length > 0) {
                 const contentId = data[0].id;
-                console.log('Attempting to open draft modal for content ID:', contentId);
-
-                // First refresh the content queue, then open modal
-                if ((window as any).refreshContentQueue) {
-                  console.log('Refreshing content queue...');
-                  await (window as any).refreshContentQueue();
-                }
-
-                // Open modal with a delay to ensure refresh is complete
+                window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
                 setTimeout(() => {
-                  console.log('Checking for openDraftModal function...');
-                  if ((window as any).openDraftModal) {
-                    console.log('Calling openDraftModal with ID:', contentId);
-                    (window as any).openDraftModal(contentId);
-                  } else {
-                    console.log('ERROR: openDraftModal function not available on window');
-                    console.log('Available functions:', Object.keys(window).filter(k => k.includes('ContentQueue') || k.includes('Modal')));
-                  }
+                  window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: contentId } }));
                 }, 500);
-              } else {
-                console.log('ERROR: No data returned from database insert');
               }
             }
           }
-        } catch (dbError) {
-          console.error('Database save error:', dbError);
+        } catch {
+          // db save failed — non-critical
         }
       } else {
-        const errorText = await response.text();
-        console.error('Failed to send to editorial:', response.status, response.statusText, errorText);
-        alert(`Error: ${response.status} ${response.statusText}`);
+        toast({ title: `Send failed (${response.status})`, description: response.statusText, variant: 'destructive' });
       }
     } catch (error) {
-      console.error('Error sending to editorial:', error);
-      alert(`Network error: ${error.message}`);
+      toast({ title: 'Network error', description: error instanceof Error ? error.message : 'Request failed', variant: 'destructive' });
     } finally {
-      console.log('Request completed, setting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -657,18 +480,10 @@ export const TodaysSignals = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Quick action response:', result);
-
-        // Use the same formatting function for consistency
-        const formattedContent = formatResponseData(result);
-        console.log('Formatted quick action content:', formattedContent);
-
-        setEditableContent(formattedContent);
-      } else {
-        console.error('Failed to process quick action:', response.statusText);
+        setEditableContent(formatResponseData(result));
       }
-    } catch (error) {
-      console.error('Error processing quick action:', error);
+    } catch {
+      // quick action failed silently
     } finally {
       setIsProcessingAction("");
     }
@@ -693,15 +508,7 @@ export const TodaysSignals = () => {
   const formatResponseData = (response: any) => {
     if (!response) return "";
 
-    console.log('Formatting response data:', response);
-
-    // Handle array response (webhook returns array with one object)
-    let data = response;
-    if (Array.isArray(response) && response.length > 0) {
-      data = response[0];
-    }
-
-    console.log('Processing data:', data);
+    let data = Array.isArray(response) && response.length > 0 ? response[0] : response;
 
     // If we have text_output, format it beautifully
     if (data.text_output) {
@@ -787,7 +594,7 @@ export const TodaysSignals = () => {
       .replace(/^(#{2,3} [🔹💫] \*\*[^*]+)\*\*/gm, '$1**')
       // Enhance bullet points
       .replace(/^- /gm, '✅ ')
-      .replace(/^\\* /gm, '⭐ ')
+      .replace(/^\* /gm, '⭐ ')
       // Add spacing around sections
       .replace(/^(#{1,3})/gm, '\n$1')
       // Clean up extra newlines
@@ -1007,13 +814,16 @@ export const TodaysSignals = () => {
                   <Zap className="h-4 w-4 mr-1" />
                   Generate Content
                 </Button>
-                <Button size="sm" variant="outline" className="hover:bg-accent/10 text-sm px-3 py-2 h-8">
-                  Chain
-                  <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-                <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8">
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
+                {signal.url && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
+                    onClick={() => window.open(signal.url, '_blank', 'noopener,noreferrer')}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -1372,13 +1182,16 @@ export const TodaysSignals = () => {
                         <Zap className="h-4 w-4 mr-1" />
                         Generate Content
                       </Button>
-                      <Button size="sm" variant="outline" className="hover:bg-accent/10 text-sm px-3 py-2 h-8">
-                        Chain
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8">
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      {signal.url && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
+                          onClick={() => window.open(signal.url, '_blank', 'noopener,noreferrer')}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

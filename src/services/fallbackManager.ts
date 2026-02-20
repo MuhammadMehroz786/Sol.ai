@@ -35,7 +35,6 @@ class FallbackManager {
         .order('priority', { ascending: true });
 
       if (error) {
-        console.error('Error fetching agents for fallback config:', error);
         return [];
       }
 
@@ -59,7 +58,6 @@ class FallbackManager {
       }));
 
     } catch (error) {
-      console.error('Error getting fallback configurations:', error);
       return [];
     }
   }
@@ -79,14 +77,12 @@ class FallbackManager {
         .limit(1);
 
       if (error) {
-        console.error('Error finding best available agent:', error);
         return null;
       }
 
       return agents && agents.length > 0 ? agents[0] : null;
 
     } catch (error) {
-      console.error('Error in getBestAvailableAgent:', error);
       return null;
     }
   }
@@ -104,7 +100,6 @@ class FallbackManager {
         .single();
 
       if (agentError || !failedAgent) {
-        console.error('Failed agent not found:', agentError);
         return null;
       }
 
@@ -120,7 +115,6 @@ class FallbackManager {
         .order('priority', { ascending: true });
 
       if (fallbackError) {
-        console.error('Error finding fallback agents:', fallbackError);
         return null;
       }
 
@@ -128,7 +122,6 @@ class FallbackManager {
       return fallbackAgents && fallbackAgents.length > 0 ? fallbackAgents[0] : null;
 
     } catch (error) {
-      console.error('Error getting fallback agent:', error);
       return null;
     }
   }
@@ -150,7 +143,6 @@ class FallbackManager {
         .in('id', [fromAgentId, toAgentId]);
 
       if (agentError || !agents || agents.length !== 2) {
-        console.error('Error verifying agents for manual fallback:', agentError);
         return false;
       }
 
@@ -158,7 +150,6 @@ class FallbackManager {
       const toAgent = agents.find(a => a.id === toAgentId);
 
       if (!fromAgent || !toAgent || fromAgent.role !== toAgent.role) {
-        console.error('Invalid agents for fallback - role mismatch');
         return false;
       }
 
@@ -187,7 +178,6 @@ class FallbackManager {
         });
 
       if (eventError) {
-        console.error('Error logging fallback event:', eventError);
       }
 
       // Create alert
@@ -202,7 +192,6 @@ class FallbackManager {
       return true;
 
     } catch (error) {
-      console.error('Error in manual fallback:', error);
       return false;
     }
   }
@@ -219,7 +208,6 @@ class FallbackManager {
         .single();
 
       if (error || !agent) {
-        console.error('Agent not found for fallback check:', error);
         return false;
       }
 
@@ -232,7 +220,6 @@ class FallbackManager {
       const failuresInWindow = await this.getRecentFailureCount(agentId, this.FAILURE_WINDOW_MINUTES);
 
       if (failuresInWindow >= this.FAILURE_THRESHOLD) {
-        console.log(`Agent ${agent.name} has ${failuresInWindow} failures in the last ${this.FAILURE_WINDOW_MINUTES} minutes`);
 
         const fallbackAgent = await this.getFallbackAgent(agentId);
 
@@ -255,7 +242,6 @@ class FallbackManager {
       return false;
 
     } catch (error) {
-      console.error('Error checking automatic fallback:', error);
       return false;
     }
   }
@@ -276,14 +262,12 @@ class FallbackManager {
         .order('checked_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching recent failures:', error);
         return 0;
       }
 
       return data?.length || 0;
 
     } catch (error) {
-      console.error('Error in getRecentFailureCount:', error);
       return 0;
     }
   }
@@ -325,11 +309,9 @@ class FallbackManager {
         agent_id: failedAgent.id
       });
 
-      console.log(`Automatic fallback executed: ${failedAgent.name} → ${fallbackAgent.name}`);
       return true;
 
     } catch (error) {
-      console.error('Error executing automatic fallback:', error);
       return false;
     }
   }
@@ -345,14 +327,12 @@ class FallbackManager {
         .eq('id', agentId);
 
       if (error) {
-        console.error('Error toggling fallback status:', error);
         return false;
       }
 
       return true;
 
     } catch (error) {
-      console.error('Error in toggleFallbackEnabled:', error);
       return false;
     }
   }
@@ -368,14 +348,12 @@ class FallbackManager {
         .eq('id', agentId);
 
       if (error) {
-        console.error('Error updating agent priority:', error);
         return false;
       }
 
       return true;
 
     } catch (error) {
-      console.error('Error in updateAgentPriority:', error);
       return false;
     }
   }
@@ -396,14 +374,12 @@ class FallbackManager {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching fallback history:', error);
         return [];
       }
 
       return data || [];
 
     } catch (error) {
-      console.error('Error in getFallbackHistory:', error);
       return [];
     }
   }
@@ -420,7 +396,6 @@ class FallbackManager {
         .eq('status', 'active');
 
       if (error) {
-        console.error('Error checking role failure:', error);
         return false;
       }
 
@@ -450,7 +425,6 @@ class FallbackManager {
       return allFailed;
 
     } catch (error) {
-      console.error('Error in checkRoleFailure:', error);
       return false;
     }
   }
@@ -468,7 +442,6 @@ class FallbackManager {
         .eq('status', 'active');
 
       if (roleError) {
-        console.error('Error checking role failure:', roleError);
         return false;
       }
 
@@ -495,7 +468,6 @@ class FallbackManager {
       return roleFailureStats.allFailed;
 
     } catch (error) {
-      console.error('Error in checkCategoryFailure:', error);
       return false;
     }
   }
@@ -579,7 +551,6 @@ class FallbackManager {
         .eq('status', 'active');
 
       if (error) {
-        console.error('Error checking system health:', error);
         return;
       }
 
@@ -634,10 +605,8 @@ class FallbackManager {
         });
       }
 
-      console.log(`System health check completed: ${healthyAgents.length}/${allAgents.length} agents healthy`);
 
     } catch (error) {
-      console.error('Error in system health check:', error);
     }
   }
 
@@ -657,7 +626,6 @@ class FallbackManager {
         .eq('id', agentId);
 
       if (error) {
-        console.error('Error restoring agent:', error);
         return false;
       }
 
@@ -683,7 +651,6 @@ class FallbackManager {
       return true;
 
     } catch (error) {
-      console.error('Error in restoreAgent:', error);
       return false;
     }
   }
@@ -702,7 +669,6 @@ class FallbackManager {
     const { error } = await supabase.from('system_alerts').insert(alert);
 
     if (error) {
-      console.error('Error creating alert:', error);
     }
   }
 
@@ -726,7 +692,6 @@ class FallbackManager {
         .order('success_rate', { ascending: false });
 
       if (error || !agents) {
-        console.error('Error fetching agents for priority recommendations:', error);
         return [];
       }
 
@@ -737,7 +702,6 @@ class FallbackManager {
       }));
 
     } catch (error) {
-      console.error('Error getting performance-based priorities:', error);
       return [];
     }
   }

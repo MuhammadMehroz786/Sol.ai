@@ -3,7 +3,11 @@
  * Update URLs here — every feature across the app imports from this file.
  */
 
-const N8N_BASE = 'https://soleai.app.n8n.cloud/webhook';
+if (!import.meta.env.VITE_N8N_BASE) {
+  throw new Error('VITE_N8N_BASE environment variable is required');
+}
+
+const N8N_BASE = import.meta.env.VITE_N8N_BASE as string;
 
 // ─── Scout GPT ───
 export const WEBHOOK_SCOUT_GPT_SIGNALS = `${N8N_BASE}/e104c437-3b72-4de2-8fc7-535d30fb57fb`;

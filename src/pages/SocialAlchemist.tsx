@@ -42,6 +42,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { WEBHOOK_SOCIAL_ALCHEMIST_GENERATE, WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
+import { DEFAULT_VOICES, VOICES_STORAGE_KEY } from "@/constants/voices";
 import {
   FileText,
   Link as LinkIcon,
@@ -59,9 +60,6 @@ import {
   User,
   Sparkles,
   Trash2,
-  Briefcase,
-  Palette,
-  Target,
   Wand2,
   X,
   AlertCircle,
@@ -152,14 +150,6 @@ interface CustomVoice {
   databaseId?: string;
 }
 
-// Default voices
-const defaultVoices: CustomVoice[] = [
-  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true, icon: Briefcase, color: "from-blue-500 to-blue-600" },
-  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true, icon: Palette, color: "from-purple-500 to-pink-500" },
-  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true, icon: Target, color: "from-orange-500 to-red-500" }
-];
-
-const VOICES_STORAGE_KEY = 'sole-custom-voices';
 
 // Webhook URL for content generation
 const WEBHOOK_URL = WEBHOOK_SOCIAL_ALCHEMIST_GENERATE;
@@ -247,7 +237,7 @@ const modalPlatformConfigs: Record<string, {
 const SocialAlchemist = () => {
   const { toast } = useToast();
   const [selectedVoice, setSelectedVoice] = useState("");
-  const [voices, setVoices] = useState<CustomVoice[]>(defaultVoices);
+  const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
   const [sourceType, setSourceType] = useState<SourceType>("paste");
   const [sourceContent, setSourceContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
@@ -344,31 +334,59 @@ const SocialAlchemist = () => {
     return { valid: true };
   };
 
-  // Load custom voices
-  useEffect(() => {
-    const loadVoices = () => {
+  // Load custom voices from Supabase (with localStorage fallback)
+  const loadVoices = async () => {
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      // Not authenticated — fall back to localStorage
       const stored = localStorage.getItem(VOICES_STORAGE_KEY);
       if (stored) {
         try {
-          let customVoices = JSON.parse(stored);
-          const cleanedVoices = customVoices.filter((v: CustomVoice) => v.label !== 'My Voice Profile');
-          if (cleanedVoices.length !== customVoices.length) {
-            localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(cleanedVoices));
-            customVoices = cleanedVoices;
-          }
-          setVoices([...defaultVoices, ...customVoices]);
-        } catch (e) {
-          console.error('Failed to load custom voices:', e);
-        }
+          const customVoices = JSON.parse(stored).filter((v: CustomVoice) => v.label !== 'My Voice Profile');
+          setVoices([...DEFAULT_VOICES, ...customVoices]);
+        } catch (e) {}
       }
-    };
+      return;
+    }
 
+    const { data: dbVoices, error } = await supabase
+      .from('voice_profiles')
+      .select('*')
+      .eq('user_id', authData.user.id);
+
+    if (error) {
+      // Fall back to localStorage
+      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
+      if (stored) {
+        try {
+          const customVoices = JSON.parse(stored).filter((v: CustomVoice) => v.label !== 'My Voice Profile');
+          setVoices([...DEFAULT_VOICES, ...customVoices]);
+        } catch (e) {}
+      }
+      return;
+    }
+
+    const customVoices: CustomVoice[] = (dbVoices || []).map(vp => ({
+      value: `voice-${vp.id}`,
+      label: vp.profile_name,
+      description: (vp.style_json as any)?.description || 'Custom voice profile',
+      isDefault: false,
+      userId: vp.user_id ?? undefined,
+      databaseId: vp.id,
+    }));
+
+    setVoices([...DEFAULT_VOICES, ...customVoices]);
+    // Keep localStorage in sync for backward compat
+    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customVoices));
+  };
+
+  useEffect(() => {
     loadVoices();
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === VOICES_STORAGE_KEY) loadVoices();
     };
-
     const handleVoiceUpdate = () => loadVoices();
 
     window.addEventListener('storage', handleStorageChange);
@@ -426,13 +444,38 @@ const SocialAlchemist = () => {
     if (!voiceToDelete) return;
     setIsDeletingVoice(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     try {
-      const webhookUrl = WEBHOOK_VOICE_PROFILE_DELETE;
-      await fetch(webhookUrl, {
+      const { data: authData } = await supabase.auth.getUser();
+      const response = await fetch(WEBHOOK_VOICE_PROFILE_DELETE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_name: voiceToDelete.label })
+        body: JSON.stringify({
+          voice_name: voiceToDelete.label,
+          user_id: authData.user?.id,
+        }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Delete failed: HTTP ${response.status}`);
+      }
+
+      // Delete from Supabase if we have a database record
+      if (voiceToDelete.databaseId) {
+        const { error: dbError } = await supabase
+          .from('voice_profiles')
+          .delete()
+          .eq('id', voiceToDelete.databaseId);
+
+        if (dbError) {
+          // non-blocking — remove from local state regardless
+        }
+      }
 
       const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
       setVoices(updatedVoices);
@@ -443,8 +486,12 @@ const SocialAlchemist = () => {
       toast({ title: "Voice deleted", description: "Voice profile removed successfully" });
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch (error) {
-      toast({ title: "Delete failed", variant: "destructive" });
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      const message = error?.name === 'AbortError'
+        ? 'Request timed out. Please try again.'
+        : error?.message || 'Failed to delete voice profile';
+      toast({ title: "Delete failed", description: message, variant: "destructive" });
     } finally {
       setIsDeletingVoice(false);
     }
@@ -480,33 +527,65 @@ const SocialAlchemist = () => {
       formData.append('voice_name', voiceProfileName.trim());
       formData.append('user_id', userData.user.id);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
       const response = await fetch(WEBHOOK_VOICE_PROFILE_CREATE, {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: controller.signal,
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const newVoice: CustomVoice = {
-          value: `voice-${Date.now()}`,
-          label: voiceProfileName,
-          description: result.description || 'Custom voice profile',
-          isDefault: false,
-          userId: userData.user.id
-        };
+      clearTimeout(timeoutId);
 
-        const updatedVoices = [...voices, newVoice];
-        setVoices(updatedVoices);
-        saveCustomVoices(updatedVoices);
-        setSelectedVoice(newVoice.value);
-
-        toast({ title: "Voice profile created!" });
-        setVoiceProfileModalOpen(false);
-        setUploadedFiles([]);
-        setVoiceProfileName("");
+      if (!response.ok) {
+        throw new Error(`Upload failed: HTTP ${response.status}`);
       }
-    } catch (error) {
-      toast({ title: "Upload failed", variant: "destructive" });
+
+      const result = await response.json();
+
+      // Save to Supabase voice_profiles table
+      let databaseId: string | undefined;
+      const { data: dbRecord, error: dbError } = await supabase
+        .from('voice_profiles')
+        .insert({
+          profile_name: voiceProfileName.trim(),
+          user_id: userData.user.id,
+          style_json: { description: result.description || 'Custom voice profile' },
+          samples: uploadedFiles.map(f => f.name),
+        })
+        .select('id')
+        .single();
+
+      if (dbError) {
+        // non-blocking — voice still added to local state
+      } else {
+        databaseId = dbRecord?.id;
+      }
+
+      const newVoice: CustomVoice = {
+        value: `voice-${databaseId || Date.now()}`,
+        label: voiceProfileName,
+        description: result.description || 'Custom voice profile',
+        isDefault: false,
+        userId: userData.user.id,
+        databaseId,
+      };
+
+      const updatedVoices = [...voices, newVoice];
+      setVoices(updatedVoices);
+      saveCustomVoices(updatedVoices);
+      setSelectedVoice(newVoice.value);
+
+      toast({ title: "Voice profile created!" });
+      setVoiceProfileModalOpen(false);
+      setUploadedFiles([]);
+      setVoiceProfileName("");
+    } catch (error: any) {
+      const message = error?.name === 'AbortError'
+        ? 'Upload timed out. Please try again with a smaller file.'
+        : error?.message || 'Failed to create voice profile';
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
     } finally {
       setIsUploadingProfile(false);
     }
@@ -563,8 +642,6 @@ const SocialAlchemist = () => {
         throw new Error(validation.error);
       }
 
-      console.log('Sending request to webhook:', requestBody);
-
       // Single fetch — 120s timeout so the webhook has plenty of time
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -583,14 +660,11 @@ const SocialAlchemist = () => {
       }
 
       let result = await response.json();
-      console.log('Webhook response (raw):', result);
 
       // ---- Normalize response ----
 
       // Handle array responses — n8n returns one item per platform
       if (Array.isArray(result) && result.length > 0) {
-        console.log(`Response is an array with ${result.length} element(s), merging`);
-
         const mergedOutputs: Record<string, any> = {};
         const mergedErrors: Array<{ platform: string; error: string }> = [];
         let runId = '';
@@ -603,7 +677,6 @@ const SocialAlchemist = () => {
 
           // ---- Format A: { platform, artifact, validation } (actual n8n response) ----
           if (entry.platform && entry.artifact) {
-            console.log(`  Platform "${entry.platform}": artifact keys =`, Object.keys(entry.artifact));
             if (entry.validation?.error || entry.artifact?.error) {
               mergedErrors.push({ platform: entry.platform, error: entry.validation?.error || entry.artifact.error });
             } else {
@@ -638,8 +711,6 @@ const SocialAlchemist = () => {
           ...(mergedErrors.length > 0 ? { errors: mergedErrors } : {}),
         };
 
-        console.log('Merged outputs:', Object.keys(mergedOutputs));
-        if (mergedErrors.length) console.log('Merged errors:', mergedErrors);
       }
 
       // Handle wrapped responses { data: {...} }
@@ -670,17 +741,6 @@ const SocialAlchemist = () => {
       if (result.ok === undefined) result.ok = !!result.outputs && Object.keys(result.outputs).length > 0;
       if (!result.status) result.status = result.errors?.length ? 'partial_failure' : 'succeeded';
 
-      console.log('Webhook response (processed):', result);
-      console.log('Output keys:', result.outputs ? Object.keys(result.outputs) : 'none');
-      // Log each platform's artifact shape for debugging
-      if (result.outputs) {
-        for (const [platform, data] of Object.entries(result.outputs)) {
-          console.log(`  Platform "${platform}" data keys:`, data ? Object.keys(data as object) : 'null');
-          console.log(`  Platform "${platform}" full data:`, JSON.stringify(data, null, 2)?.slice(0, 500));
-        }
-      }
-      if (result.errors) console.log('Errors:', result.errors);
-
       // ---- Display result ----
       const hasUsableOutputs = result.outputs && typeof result.outputs === 'object' && Object.keys(result.outputs).length > 0;
 
@@ -705,13 +765,10 @@ const SocialAlchemist = () => {
       } else {
         const errorMsg = result.errors?.map((e: any) => e.error || e.platform).join('; ')
           || 'No content was returned.';
-        console.error('No usable outputs:', JSON.stringify(result, null, 2));
         throw new Error(errorMsg);
       }
 
     } catch (error: any) {
-      console.error('Generation error:', error);
-
       const isTimeout = error.name === 'AbortError';
       toast({
         title: isTimeout ? "Request timed out" : "Generation failed",

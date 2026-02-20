@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
@@ -89,6 +90,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingToCMS, setIsSendingToCMS] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -116,43 +118,37 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
     });
   };
 
-  // Expose refresh function and openDraftModal globally
+  // Listen for cross-component events via CustomEvents
   useEffect(() => {
-    (window as any).refreshContentQueue = fetchOutputs;
-    (window as any).openDraftModal = async (contentId: string) => {
-      console.log('openDraftModal called with ID:', contentId);
-      console.log('Current outputs:', outputs);
-      const output = outputs.find(o => o.id === contentId);
-      console.log('Found output:', output);
-      if (output) {
-        console.log('Opening modal for output:', output.title);
-        openContentModal(output);
-      } else {
-        console.log('Output not found, fetching fresh data...');
-        // Fetch fresh data from database
-        if (!user) return;
+    const handleRefresh = () => { fetchOutputs(); };
 
-        const { data, error } = await supabase
+    const handleOpenDraftModal = (e: Event) => {
+      const contentId = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (!contentId) return;
+
+      const output = outputs.find(o => o.id === contentId);
+      if (output) {
+        openContentModal(output);
+      } else if (user) {
+        supabase
           .from('content_outputs')
           .select('*')
           .eq('id', contentId)
-          .single();
-
-        if (error) {
-          console.error('Error fetching content:', error);
-        } else if (data) {
-          console.log('Found output from database, opening modal');
-          openContentModal(data as ContentOutput);
-          // Also refresh the list in background
-          fetchOutputs();
-        } else {
-          console.log('Still no output found after database fetch');
-        }
+          .single()
+          .then(({ data, error }) => {
+            if (!error && data) {
+              openContentModal(data as ContentOutput);
+              fetchOutputs();
+            }
+          });
       }
     };
+
+    window.addEventListener('contentQueueRefresh', handleRefresh);
+    window.addEventListener('openDraftModal', handleOpenDraftModal);
     return () => {
-      delete (window as any).refreshContentQueue;
-      delete (window as any).openDraftModal;
+      window.removeEventListener('contentQueueRefresh', handleRefresh);
+      window.removeEventListener('openDraftModal', handleOpenDraftModal);
     };
   }, [user, outputs]);
 
@@ -208,10 +204,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
         setSelectedOutput({ ...selectedOutput, status: newStatus });
       }
 
-      // Refresh dashboard stats
-      if ((window as any).refreshDashboardStats) {
-        (window as any).refreshDashboardStats();
-      }
+      window.dispatchEvent(new CustomEvent('statsRefresh'));
     }
   };
 
@@ -233,11 +226,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
         title: "Content deleted",
         description: "Content has been removed from your queue",
       });
-
-      // Refresh dashboard stats
-      if ((window as any).refreshDashboardStats) {
-        (window as any).refreshDashboardStats();
-      }
+      window.dispatchEvent(new CustomEvent('statsRefresh'));
     }
   };
 
@@ -327,7 +316,6 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
           description: "Content has been processed with quick action",
         });
       } else {
-        console.error('Failed to process quick action:', response.statusText);
         toast({
           title: "Quick action failed",
           description: "Failed to process the quick action",
@@ -335,7 +323,6 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
         });
       }
     } catch (error) {
-      console.error('Error processing quick action:', error);
       toast({
         title: "Quick action failed",
         description: "Network error occurred",
@@ -591,7 +578,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteOutput(output.id);
+                              setDeleteTarget(output.id);
                             }}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -699,26 +686,12 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                   <Textarea
                     value={editableContent}
                     onChange={(e) => setEditableContent(e.target.value)}
-                    onKeyDown={(e) => {
-                      // Prevent copying shortcuts
-                      if (e.ctrlKey && (e.key === 'c' || e.key === 'a' || e.key === 'x')) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className="h-[300px] font-mono text-sm bg-background border-border resize-none select-none"
+                    className="h-[300px] font-mono text-sm bg-background border-border resize-none"
                     placeholder="Edit your content here..."
                   />
                 ) : (
                   <div
-                    className="h-[300px] font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 overflow-auto whitespace-pre-wrap select-none"
-                    onKeyDown={(e) => {
-                      // Prevent copying shortcuts
-                      if (e.ctrlKey && (e.key === 'c' || e.key === 'a' || e.key === 'x')) {
-                        e.preventDefault();
-                      }
-                    }}
-                    onContextMenu={(e) => e.preventDefault()}
+                    className="h-[300px] font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 overflow-auto whitespace-pre-wrap"
                     tabIndex={0}
                   >
                     {selectedOutput.content || "No content available..."}
@@ -860,6 +833,27 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-3xl border-2 border-red-200/40">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-black text-red-700">Delete content?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This content will be permanently removed from your queue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (deleteTarget) { deleteOutput(deleteTarget); setDeleteTarget(null); } }}
+              className="bg-red-600 hover:bg-red-700 rounded-xl font-bold"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };

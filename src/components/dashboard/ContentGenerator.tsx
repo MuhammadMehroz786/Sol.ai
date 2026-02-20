@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_VOICE_PROFILE_DELETE, WEBHOOK_VOICE_PROFILE_CREATE, WEBHOOK_CONTENT_PUBLISH } from "@/constants/webhooks";
+import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
 import {
   Sparkles,
   User,
@@ -42,13 +43,6 @@ import {
   Lightbulb
 } from "lucide-react";
 
-const defaultVoices = [
-  { value: "malcolm", label: "Malcolm", description: "Revolutionary thought leader", isDefault: true, icon: Briefcase, color: "from-blue-500 to-blue-600" },
-  { value: "ana", label: "Ana", description: "Cultural analyst", isDefault: true, icon: Palette, color: "from-purple-500 to-pink-500" },
-  { value: "winston", label: "Winston", description: "Strategic narrator", isDefault: true, icon: Target, color: "from-orange-500 to-red-500" }
-];
-
-
 const outputTypes = [
   { value: "article", label: "Article", icon: FileText, description: "Written article content", color: "from-blue-500 to-cyan-500" },
   { value: "tweet-thread", label: "Tweet Thread", icon: Twitter, description: "Tweet thread (7–10 posts)", color: "from-sky-500 to-blue-500" },
@@ -62,18 +56,7 @@ const articleLengths = [
   { value: "long", label: "Long", description: "1600+ words" }
 ];
 
-interface CustomVoice {
-  value: string;
-  label: string;
-  description: string;
-  isDefault: boolean;
-  icon?: any;
-  color?: string;
-  userId?: string;
-  databaseId?: string; // Supabase voice_profiles table ID
-}
-
-const VOICES_STORAGE_KEY = 'sole-custom-voices';
+type CustomVoice = VoiceOption;
 
 export const ContentGenerator = () => {
   const [selectedVoice, setSelectedVoice] = useState("");
@@ -86,7 +69,7 @@ export const ContentGenerator = () => {
   const [isProcessingAction, setIsProcessingAction] = useState("");
 
   // Custom voice management
-  const [voices, setVoices] = useState<CustomVoice[]>(defaultVoices);
+  const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [voiceProfileModalOpen, setVoiceProfileModalOpen] = useState(false);
   const [editingVoice, setEditingVoice] = useState<CustomVoice | null>(null);
@@ -125,12 +108,12 @@ export const ContentGenerator = () => {
             customVoices = cleanedVoices;
           }
 
-          setVoices([...defaultVoices, ...customVoices]);
-        } catch (e) {
-          console.error('Failed to load custom voices:', e);
+          setVoices([...DEFAULT_VOICES, ...customVoices]);
+        } catch {
+          // ignore malformed stored voices
         }
       } else {
-        setVoices(defaultVoices);
+        setVoices(DEFAULT_VOICES);
       }
     };
 
@@ -252,9 +235,7 @@ export const ContentGenerator = () => {
         })
       });
 
-      if (!response.ok) {
-        console.error('Webhook deletion failed:', response.statusText);
-      }
+      // webhook deletion best-effort — continue regardless
 
       // Delete from local state regardless of webhook success
       const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
@@ -274,8 +255,7 @@ export const ContentGenerator = () => {
 
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch (error) {
-      console.error('Error deleting voice profile:', error);
+    } catch {
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Delete failed",
@@ -346,19 +326,20 @@ export const ContentGenerator = () => {
             .from('voice_profiles')
             .insert({
               profile_name: voiceProfileName.trim(),
-              style_json: result.style_json || {},
-              samples: result.samples || []
+              style_json: result.style_json || { description: result.description || 'Custom voice profile' },
+              samples: result.samples || [],
+              user_id: user.user.id,
             })
             .select()
             .single();
 
           if (dbError) {
-            console.warn('Could not save voice profile to database:', dbError);
+            // non-fatal — profile created in n8n, db record optional
           } else {
             voiceProfileId = voiceProfileData?.id;
           }
-        } catch (dbError) {
-          console.warn('Error saving voice profile to database (non-fatal):', dbError);
+        } catch {
+          // non-fatal db error
         }
 
         // Create voice profile in local state
@@ -389,7 +370,6 @@ export const ContentGenerator = () => {
         throw new Error('Failed to upload voice profile');
       }
     } catch (error) {
-      console.error('Voice profile upload error:', error);
       const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Upload failed",
@@ -408,8 +388,6 @@ export const ContentGenerator = () => {
     setIsGenerating(true);
 
     try {
-      console.log('Starting editorial request...');
-
       // Extract base output type and article length if applicable
       let baseOutputType = selectedOutputType;
       let articleLength = selectedArticleLength;
@@ -436,8 +414,6 @@ export const ContentGenerator = () => {
         payload.article_length = articleLength;
       }
 
-      console.log('Sending payload:', payload);
-
       const response = await fetch(WEBHOOK_CONTENT_PUBLISH, {
         method: 'POST',
         headers: {
@@ -446,112 +422,55 @@ export const ContentGenerator = () => {
         body: JSON.stringify(payload)
       });
 
-      console.log('Response status:', response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('Editorial response:', result);
-
-        // Format the response data beautifully
         const formattedContent = formatResponseData(result);
-        console.log('Formatted content:', formattedContent);
-
-        // Store generated content but don't show modal
         setGeneratedContent(formattedContent);
 
-        // Also save to database as draft
         try {
-          console.log('Starting database save...');
           const { data: user } = await supabase.auth.getUser();
-          console.log('User data:', user);
-
           if (user.user) {
             const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
-            const insertData = {
-              user_id: user.user.id,
-              title: `${selectedOutputType.replace('-', ' ')} about ${topic.substring(0, 50)}`,
-              content: formattedContent,
-              persona: voiceName,
-              output_type: selectedOutputType,
-              status: 'draft',
-              topic_context: topic
-            };
-            console.log('Inserting data:', insertData);
-
             const { error, data } = await supabase
               .from('content_outputs')
-              .insert(insertData)
+              .insert({
+                user_id: user.user.id,
+                title: `${selectedOutputType.replace('-', ' ')} about ${topic.substring(0, 50)}`,
+                content: formattedContent,
+                persona: voiceName,
+                output_type: selectedOutputType,
+                status: 'draft',
+                topic_context: topic,
+              })
               .select();
 
-            console.log('Insert result:', { error, data });
-
             if (error) {
-              console.error('Error saving to database:', error);
               const { toast } = await import("@/hooks/use-toast");
-              toast({
-                title: "Save failed!",
-                description: `Database error: ${error.message}`,
-                variant: "destructive",
-              });
+              toast({ title: "Save failed!", description: `Database error: ${error.message}`, variant: "destructive" });
             } else {
-              console.log('Content saved to database as draft successfully');
               const { toast } = await import("@/hooks/use-toast");
-              toast({
-                title: "Content saved!",
-                description: "Content has been added to your queue as draft",
-              });
+              toast({ title: "Content saved!", description: "Content has been added to your queue as draft" });
 
-              // Refresh ContentQueue and open draft modal
-              console.log('Refreshing content queue...');
-              if ((window as any).refreshContentQueue) {
-                (window as any).refreshContentQueue();
-              } else {
-                console.log('refreshContentQueue function not available');
-              }
+              window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
+              window.dispatchEvent(new CustomEvent('statsRefresh'));
 
-              // Refresh dashboard stats
-              if ((window as any).refreshDashboardStats) {
-                (window as any).refreshDashboardStats();
-              }
-
-              // Open the draft modal automatically with a delay
               if (data && data.length > 0) {
-                console.log('Opening draft modal for content ID:', data[0].id);
                 setTimeout(() => {
-                  if ((window as any).openDraftModal) {
-                    (window as any).openDraftModal(data[0].id);
-                  } else {
-                    console.log('openDraftModal function not available');
-                  }
+                  window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: data[0].id } }));
                 }, 300);
               }
             }
-          } else {
-            console.log('No user found for database save');
           }
-        } catch (dbError) {
-          console.error('Database save error:', dbError);
+        } catch {
+          // db save failed — non-critical
         }
-
       } else {
-        const errorText = await response.text();
-        console.error('Failed to generate content:', response.status, response.statusText, errorText);
         const { toast } = await import("@/hooks/use-toast");
-        toast({
-          title: "Error generating content",
-          description: `Error: ${response.status} ${response.statusText}`,
-          variant: "destructive",
-        });
+        toast({ title: "Error generating content", description: `Error: ${response.status} ${response.statusText}`, variant: "destructive" });
       }
-      
     } catch (error) {
-      console.error('Generation error:', error);
       const { toast } = await import("@/hooks/use-toast");
-      toast({
-        title: "Network error",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Network error", description: error.message, variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }
@@ -560,15 +479,7 @@ export const ContentGenerator = () => {
   const formatResponseData = (response: any) => {
     if (!response) return "";
 
-    console.log('Formatting response data:', response);
-
-    // Handle array response (webhook returns array with one object)
-    let data = response;
-    if (Array.isArray(response) && response.length > 0) {
-      data = response[0];
-    }
-
-    console.log('Processing data:', data);
+    let data = Array.isArray(response) && response.length > 0 ? response[0] : response;
 
     // If we have text_output, format it beautifully
     if (data.text_output) {
@@ -654,7 +565,7 @@ export const ContentGenerator = () => {
       .replace(/^(#{2,3} [🔹💫] \*\*[^*]+)\*\*/gm, '$1**')
       // Enhance bullet points
       .replace(/^- /gm, '✅ ')
-      .replace(/^\\* /gm, '⭐ ')
+      .replace(/^\* /gm, '⭐ ')
       // Add spacing around sections
       .replace(/^(#{1,3})/gm, '\n$1')
       // Clean up extra newlines
@@ -690,18 +601,10 @@ export const ContentGenerator = () => {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Quick action response:', result);
-
-        // Use the same formatting function for consistency
-        const formattedContent = formatResponseData(result);
-        console.log('Formatted quick action content:', formattedContent);
-
-        setGeneratedContent(formattedContent);
-      } else {
-        console.error('Failed to process quick action:', response.statusText);
+        setGeneratedContent(formatResponseData(result));
       }
-    } catch (error) {
-      console.error('Error processing quick action:', error);
+    } catch {
+      // quick action failed silently
     } finally {
       setIsProcessingAction("");
     }

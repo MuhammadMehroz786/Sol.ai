@@ -44,9 +44,13 @@ export const useAgentMonitoring = () => {
   // Fetch all agents with their health status
   const fetchAgentsHealth = async () => {
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return;
+
       const { data: agentData, error: agentError } = await supabase
         .from('agents')
         .select('*')
+        .eq('user_id', authData.user.id)
         .order('priority', { ascending: true });
 
       if (agentError) throw agentError;
@@ -54,37 +58,54 @@ export const useAgentMonitoring = () => {
       if (agentData) {
         const healthStatuses = await Promise.all(
           agentData.map(async (agent) => {
-            // Get recent health check
-            const { data: healthCheck } = await supabase
-              .from('agent_health_checks')
-              .select('*')
-              .eq('agent_id', agent.id)
-              .order('checked_at', { ascending: false })
-              .limit(1)
-              .single();
+            try {
+              // Get recent health check
+              const { data: healthCheck, error: hcError } = await supabase
+                .from('agent_health_checks')
+                .select('*')
+                .eq('agent_id', agent.id)
+                .order('checked_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            // Calculate stats from recent checks
-            const { data: recentChecks } = await supabase
-              .from('agent_health_checks')
-              .select('success, response_time, checked_at')
-              .eq('agent_id', agent.id)
-              .gte('checked_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+              // Calculate stats from recent checks
+              const { data: recentChecks, error: rcError } = await supabase
+                .from('agent_health_checks')
+                .select('success, response_time, checked_at')
+                .eq('agent_id', agent.id)
+                .gte('checked_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-            const successfulChecks = recentChecks?.filter(check => check.success).length || 0;
-            const totalChecks = recentChecks?.length || 0;
-            const avgResponseTime = recentChecks?.length
-              ? recentChecks.reduce((sum, check) => sum + (check.response_time || 0), 0) / recentChecks.length
-              : 0;
+              if (hcError || rcError) {
+                // query errors for individual agents — skip this agent's health data
+              }
 
-            return {
-              agent,
-              healthStatus: agent.health_status || 'unknown',
-              responseTime: Math.round(avgResponseTime),
-              successRate: totalChecks > 0 ? Math.round((successfulChecks / totalChecks) * 100) : 0,
-              uptime: agent.uptime_percentage || 0,
-              lastChecked: healthCheck?.checked_at || null,
-              isOnline: agent.status === 'active' && (agent.health_status === 'ok' || agent.health_status === 'warn')
-            } as AgentHealthStatus;
+              const checks = recentChecks || [];
+              const successfulChecks = checks.filter(check => check.success).length;
+              const totalChecks = checks.length;
+              const avgResponseTime = checks.length
+                ? checks.reduce((sum, check) => sum + (check.response_time || 0), 0) / checks.length
+                : 0;
+
+              return {
+                agent,
+                healthStatus: agent.health_status || 'unknown',
+                responseTime: Math.round(avgResponseTime),
+                successRate: totalChecks > 0 ? Math.round((successfulChecks / totalChecks) * 100) : 0,
+                uptime: agent.uptime_percentage || 0,
+                lastChecked: healthCheck?.checked_at || null,
+                isOnline: agent.status === 'active' && (agent.health_status === 'ok' || agent.health_status === 'warn')
+              } as AgentHealthStatus;
+            } catch (err) {
+              return {
+                agent,
+                healthStatus: 'unknown',
+                responseTime: 0,
+                successRate: 0,
+                uptime: 0,
+                lastChecked: null,
+                isOnline: false
+              } as AgentHealthStatus;
+            }
           })
         );
 
@@ -145,16 +166,19 @@ export const useAgentMonitoring = () => {
 
       setCategoryStats(stats);
     } catch (error) {
-      console.error('Error calculating category stats:', error);
     }
   };
 
   // Fetch system alerts
   const fetchAlerts = async () => {
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return;
+
       const { data, error } = await supabase
         .from('system_alerts')
         .select('*')
+        .eq('user_id', authData.user.id)
         .eq('is_acknowledged', false)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -162,7 +186,6 @@ export const useAgentMonitoring = () => {
       if (error) throw error;
       setAlerts(data || []);
     } catch (err: any) {
-      console.error('Error fetching alerts:', err);
     }
   };
 
@@ -227,7 +250,6 @@ export const useAgentMonitoring = () => {
       if (error) throw error;
       await fetchAlerts();
     } catch (err: any) {
-      console.error('Error acknowledging alert:', err);
     }
   };
 
@@ -273,44 +295,25 @@ export const useAgentMonitoring = () => {
 
   // Real-time subscriptions
   useEffect(() => {
-    const setupSubscriptions = async () => {
-      setLoading(true);
-      await fetchAgentsHealth();
-      await fetchAlerts();
-      setLoading(false);
+    setLoading(true);
+    fetchAgentsHealth().then(() => fetchAlerts()).finally(() => setLoading(false));
 
-      // Subscribe to agent changes
-      const agentsChannel = supabase
-        .channel('agents_monitoring')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'agents'
-        }, () => {
-          fetchAgentsHealth();
-        })
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'agent_health_checks'
-        }, () => {
-          fetchAgentsHealth();
-        })
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'system_alerts'
-        }, () => {
-          fetchAlerts();
-        })
-        .subscribe();
+    const agentsChannel = supabase
+      .channel('agents_monitoring')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'agents' }, () => {
+        fetchAgentsHealth();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'agent_health_checks' }, () => {
+        fetchAgentsHealth();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_alerts' }, () => {
+        fetchAlerts();
+      })
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(agentsChannel);
-      };
+    return () => {
+      supabase.removeChannel(agentsChannel);
     };
-
-    setupSubscriptions();
   }, []);
 
   // Periodic refresh

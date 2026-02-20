@@ -15,7 +15,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   useEffect(() => {
     if (loading) {
       const timer = setTimeout(() => {
-        console.log('Auth loading timeout - redirecting to /auth');
         setTimeoutReached(true);
       }, 3000);
 

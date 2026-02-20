@@ -249,7 +249,7 @@ export const validateAgentSchema = (schema: any): IOSchema | null => {
 export const validateEndpoint = (endpoint: string): boolean => {
   try {
     new URL(endpoint);
-    return endpoint.startsWith('https://') || endpoint.startsWith('http://');
+    return endpoint.startsWith('https://');
   } catch {
     return false;
   }

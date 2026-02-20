@@ -6,16 +6,21 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import AgentHub from "./pages/AgentHub";
+import Agents from "./pages/Agents";
 import SocialAlchemist from "./pages/SocialAlchemist";
 import Auth from "./pages/Auth";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
+});
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <TooltipProvider>
@@ -35,14 +40,7 @@ const App = () => (
               <Route path="/agents" element={
                 <ProtectedRoute>
                   <Layout>
-                    <AgentHub />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              <Route path="/monitor" element={
-                <ProtectedRoute>
-                  <Layout>
-                    <AgentHub />
+                    <Agents />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -53,6 +51,13 @@ const App = () => (
                   </Layout>
                 </ProtectedRoute>
               } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Settings />
+                  </Layout>
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
@@ -60,6 +65,7 @@ const App = () => (
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

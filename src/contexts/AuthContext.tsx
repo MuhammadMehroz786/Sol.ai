@@ -9,6 +9,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, displayName?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<{ error: any }>;
+  updateProfile: (data: { displayName?: string; avatarUrl?: string }) => Promise<{ error: any }>;
+  signOutAllDevices: () => Promise<{ error: any }>;
+  deleteAccount: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,27 +34,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const ensureProfileExists = async (authUser: User) => {
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+
+    if (!existing) {
+      const meta = authUser.user_metadata || {};
+      await supabase.from('profiles').upsert({
+        user_id: authUser.id,
+        email: authUser.email,
+        display_name: meta.display_name || authUser.email?.split('@')[0] || 'User',
+      }, { onConflict: 'user_id' });
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Auto-create profile for any sign-in method (OAuth, magic link, email)
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Defer to avoid Supabase client deadlock inside the listener
+          setTimeout(() => ensureProfileExists(session.user), 0);
+        }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
-        console.log('Initial session check:', session?.user?.email || 'No session');
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       })
-      .catch((error) => {
-        console.error('Error checking session:', error);
+      .catch(() => {
         setLoading(false);
       });
 
@@ -80,23 +104,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       },
     });
 
-    // Log detailed information for debugging
-    console.log('Signup response:', { data, error });
-
     // Check for error
     if (error) {
-      console.error('Signup error details:', {
-        message: error.message,
-        status: error.status,
-        name: error.name,
-        fullError: error
-      });
       return { error };
     }
 
     // Check if user already exists (Supabase returns user but with identities empty for existing users)
     if (data.user && data.user.identities && data.user.identities.length === 0) {
-      console.log('User already exists - identities array is empty');
       return {
         error: {
           message: 'User already registered',
@@ -106,26 +120,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       };
     }
 
-    console.log('Auth user created successfully:', data);
-
     // Step 2: Create the profile if user was created
     if (data.user) {
-      const profileData = {
-        user_id: data.user.id,
-        email: data.user.email,
-        display_name: displayName || data.user.email?.split('@')[0] || 'User',
-      };
-
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert(profileData);
+        .upsert({
+          user_id: data.user.id,
+          email: data.user.email,
+          display_name: displayName || data.user.email?.split('@')[0] || 'User',
+        }, { onConflict: 'user_id' });
 
       if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // Don't return this error - user was created successfully
-        // The profile can be created later if needed
-      } else {
-        console.log('Profile created successfully');
+        // Non-blocking — auth user was created successfully
+        return { error: null, profileWarning: profileError.message };
       }
     }
 
@@ -136,6 +143,84 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await supabase.auth.signOut();
   };
 
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    return { error };
+  };
+
+  const updateProfile = async (data: { displayName?: string; avatarUrl?: string }) => {
+    // Update auth user metadata
+    const metadata: Record<string, string> = {};
+    if (data.displayName !== undefined) metadata.display_name = data.displayName;
+    if (data.avatarUrl !== undefined) metadata.avatar_url = data.avatarUrl;
+
+    const { error: authError } = await supabase.auth.updateUser({
+      data: metadata,
+    });
+
+    if (authError) return { error: authError };
+
+    // Update profiles table
+    if (user) {
+      const profileUpdate: Record<string, string> = {};
+      if (data.displayName !== undefined) profileUpdate.display_name = data.displayName;
+
+      if (Object.keys(profileUpdate).length > 0) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update(profileUpdate)
+          .eq('user_id', user.id);
+
+        if (profileError) {
+          // Don't fail — auth metadata was updated successfully
+        }
+      }
+    }
+
+    return { error: null };
+  };
+
+  const signOutAllDevices = async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    return { error };
+  };
+
+  const deleteAccount = async () => {
+    if (!user) return { error: { message: 'No user logged in' } };
+
+    // Delete voice profiles
+    const { error: voiceError } = await supabase
+      .from('voice_profiles')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (voiceError) {
+      // non-blocking — continue deletion
+    }
+
+    // Delete user profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('user_id', user.id);
+
+    if (profileError) {
+      // non-blocking — continue deletion
+    }
+
+    // Delete the auth user itself so the email can be re-registered
+    const { error: rpcError } = await supabase.rpc('delete_current_user');
+    if (rpcError) {
+      return { error: rpcError };
+    }
+
+    // Session is invalidated after auth user deletion; sign out to clear local state
+    await supabase.auth.signOut({ scope: 'global' }).catch(() => {});
+    return { error: null };
+  };
+
   const value = {
     user,
     session,
@@ -143,6 +228,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     signIn,
     signUp,
     signOut,
+    updatePassword,
+    updateProfile,
+    signOutAllDevices,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

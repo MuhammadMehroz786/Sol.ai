@@ -8,6 +8,7 @@ import { ContentQueue } from "@/components/dashboard/ContentQueue";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import soleLogoWithTagline from "@/assets/sole-logo-new.png";
 import soleLogoBlack from "@/assets/SOLE LOGO - BLACK WO BG.png";
 import {
@@ -25,6 +26,7 @@ interface ContentStats {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState<ContentStats>({
     totalGenerated: 0,
     inQueue: 0,
@@ -43,7 +45,11 @@ const Dashboard = () => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error fetching stats:', error);
+        toast({
+          title: "Stats unavailable",
+          description: "Could not load dashboard statistics. Please try refreshing.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -67,8 +73,8 @@ const Dashboard = () => {
           publishedToday
         });
       }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+    } catch {
+      // stats fetch failed silently
     }
   };
 
@@ -78,14 +84,11 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  // Refresh stats when content is updated
+  // Refresh stats when content is updated (via CustomEvent from other components)
   useEffect(() => {
-    (window as any).refreshDashboardStats = () => {
-      fetchStats();
-    };
-    return () => {
-      delete (window as any).refreshDashboardStats;
-    };
+    const handleStatsRefresh = () => { fetchStats(); };
+    window.addEventListener('statsRefresh', handleStatsRefresh);
+    return () => window.removeEventListener('statsRefresh', handleStatsRefresh);
   }, [user]);
 
   return (

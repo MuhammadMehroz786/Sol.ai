@@ -19,6 +19,11 @@ const Auth = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('signin');
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setError('');
+  };
+
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -54,7 +59,16 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
-    const { error } = await signUp(email, password, displayName);
+    const result = await signUp(email, password, displayName);
+    const error = result.error;
+    const profileWarning = (result as any).profileWarning;
+
+    if (profileWarning) {
+      toast({
+        title: "Account created with a note",
+        description: "Your account was created but your profile setup had an issue. You can update it in Settings.",
+      });
+    }
 
     if (error) {
       // Check if the error is about a duplicate user
@@ -120,7 +134,7 @@ const Auth = () => {
           </CardHeader>
           
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>

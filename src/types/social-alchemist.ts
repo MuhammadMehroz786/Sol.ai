@@ -162,7 +162,3 @@ export function calculateReadTime(text: string): string {
   const minutes = Math.ceil(words / wordsPerMinute);
   return minutes <= 1 ? "< 1 min read" : `~${minutes} min read`;
 }
-
-export function generateIdempotencyKey(): string {
-  return `sa-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}

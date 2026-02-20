@@ -28,6 +28,18 @@ export interface MonitoringStats {
   health_status: 'ok' | 'warn' | 'fail' | 'unknown';
 }
 
+// AI provider domains that block direct browser requests (CORS) and require
+// a server-side proxy to avoid exposing API keys in network traffic.
+const AI_PROVIDER_DOMAINS = [
+  'openai.com',
+  'anthropic.com',
+  'googleapis.com',
+  'api.cohere.ai',
+  'api.mistral.ai',
+  'api.together.xyz',
+  'api.perplexity.ai',
+];
+
 class AgentMonitoringService {
   private monitoringInterval: NodeJS.Timeout | null = null;
   private isMonitoring = false;
@@ -40,11 +52,9 @@ class AgentMonitoringService {
    */
   startMonitoring(): void {
     if (this.isMonitoring) {
-      console.log('Agent monitoring is already running');
       return;
     }
 
-    console.log('Starting agent monitoring service...');
     this.isMonitoring = true;
 
     // Run initial health check
@@ -65,36 +75,36 @@ class AgentMonitoringService {
       this.monitoringInterval = null;
     }
     this.isMonitoring = false;
-    console.log('Agent monitoring service stopped');
   }
 
   /**
-   * Run health checks for all active agents
+   * Run health checks for the current user's active agents
    */
   private async runHealthChecks(): Promise<void> {
     try {
-      console.log('Running scheduled health checks...');
 
-      // Get all active agents
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) {
+        return;
+      }
+
       const { data: agents, error } = await supabase
         .from('agents')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('user_id', authData.user.id);
 
       if (error) {
-        console.error('Error fetching agents for health check:', error);
         return;
       }
 
       if (!agents || agents.length === 0) {
-        console.log('No active agents to monitor');
         return;
       }
 
       // Run health checks in parallel
       const healthCheckPromises = agents.map(agent =>
         this.performHealthCheck(agent).catch(error => {
-          console.error(`Health check failed for agent ${agent.name}:`, error);
           return {
             agent_id: agent.id,
             success: false,
@@ -121,16 +131,14 @@ class AgentMonitoringService {
       );
 
       // Check for fallback triggers
-      await this.checkFallbackTriggers();
+      await this.checkFallbackTriggers(authData.user.id);
 
       // Perform comprehensive system health check
       const { fallbackManager } = await import('./fallbackManager');
       await fallbackManager.performSystemHealthCheck();
 
-      console.log(`Health checks completed for ${healthCheckResults.length} agents`);
 
     } catch (error) {
-      console.error('Error running health checks:', error);
     }
   }
 
@@ -173,7 +181,15 @@ class AgentMonitoringService {
   }
 
   /**
-   * Ping an agent endpoint
+   * Ping an agent endpoint.
+   *
+   * AI provider endpoints (OpenAI, Anthropic, Google, etc.) cannot be called
+   * directly from the browser due to CORS restrictions, and doing so would
+   * also expose API keys in network traffic. These are routed through a
+   * server-side proxy configured via VITE_HEALTH_CHECK_PROXY.
+   *
+   * Custom/webhook endpoints are pinged with a lightweight HEAD (or GET)
+   * request to avoid triggering business logic or incurring billing.
    */
   private async pingAgent(agent: Agent): Promise<{
     success: boolean;
@@ -183,120 +199,162 @@ class AgentMonitoringService {
     request_payload?: any;
     response_payload?: any;
   }> {
+    if (this.isAiProviderEndpoint(agent.endpoint)) {
+      return this.pingViaProxy(agent);
+    }
+    return this.pingCustomEndpoint(agent);
+  }
+
+  /**
+   * Returns true if the endpoint belongs to a known AI provider whose API
+   * cannot be called directly from a browser (CORS + key exposure).
+   */
+  private isAiProviderEndpoint(endpoint: string): boolean {
+    return AI_PROVIDER_DOMAINS.some(domain => endpoint.includes(domain));
+  }
+
+  /**
+   * Route an AI-provider health check through a server-side proxy.
+   *
+   * The proxy (e.g. a Supabase Edge Function or n8n workflow) receives the
+   * agent_id, looks up the credentials server-side, and returns a normalised
+   * { success, status_code } response.  API keys never travel through the
+   * browser network layer.
+   *
+   * Configure the proxy URL with VITE_HEALTH_CHECK_PROXY in your .env file.
+   */
+  private async pingViaProxy(agent: Agent): Promise<{
+    success: boolean;
+    status_code: number;
+    error_message?: string;
+    error_type?: 'network' | 'timeout' | 'auth' | 'server' | 'client';
+    response_payload?: any;
+  }> {
+    const proxyUrl = import.meta.env.VITE_HEALTH_CHECK_PROXY as string | undefined;
+
+    if (!proxyUrl) {
+      return {
+        success: false,
+        status_code: 0,
+        error_message:
+          'AI provider health checks require a server-side proxy. ' +
+          'Set VITE_HEALTH_CHECK_PROXY in your .env file pointing to a ' +
+          'Supabase Edge Function or n8n workflow that performs the check ' +
+          'server-side so API keys are never exposed in browser network traffic.',
+        error_type: 'network',
+      };
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
 
     try {
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'SOLE-Agent-Monitor/1.0',
-        ...(agent.api_headers as Record<string, string> || {})
-      };
-
-      // Add authentication
-      if (agent.api_key_encrypted) {
-        switch (agent.auth_method) {
-          case 'bearer_token':
-            headers['Authorization'] = `Bearer ${agent.api_key_encrypted}`;
-            break;
-          case 'api_key':
-            headers['X-API-Key'] = agent.api_key_encrypted;
-            break;
-          case 'basic_auth':
-            headers['Authorization'] = `Basic ${btoa(agent.api_key_encrypted)}`;
-            break;
-        }
-      }
-
-      // Prepare test payload based on agent type
-      const testPayload = this.getTestPayload(agent);
-
-      const response = await fetch(agent.endpoint, {
+      // Only send the agent_id — the proxy retrieves credentials server-side
+      const response = await fetch(proxyUrl, {
         method: 'POST',
-        headers,
-        body: JSON.stringify(testPayload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent_id: agent.id, endpoint: agent.endpoint }),
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      const responseText = await response.text();
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch {
-        responseData = responseText;
-      }
+      const responseData = await response.json().catch(() => ({}));
 
       if (response.ok) {
         return {
-          success: true,
-          status_code: response.status,
-          request_payload: testPayload,
-          response_payload: responseData
+          success: responseData.success ?? true,
+          status_code: responseData.status_code ?? response.status,
+          response_payload: responseData,
         };
       } else {
         return {
           success: false,
           status_code: response.status,
-          error_message: `HTTP ${response.status}: ${response.statusText}`,
+          error_message: `Proxy returned HTTP ${response.status}: ${response.statusText}`,
           error_type: response.status >= 500 ? 'server' : 'client',
-          request_payload: testPayload,
-          response_payload: responseData
+          response_payload: responseData,
         };
       }
-
     } catch (error: any) {
       clearTimeout(timeoutId);
-
       if (error.name === 'AbortError') {
-        return {
-          success: false,
-          status_code: 0,
-          error_message: 'Request timeout',
-          error_type: 'timeout'
-        };
+        return { success: false, status_code: 0, error_message: 'Request timeout', error_type: 'timeout' };
       }
-
-      return {
-        success: false,
-        status_code: 0,
-        error_message: error.message,
-        error_type: 'network'
-      };
+      return { success: false, status_code: 0, error_message: error.message, error_type: 'network' };
     }
   }
 
   /**
-   * Get test payload for different agent types
+   * Ping a custom/webhook endpoint directly using HEAD (falling back to GET).
+   * No business-logic body is sent so no actions are triggered and no billing
+   * is incurred on the remote side.
    */
-  private getTestPayload(agent: Agent): any {
-    // Simple health check payloads for different providers
-    if (agent.endpoint.includes('openai.com')) {
+  private async pingCustomEndpoint(agent: Agent): Promise<{
+    success: boolean;
+    status_code: number;
+    error_message?: string;
+    error_type?: 'network' | 'timeout' | 'auth' | 'server' | 'client';
+  }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.REQUEST_TIMEOUT);
+
+    const headers: Record<string, string> = {
+      ...(agent.api_headers as Record<string, string> || {}),
+    };
+
+    if (agent.api_key_encrypted) {
+      switch (agent.auth_method) {
+        case 'bearer_token':
+          headers['Authorization'] = `Bearer ${agent.api_key_encrypted}`;
+          break;
+        case 'api_key':
+          headers['X-API-Key'] = agent.api_key_encrypted;
+          break;
+        case 'basic_auth':
+          headers['Authorization'] = `Basic ${btoa(agent.api_key_encrypted)}`;
+          break;
+      }
+    }
+
+    try {
+      let response: Response;
+
+      // Try HEAD first — no body payload, zero billing risk
+      try {
+        response = await fetch(agent.endpoint, {
+          method: 'HEAD',
+          headers,
+          signal: controller.signal,
+        });
+      } catch {
+        // Some servers reject HEAD; fall back to GET
+        response = await fetch(agent.endpoint, {
+          method: 'GET',
+          headers,
+          signal: controller.signal,
+        });
+      }
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        return { success: true, status_code: response.status };
+      }
+
       return {
-        model: "gpt-3.5-turbo",
-        messages: [{"role": "user", "content": "Hello, this is a health check."}],
-        max_tokens: 5
+        success: false,
+        status_code: response.status,
+        error_message: `HTTP ${response.status}: ${response.statusText}`,
+        error_type: response.status >= 500 ? 'server' : response.status === 401 || response.status === 403 ? 'auth' : 'client',
       };
-    } else if (agent.endpoint.includes('anthropic.com')) {
-      return {
-        model: "claude-3-haiku-20240307",
-        max_tokens: 5,
-        messages: [{"role": "user", "content": "Hello, this is a health check."}]
-      };
-    } else if (agent.endpoint.includes('googleapis.com')) {
-      return {
-        contents: [{
-          parts: [{"text": "Hello, this is a health check."}]
-        }]
-      };
-    } else {
-      // Generic test payload
-      return {
-        message: "Health check",
-        timestamp: new Date().toISOString()
-      };
+
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        return { success: false, status_code: 0, error_message: 'Request timeout', error_type: 'timeout' };
+      }
+      return { success: false, status_code: 0, error_message: error.message, error_type: 'network' };
     }
   }
 
@@ -340,7 +398,6 @@ class AgentMonitoringService {
       })));
 
     if (error) {
-      console.error('Error storing health check results:', error);
     }
   }
 
@@ -353,42 +410,36 @@ class AgentMonitoringService {
     });
 
     if (error) {
-      console.error(`Error updating health status for agent ${agentId}:`, error);
     }
   }
 
   /**
    * Check for fallback triggers with time-window validation
    */
-  private async checkFallbackTriggers(): Promise<void> {
+  private async checkFallbackTriggers(userId: string): Promise<void> {
     try {
-      // Get all active agents
       const { data: activeAgents, error } = await supabase
         .from('agents')
         .select('*')
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('user_id', userId);
 
       if (error) {
-        console.error('Error checking fallback triggers:', error);
         return;
       }
 
       if (activeAgents && activeAgents.length > 0) {
-        console.log(`Checking ${activeAgents.length} active agents for fallback triggers`);
 
         for (const agent of activeAgents) {
-          // Check if this agent has recent failures within the time window
           const recentFailures = await this.getRecentFailuresCount(agent.id, 5); // 5 minutes
 
           if (recentFailures >= 3) {
-            console.log(`Agent ${agent.name} has ${recentFailures} failures in the last 5 minutes - triggering fallback check`);
             await this.triggerAutomaticFallback(agent);
           }
         }
       }
 
     } catch (error) {
-      console.error('Error in fallback trigger check:', error);
     }
   }
 
@@ -407,14 +458,12 @@ class AgentMonitoringService {
         .gte('checked_at', windowStart);
 
       if (error) {
-        console.error('Error fetching recent failures:', error);
         return 0;
       }
 
       return data?.length || 0;
 
     } catch (error) {
-      console.error('Error in getRecentFailuresCount:', error);
       return 0;
     }
   }
@@ -424,18 +473,14 @@ class AgentMonitoringService {
    */
   private async triggerAutomaticFallback(failedAgent: Agent): Promise<void> {
     try {
-      // Use fallback manager to handle the complete fallback logic
       const { fallbackManager } = await import('./fallbackManager');
       const success = await fallbackManager.checkAutomaticFallback(failedAgent.id);
 
       if (success) {
-        console.log(`Automatic fallback executed for ${failedAgent.name}`);
       } else {
-        console.log(`No automatic fallback available for ${failedAgent.name}`);
       }
 
     } catch (error) {
-      console.error('Error triggering automatic fallback:', error);
     }
   }
 
@@ -453,7 +498,6 @@ class AgentMonitoringService {
     const { error } = await supabase.from('system_alerts').insert(alert);
 
     if (error) {
-      console.error('Error creating alert:', error);
     }
   }
 
@@ -469,7 +513,6 @@ class AgentMonitoringService {
       .order('window_start', { ascending: false });
 
     if (error) {
-      console.error('Error fetching monitoring stats:', error);
       return [];
     }
 
@@ -477,16 +520,19 @@ class AgentMonitoringService {
   }
 
   /**
-   * Get current health status for all agents
+   * Get current health status for the current user's agents
    */
   async getAgentsHealth(): Promise<Agent[]> {
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) return [];
+
     const { data, error } = await supabase
       .from('agents')
       .select('*')
+      .eq('user_id', authData.user.id)
       .order('priority', { ascending: true });
 
     if (error) {
-      console.error('Error fetching agents health:', error);
       return [];
     }
 
@@ -505,7 +551,6 @@ class AgentMonitoringService {
         .single();
 
       if (error || !agent) {
-        console.error('Agent not found:', error);
         return null;
       }
 
@@ -516,7 +561,6 @@ class AgentMonitoringService {
       return result;
 
     } catch (error) {
-      console.error('Error in manual health check:', error);
       return null;
     }
   }
