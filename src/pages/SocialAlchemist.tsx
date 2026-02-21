@@ -43,7 +43,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { WEBHOOK_SOCIAL_ALCHEMIST, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
-import { DEFAULT_VOICES, VOICES_STORAGE_KEY } from "@/constants/voices";
+import { useVoices } from "@/contexts/VoicesContext";
 import {
   FileText,
   Link as LinkIcon,
@@ -239,7 +239,7 @@ const SocialAlchemist = () => {
   const { toast } = useToast();
   const location = useLocation();
   const [selectedVoice, setSelectedVoice] = useState("");
-  const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
+  const { voices, addVoice, removeVoice } = useVoices();
   const [sourceType, setSourceType] = useState<SourceType>("paste");
   const [sourceContent, setSourceContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
@@ -336,70 +336,6 @@ const SocialAlchemist = () => {
     return { valid: true };
   };
 
-  // Load custom voices from Supabase (with localStorage fallback)
-  const loadVoices = async () => {
-    const { data: authData } = await supabase.auth.getUser();
-
-    if (!authData.user) {
-      // Not authenticated — fall back to localStorage
-      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
-      if (stored) {
-        try {
-          const customVoices = JSON.parse(stored).filter((v: CustomVoice) => v.label !== 'My Voice Profile');
-          setVoices([...DEFAULT_VOICES, ...customVoices]);
-        } catch (e) {}
-      }
-      return;
-    }
-
-    const { data: dbVoices, error } = await supabase
-      .from('voice_profiles')
-      .select('*')
-      .eq('user_id', authData.user.id);
-
-    if (error) {
-      // Fall back to localStorage
-      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
-      if (stored) {
-        try {
-          const customVoices = JSON.parse(stored).filter((v: CustomVoice) => v.label !== 'My Voice Profile');
-          setVoices([...DEFAULT_VOICES, ...customVoices]);
-        } catch (e) {}
-      }
-      return;
-    }
-
-    const customVoices: CustomVoice[] = (dbVoices || []).map(vp => ({
-      value: `voice-${vp.id}`,
-      label: vp.profile_name,
-      description: (vp.style_json as any)?.description || 'Custom voice profile',
-      isDefault: false,
-      userId: vp.user_id ?? undefined,
-      databaseId: vp.id,
-    }));
-
-    setVoices([...DEFAULT_VOICES, ...customVoices]);
-    // Keep localStorage in sync for backward compat
-    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customVoices));
-  };
-
-  useEffect(() => {
-    loadVoices();
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === VOICES_STORAGE_KEY) loadVoices();
-    };
-    const handleVoiceUpdate = () => loadVoices();
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('voicesUpdated', handleVoiceUpdate);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('voicesUpdated', handleVoiceUpdate);
-    };
-  }, []);
-
   // Listen for content from Content Queue
   useEffect(() => {
     const handleEditorialContent = (event: CustomEvent) => {
@@ -434,12 +370,6 @@ const SocialAlchemist = () => {
     }
   }, [location.state]);
 
-  const saveCustomVoices = (allVoices: CustomVoice[]) => {
-    const customOnly = allVoices.filter(v => !v.isDefault);
-    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customOnly));
-    window.dispatchEvent(new Event('voicesUpdated'));
-  };
-
   const handleVoiceChange = (value: string) => {
     if (value === "create-voice-profile") {
       setVoiceProfileModalOpen(true);
@@ -470,9 +400,7 @@ const SocialAlchemist = () => {
         if (dbError) throw dbError;
       }
 
-      const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
-      setVoices(updatedVoices);
-      saveCustomVoices(updatedVoices);
+      removeVoice(voiceToDelete.value);
 
       if (selectedVoice === voiceToDelete.value) setSelectedVoice("");
 
@@ -561,9 +489,7 @@ const SocialAlchemist = () => {
         databaseId,
       };
 
-      const updatedVoices = [...voices, newVoice];
-      setVoices(updatedVoices);
-      saveCustomVoices(updatedVoices);
+      addVoice(newVoice);
       setSelectedVoice(newVoice.value);
 
       toast({ title: "Voice profile created!" });

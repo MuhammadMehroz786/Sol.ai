@@ -39,6 +39,103 @@ import {
   Hash,
 } from "lucide-react";
 
+// ─── Shared form fields (extracted outside component to prevent remounting on state change) ───
+const AgentFormFields = ({
+  formData,
+  setFormData,
+}: {
+  formData: Partial<AgentInsert>;
+  setFormData: React.Dispatch<React.SetStateAction<Partial<AgentInsert>>>;
+}) => (
+  <>
+    <div className="space-y-2">
+      <Label className="font-semibold">Agent Name *</Label>
+      <Input
+        placeholder="e.g., GPT-4 Content Generator"
+        value={formData.name || ""}
+        onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
+        className="rounded-xl border-primary/20 focus:border-primary/40"
+      />
+    </div>
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label className="font-semibold">Role</Label>
+        <Select value={formData.role || ""} onValueChange={(v) => setFormData(p => ({ ...p, role: v as any }))}>
+          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select role" /></SelectTrigger>
+          <SelectContent>
+            {["admin","editor","viewer","moderator","custom"].map(r => (
+              <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="font-semibold">Auth Method</Label>
+        <Select value={formData.auth_method || ""} onValueChange={(v) => setFormData(p => ({ ...p, auth_method: v as any }))}>
+          <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select method" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="api_key">API Key</SelectItem>
+            <SelectItem value="bearer_token">Bearer Token</SelectItem>
+            <SelectItem value="basic_auth">Basic Auth</SelectItem>
+            <SelectItem value="oauth">OAuth</SelectItem>
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+    <div className="space-y-2">
+      <Label className="font-semibold">Agent Purpose</Label>
+      <Input
+        placeholder="e.g., Content generation, Data analysis"
+        value={formData.function || ""}
+        onChange={(e) => setFormData(p => ({ ...p, function: e.target.value }))}
+        className="rounded-xl border-primary/20"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label className="font-semibold">API Endpoint *</Label>
+      <Input
+        placeholder="https://api.example.com/v1/..."
+        value={formData.endpoint || ""}
+        onChange={(e) => setFormData(p => ({ ...p, endpoint: e.target.value }))}
+        className="rounded-xl border-primary/20"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label className="font-semibold">API Key / Token</Label>
+      <Input
+        type="password"
+        placeholder="Enter your API key or token"
+        value={formData.api_key_encrypted || ""}
+        onChange={(e) => setFormData(p => ({ ...p, api_key_encrypted: e.target.value }))}
+        className="rounded-xl border-primary/20"
+      />
+    </div>
+    <div className="space-y-2">
+      <Label className="font-semibold">Status</Label>
+      <Select value={formData.status || ""} onValueChange={(v) => setFormData(p => ({ ...p, status: v as any }))}>
+        <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="planned">Planned</SelectItem>
+          <SelectItem value="active">Active</SelectItem>
+          <SelectItem value="inactive">Inactive</SelectItem>
+          <SelectItem value="error">Error</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+    <div className="flex items-center justify-between rounded-xl border border-primary/15 bg-primary/3 px-4 py-3">
+      <div>
+        <p className="font-semibold text-sm text-foreground">Fallback Agent</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Allow this agent to be used as a fallback when others fail</p>
+      </div>
+      <Switch
+        checked={formData.is_fallback_enabled ?? false}
+        onCheckedChange={(checked) => setFormData(p => ({ ...p, is_fallback_enabled: checked }))}
+      />
+    </div>
+  </>
+);
+
 // ─── Animated counter ───
 const AnimatedNumber = ({ value, suffix = "" }: { value: number; suffix?: string }) => {
   const [display, setDisplay] = useState(0);
@@ -80,10 +177,10 @@ const Agents = () => {
   const [activeTab, setActiveTab] = useState("registry");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [formData, setFormData] = useState<Partial<AgentInsert>>({
-    name: "", role: "custom", function: "", endpoint: "",
-    auth_method: "api_key", api_key_encrypted: "",
+    name: "", role: undefined, function: "", endpoint: "",
+    auth_method: undefined, api_key_encrypted: "",
     api_headers: {}, input_schema: null, output_schema: null,
-    status: "planned", priority: 1, is_fallback_enabled: false,
+    status: undefined, priority: undefined, is_fallback_enabled: false,
   });
 
   // ─── Monitoring hook ───
@@ -222,10 +319,10 @@ const Agents = () => {
 
   const resetForm = () => {
     setFormData({
-      name: "", role: "custom", function: "", endpoint: "",
-      auth_method: "api_key", api_key_encrypted: "",
+      name: "", role: undefined, function: "", endpoint: "",
+      auth_method: undefined, api_key_encrypted: "",
       api_headers: {}, input_schema: null, output_schema: null,
-      status: "planned", priority: 1, is_fallback_enabled: false,
+      status: undefined, priority: undefined, is_fallback_enabled: false,
     });
     setSelectedAgent(null);
   };
@@ -327,107 +424,7 @@ const Agents = () => {
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // ─── Shared form fields for dialogs ───
-  const AgentFormFields = () => (
-    <>
-      <div className="space-y-2">
-        <Label className="font-semibold">Agent Name *</Label>
-        <Input
-          placeholder="e.g., GPT-4 Content Generator"
-          value={formData.name || ""}
-          onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
-          className="rounded-xl border-primary/20 focus:border-primary/40"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="font-semibold">Role</Label>
-          <Select value={formData.role} onValueChange={(v) => setFormData(p => ({ ...p, role: v as any }))}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {["admin","editor","viewer","moderator","custom"].map(r => (
-                <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="font-semibold">Auth Method</Label>
-          <Select value={formData.auth_method} onValueChange={(v) => setFormData(p => ({ ...p, auth_method: v as any }))}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="api_key">API Key</SelectItem>
-              <SelectItem value="bearer_token">Bearer Token</SelectItem>
-              <SelectItem value="basic_auth">Basic Auth</SelectItem>
-              <SelectItem value="oauth">OAuth</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label className="font-semibold">Agent Purpose</Label>
-        <Input
-          placeholder="e.g., Content generation, Data analysis"
-          value={formData.function || ""}
-          onChange={(e) => setFormData(p => ({ ...p, function: e.target.value }))}
-          className="rounded-xl border-primary/20"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="font-semibold">API Endpoint *</Label>
-        <Input
-          placeholder="https://api.example.com/v1/..."
-          value={formData.endpoint || ""}
-          onChange={(e) => setFormData(p => ({ ...p, endpoint: e.target.value }))}
-          className="rounded-xl border-primary/20"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label className="font-semibold">API Key / Token</Label>
-        <Input
-          type="password"
-          placeholder="Enter your API key or token"
-          value={formData.api_key_encrypted || ""}
-          onChange={(e) => setFormData(p => ({ ...p, api_key_encrypted: e.target.value }))}
-          className="rounded-xl border-primary/20"
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="font-semibold">Status</Label>
-          <Select value={formData.status} onValueChange={(v) => setFormData(p => ({ ...p, status: v as any }))}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="planned">Planned</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="font-semibold">Priority</Label>
-          <Input
-            type="number" min="1" max="100"
-            value={formData.priority ?? 1}
-            onChange={(e) => setFormData(p => ({ ...p, priority: parseInt(e.target.value) || 1 }))}
-            className="rounded-xl border-primary/20"
-          />
-        </div>
-      </div>
-      <div className="flex items-center justify-between rounded-xl border border-primary/15 bg-primary/3 px-4 py-3">
-        <div>
-          <p className="font-semibold text-sm text-foreground">Fallback Agent</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Allow this agent to be used as a fallback when others fail</p>
-        </div>
-        <Switch
-          checked={formData.is_fallback_enabled ?? false}
-          onCheckedChange={(checked) => setFormData(p => ({ ...p, is_fallback_enabled: checked }))}
-        />
-      </div>
-    </>
-  );
+  // AgentFormFields is defined outside this component to prevent remount on state change
 
   return (
     <div className="space-y-8">
@@ -563,7 +560,7 @@ const Agents = () => {
                       <DialogDescription>Register a new AI agent to your orchestration network</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                      <AgentFormFields />
+                      <AgentFormFields formData={formData} setFormData={setFormData} />
                       <DialogFooter className="pt-2">
                         <Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetForm(); }} className="rounded-xl font-semibold">Cancel</Button>
                         <Button onClick={handleAddAgent} className="bg-gradient-to-r from-primary to-[hsl(26,47%,60%)] text-white rounded-xl font-bold shadow-[0_4px_16px_rgba(208,126,59,0.25)]">Add Agent</Button>
@@ -581,7 +578,7 @@ const Agents = () => {
                       <DialogDescription>Update your agent configuration</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                      <AgentFormFields />
+                      <AgentFormFields formData={formData} setFormData={setFormData} />
                       <DialogFooter className="pt-2">
                         <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); resetForm(); }} className="rounded-xl font-semibold">Cancel</Button>
                         <Button onClick={handleUpdateAgent} className="bg-gradient-to-r from-primary to-[hsl(26,47%,60%)] text-white rounded-xl font-bold shadow-[0_4px_16px_rgba(208,126,59,0.25)]">Update Agent</Button>

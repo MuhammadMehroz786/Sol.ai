@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_VOICE_PROFILE_CREATE, WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
-import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
+import { type VoiceOption } from "@/constants/voices";
+import { useVoices } from "@/contexts/VoicesContext";
 import {
   Sparkles,
   User,
@@ -68,8 +69,8 @@ export const ContentGenerator = () => {
   const [generatedContent, setGeneratedContent] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState("");
 
-  // Custom voice management
-  const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
+  // Custom voice management (shared context)
+  const { voices, addVoice, removeVoice, updateVoice } = useVoices();
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [voiceProfileModalOpen, setVoiceProfileModalOpen] = useState(false);
   const [editingVoice, setEditingVoice] = useState<CustomVoice | null>(null);
@@ -91,64 +92,6 @@ export const ContentGenerator = () => {
   const [articleItemRef, setArticleItemRef] = useState<HTMLDivElement | null>(null);
   const [hideTimeout, setHideTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Load custom voices from localStorage and listen for changes
-  useEffect(() => {
-    const loadVoices = () => {
-      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
-      if (stored) {
-        try {
-          let customVoices = JSON.parse(stored);
-
-          // Clean up old voice profiles with "My Voice Profile" label
-          const cleanedVoices = customVoices.filter((v: CustomVoice) => v.label !== 'My Voice Profile');
-
-          // If we removed any, save the cleaned version
-          if (cleanedVoices.length !== customVoices.length) {
-            localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(cleanedVoices));
-            customVoices = cleanedVoices;
-          }
-
-          setVoices([...DEFAULT_VOICES, ...customVoices]);
-        } catch {
-          // ignore malformed stored voices
-        }
-      } else {
-        setVoices(DEFAULT_VOICES);
-      }
-    };
-
-    // Initial load
-    loadVoices();
-
-    // Listen for storage changes (from other components)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === VOICES_STORAGE_KEY) {
-        loadVoices();
-      }
-    };
-
-    // Listen for custom event (for same-page updates)
-    const handleVoiceUpdate = () => {
-      loadVoices();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('voicesUpdated', handleVoiceUpdate);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('voicesUpdated', handleVoiceUpdate);
-    };
-  }, []);
-
-  // Save custom voices to localStorage
-  const saveCustomVoices = (allVoices: CustomVoice[]) => {
-    const customOnly = allVoices.filter(v => !v.isDefault);
-    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customOnly));
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new Event('voicesUpdated'));
-  };
-
   const handleVoiceChange = (value: string) => {
     if (value === "create-voice-profile") {
       setVoiceProfileModalOpen(true);
@@ -169,13 +112,7 @@ export const ContentGenerator = () => {
 
     if (editingVoice) {
       // Edit existing voice
-      const updatedVoices = voices.map(v =>
-        v.value === editingVoice.value
-          ? { ...v, label: newVoiceName, description: newVoiceDescription }
-          : v
-      );
-      setVoices(updatedVoices);
-      saveCustomVoices(updatedVoices);
+      updateVoice(editingVoice.value, { value: voiceValue, label: newVoiceName, description: newVoiceDescription });
 
       // Update selection if editing the currently selected voice
       if (selectedVoice === editingVoice.value) {
@@ -189,9 +126,7 @@ export const ContentGenerator = () => {
         description: newVoiceDescription,
         isDefault: false
       };
-      const updatedVoices = [...voices, newVoice];
-      setVoices(updatedVoices);
-      saveCustomVoices(updatedVoices);
+      addVoice(newVoice);
       setSelectedVoice(voiceValue);
     }
 
@@ -231,9 +166,7 @@ export const ContentGenerator = () => {
         if (dbError) throw dbError;
       }
 
-      const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
-      setVoices(updatedVoices);
-      saveCustomVoices(updatedVoices);
+      removeVoice(voiceToDelete.value);
 
       if (selectedVoice === voiceToDelete.value) {
         setSelectedVoice("");
@@ -344,9 +277,7 @@ export const ContentGenerator = () => {
           databaseId: voiceProfileId
         };
 
-        const updatedVoices = [...voices, newVoice];
-        setVoices(updatedVoices);
-        saveCustomVoices(updatedVoices);
+        addVoice(newVoice);
         setSelectedVoice(newVoice.value);
 
         const { toast } = await import("@/hooks/use-toast");

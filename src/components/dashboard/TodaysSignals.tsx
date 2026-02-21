@@ -5,10 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
-import { DEFAULT_VOICES, VOICES_STORAGE_KEY, type VoiceOption } from "@/constants/voices";
+import { WEBHOOK_EDITORIAL_GPT, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
+import { type VoiceOption } from "@/constants/voices";
+import { useVoices } from "@/contexts/VoicesContext";
+import { Label } from "@/components/ui/label";
 import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2, Link2, Wand2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -31,7 +34,7 @@ export const TodaysSignals = () => {
   const [selectedVoice, setSelectedVoice] = useState("");
   const [selectedOutputType, setSelectedOutputType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [voices, setVoices] = useState<CustomVoice[]>(DEFAULT_VOICES);
+  const { voices, addVoice, removeVoice, updateVoice } = useVoices();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [voiceToDelete, setVoiceToDelete] = useState<CustomVoice | null>(null);
   const [isDeletingVoice, setIsDeletingVoice] = useState(false);
@@ -44,6 +47,15 @@ export const TodaysSignals = () => {
   const [isFilteringByTopic, setIsFilteringByTopic] = useState(false);
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [selectedArticleLength, setSelectedArticleLength] = useState("");
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [voiceProfileModalOpen, setVoiceProfileModalOpen] = useState(false);
+  const [editingVoice, setEditingVoice] = useState<CustomVoice | null>(null);
+  const [newVoiceName, setNewVoiceName] = useState("");
+  const [newVoiceDescription, setNewVoiceDescription] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false);
+  const [voiceProfileName, setVoiceProfileName] = useState("");
   const { toast } = useToast();
 
   const outputTypes = [
@@ -51,6 +63,12 @@ export const TodaysSignals = () => {
     { value: "Tweet thread", label: "Tweet thread", icon: MessageSquare, description: "Threaded social posts", color: "from-sky-500 to-blue-500", available: true },
     { value: "Script", label: "Script", icon: Video, description: "Video or audio script", color: "from-purple-500 to-pink-500", available: true },
     { value: "Prompt", label: "Prompt", icon: Lightbulb, description: "AI prompt template", color: "from-yellow-500 to-orange-500", available: true }
+  ];
+
+  const articleLengths = [
+    { value: "short", label: "Short", description: "500-700 words" },
+    { value: "medium", label: "Medium", description: "700-1600 words" },
+    { value: "long", label: "Long", description: "1600+ words" }
   ];
 
   const topicGroups = [
@@ -92,60 +110,30 @@ export const TodaysSignals = () => {
     }
   ];
 
-  // Load custom voices from localStorage and listen for changes
-  useEffect(() => {
-    const loadVoices = () => {
-      const stored = localStorage.getItem(VOICES_STORAGE_KEY);
-      if (stored) {
-        try {
-          let customVoices = JSON.parse(stored);
-
-          // Clean up old voice profiles with "My Voice Profile" label
-          const cleanedVoices = customVoices.filter((v: CustomVoice) => v.label !== 'My Voice Profile');
-
-          // If we removed any, save the cleaned version
-          if (cleanedVoices.length !== customVoices.length) {
-            localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(cleanedVoices));
-            customVoices = cleanedVoices;
-          }
-
-          setVoices([...DEFAULT_VOICES, ...customVoices]);
-        } catch {
-          // ignore malformed stored voices
-        }
-      } else {
-        setVoices(DEFAULT_VOICES);
-      }
-    };
-
-    // Initial load
-    loadVoices();
-
-    // Listen for storage changes (from other components)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === VOICES_STORAGE_KEY) {
-        loadVoices();
-      }
-    };
-
-    // Listen for custom event (for same-page updates)
-    const handleVoiceUpdate = () => {
-      loadVoices();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('voicesUpdated', handleVoiceUpdate);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('voicesUpdated', handleVoiceUpdate);
-    };
-  }, []);
-
-  // Load signals on component mount
+  // Load signals on component mount — restore from database if a topic was saved
   useEffect(() => {
     loadTopicFromLocalStorage();
     initializeSignals();
+
+    // Restore previously fetched signals from Supabase
+    const restoreSignals = async () => {
+      try {
+        const saved = localStorage.getItem('user_signal_topic');
+        if (saved && saved.trim()) {
+          setIsLoadingAllSignals(true);
+          const cached = await ScoutGptService.loadSignalsFromDatabase();
+          if (cached.length > 0) {
+            const sorted = [...cached].sort((a, b) => b.score - a.score);
+            setSignals(sorted);
+          }
+        }
+      } catch {
+        // silent — user can re-search
+      } finally {
+        setIsLoadingAllSignals(false);
+      }
+    };
+    restoreSignals();
   }, []);
 
   // Re-register signalsUpdated whenever topicSearch changes to avoid stale closure
@@ -302,18 +290,12 @@ export const TodaysSignals = () => {
     setSelectedSignal(signal);
     setSelectedVoice("");
     setSelectedOutputType("");
+    setSelectedArticleLength("");
     setModalMode('form');
     setGeneratedContent("");
     setEditableContent("");
     setIsProcessingAction("");
     setModalOpen(true);
-  };
-
-  const saveCustomVoices = (allVoices: CustomVoice[]) => {
-    const customOnly = allVoices.filter(v => !v.isDefault);
-    localStorage.setItem(VOICES_STORAGE_KEY, JSON.stringify(customOnly));
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new Event('voicesUpdated'));
   };
 
   const handleDeleteVoice = (voiceValue: string) => {
@@ -339,9 +321,7 @@ export const TodaysSignals = () => {
         if (dbError) throw dbError;
       }
 
-      const updatedVoices = voices.filter(v => v.value !== voiceToDelete.value);
-      setVoices(updatedVoices);
-      saveCustomVoices(updatedVoices);
+      removeVoice(voiceToDelete.value);
 
       if (selectedVoice === voiceToDelete.value) {
         setSelectedVoice("");
@@ -365,6 +345,129 @@ export const TodaysSignals = () => {
     }
   };
 
+  const handleVoiceChange = (value: string) => {
+    if (value === "create-voice-profile") {
+      setVoiceProfileModalOpen(true);
+    } else if (value === "create-custom") {
+      setEditingVoice(null);
+      setNewVoiceName("");
+      setNewVoiceDescription("");
+      setVoiceModalOpen(true);
+    } else {
+      setSelectedVoice(value);
+    }
+  };
+
+  const handleSaveVoice = () => {
+    if (!newVoiceName.trim() || !newVoiceDescription.trim()) return;
+
+    const voiceValue = newVoiceName.toLowerCase().replace(/\s+/g, '-');
+
+    if (editingVoice) {
+      updateVoice(editingVoice.value, { label: newVoiceName, description: newVoiceDescription });
+      if (selectedVoice === editingVoice.value) {
+        setSelectedVoice(voiceValue);
+      }
+    } else {
+      const newVoice: CustomVoice = {
+        value: voiceValue,
+        label: newVoiceName,
+        description: newVoiceDescription,
+        isDefault: false,
+      };
+      addVoice(newVoice);
+      setSelectedVoice(voiceValue);
+    }
+
+    setVoiceModalOpen(false);
+    setNewVoiceName("");
+    setNewVoiceDescription("");
+    setEditingVoice(null);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setUploadedFiles(prev => [...prev, ...files]);
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitVoiceProfile = async () => {
+    if (uploadedFiles.length === 0 || !voiceProfileName.trim()) return;
+
+    setIsUploadingProfile(true);
+
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) {
+        toast({ title: "Authentication required", description: "Please log in to create a voice profile", variant: "destructive" });
+        return;
+      }
+
+      const formData = new FormData();
+      uploadedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+      formData.append('voice_name', voiceProfileName.trim());
+      formData.append('user_id', user.user.id);
+
+      const response = await fetch(WEBHOOK_VOICE_PROFILE_CREATE, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+
+        let voiceProfileId: string | undefined;
+        try {
+          const { data: voiceProfileData, error: dbError } = await supabase
+            .from('voice_profiles')
+            .insert({
+              profile_name: voiceProfileName.trim(),
+              style_json: result.style_json || { description: result.description || 'Custom voice profile' },
+              samples: result.samples || [],
+              user_id: user.user.id,
+            })
+            .select('id')
+            .single();
+
+          if (!dbError) {
+            voiceProfileId = voiceProfileData?.id;
+          }
+        } catch {
+          // non-fatal db error
+        }
+
+        const newVoice: CustomVoice = {
+          value: `voice-${Date.now()}`,
+          label: voiceProfileName,
+          description: result.description || 'Custom voice profile',
+          isDefault: false,
+          userId: user.user.id,
+          databaseId: voiceProfileId,
+        };
+
+        addVoice(newVoice);
+        setSelectedVoice(newVoice.value);
+
+        toast({ title: "Voice profile created!", description: "Your personal voice profile has been generated successfully" });
+
+        setVoiceProfileModalOpen(false);
+        setUploadedFiles([]);
+        setVoiceProfileName("");
+      } else {
+        throw new Error('Failed to upload voice profile');
+      }
+    } catch {
+      toast({ title: "Upload failed", description: "Failed to create voice profile. Please try again.", variant: "destructive" });
+    } finally {
+      setIsUploadingProfile(false);
+    }
+  };
+
   const sendToEditorial = async () => {
     if (!selectedSignal || !selectedVoice || !selectedOutputType) return;
 
@@ -374,14 +477,21 @@ export const TodaysSignals = () => {
       // Get voice details
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
-      const payload = {
+      const baseOutputType = selectedOutputType.startsWith('Article-') ? 'Article' : selectedOutputType;
+      const articleLength = selectedOutputType.startsWith('Article-') ? selectedOutputType.replace('Article-', '') : selectedArticleLength;
+
+      const payload: any = {
         voice_name: voiceDetails?.label || selectedVoice,
         signal: {
           headline: selectedSignal.headline,
           summary: selectedSignal.summary
         },
-        output_type: selectedOutputType
+        output_type: baseOutputType
       };
+
+      if (articleLength) {
+        payload.article_length = articleLength;
+      }
 
       const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
@@ -404,13 +514,14 @@ export const TodaysSignals = () => {
         try {
           const { data: user } = await supabase.auth.getUser();
           if (user.user) {
+            const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
             const { error, data } = await supabase
               .from('content_outputs')
               .insert({
                 user_id: user.user.id,
                 title: `${selectedOutputType.replace('-', ' ')} about ${selectedSignal.headline.substring(0, 50)}`,
                 content: formattedContent,
-                persona: selectedVoice,
+                persona: voiceName,
                 output_type: selectedOutputType,
                 status: 'draft',
                 topic_context: selectedSignal.headline
@@ -603,6 +714,7 @@ export const TodaysSignals = () => {
     setModalMode('form');
     setSelectedVoice("");
     setSelectedOutputType("");
+    setSelectedArticleLength("");
     setGeneratedContent("");
     setEditableContent("");
     setIsProcessingAction("");
@@ -795,9 +907,13 @@ export const TodaysSignals = () => {
             {/* Compact Footer */}
             <div className="flex items-center justify-between pt-2 border-t border-border pl-4">
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>{signal.timestamp}</span>
-                <span>•</span>
+                {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
+                  <>
+                    <Clock className="h-4 w-4" />
+                    <span>{signal.timestamp}</span>
+                    <span>•</span>
+                  </>
+                )}
                 <span>{signal.source}</span>
               </div>
               
@@ -877,7 +993,7 @@ export const TodaysSignals = () => {
                   Select Voice
                   {selectedVoice && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
                 </label>
-                <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                <Select value={selectedVoice} onValueChange={handleVoiceChange}>
                   <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02]">
                     <SelectValue placeholder="Select a voice...">
                       {selectedVoice && voices.find(v => v.value === selectedVoice)?.label}
@@ -924,6 +1040,13 @@ export const TodaysSignals = () => {
                         </div>
                       );
                     })}
+                    <Separator className="my-2" />
+                    <SelectItem value="create-voice-profile" className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg">
+                      <div className="flex items-center gap-2 font-medium">
+                        <Sparkles className="h-4 w-4" />
+                        <span>Create Personal Voice</span>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -936,9 +1059,26 @@ export const TodaysSignals = () => {
                   Select Output Type
                   {selectedOutputType && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
                 </label>
-                <Select value={selectedOutputType} onValueChange={setSelectedOutputType}>
+                <Select
+                  value={selectedOutputType.startsWith('Article-') ? 'Article' : selectedOutputType}
+                  onValueChange={(value) => {
+                    if (value === 'Article') {
+                      setSelectedOutputType('Article');
+                      setSelectedArticleLength("");
+                      return;
+                    }
+                    setSelectedOutputType(value);
+                    setSelectedArticleLength("");
+                  }}
+                >
                   <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-accent/20 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 transition-all duration-300 hover:scale-[1.02]">
-                    <SelectValue placeholder="Choose output type..." />
+                    <SelectValue placeholder="Choose output type...">
+                      {selectedOutputType && (
+                        selectedOutputType.startsWith('Article-')
+                          ? `Article - ${articleLengths.find(l => l.value === selectedOutputType.replace('Article-', ''))?.label}`
+                          : outputTypes.find(t => t.value === selectedOutputType)?.label
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
                     {outputTypes.map((type) => {
@@ -964,6 +1104,34 @@ export const TodaysSignals = () => {
                     })}
                   </SelectContent>
                 </Select>
+
+                {/* Article Size Selection */}
+                {(selectedOutputType === 'Article' || selectedOutputType.startsWith('Article-')) && (
+                  <div className="flex gap-2 animate-in slide-in-from-top duration-300 relative z-10">
+                    {articleLengths.map((length) => {
+                      const articleValue = `Article-${length.value}`;
+                      const isSelected = selectedOutputType === articleValue;
+                      return (
+                        <button
+                          key={length.value}
+                          type="button"
+                          onClick={() => {
+                            setSelectedOutputType(articleValue);
+                            setSelectedArticleLength(length.value);
+                          }}
+                          className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all duration-300 relative z-10 ${
+                            isSelected
+                              ? 'border-primary bg-primary/10 shadow-md'
+                              : 'border-border hover:border-primary/40 hover:bg-primary/5'
+                          }`}
+                        >
+                          <div className="text-sm font-semibold">{length.label}</div>
+                          <div className="text-xs text-muted-foreground">{length.description}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -1159,9 +1327,13 @@ export const TodaysSignals = () => {
                   {/* Compact Footer */}
                   <div className="flex items-center justify-between pt-2 border-t border-border pl-4">
                     <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>{signal.timestamp}</span>
-                      <span>•</span>
+                      {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
+                        <>
+                          <Clock className="h-4 w-4" />
+                          <span>{signal.timestamp}</span>
+                          <span>•</span>
+                        </>
+                      )}
                       <span>{signal.source}</span>
                     </div>
 
@@ -1328,6 +1500,102 @@ export const TodaysSignals = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Custom Voice Modal */}
+      <Dialog open={voiceModalOpen} onOpenChange={setVoiceModalOpen}>
+        <DialogContent className="sm:max-w-md bg-gradient-card border-border/50 shadow-elegant">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary">
+              {editingVoice ? "Edit Voice" : "Create Custom Voice"}
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {editingVoice ? "Update your custom voice details" : "Create a custom voice profile for content generation"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="signal-voice-name">Voice Name</Label>
+              <Input
+                id="signal-voice-name"
+                placeholder="Enter voice name"
+                value={newVoiceName}
+                onChange={(e) => setNewVoiceName(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="signal-voice-desc">Voice Description</Label>
+              <Input
+                id="signal-voice-desc"
+                placeholder="Describe the voice style"
+                value={newVoiceDescription}
+                onChange={(e) => setNewVoiceDescription(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setVoiceModalOpen(false); setNewVoiceName(""); setNewVoiceDescription(""); setEditingVoice(null); }}>Cancel</Button>
+            <Button onClick={handleSaveVoice} disabled={!newVoiceName.trim() || !newVoiceDescription.trim()} className="bg-gradient-primary hover:shadow-glow">
+              {editingVoice ? "Update" : "Create"} Voice
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Voice Profile Generation Modal */}
+      <Dialog open={voiceProfileModalOpen} onOpenChange={setVoiceProfileModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-gradient-card border-border/50 shadow-elegant">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-primary flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              Voice Profile Generation
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Upload your articles to create a personalized voice profile
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="signal-voice-profile-name">Name your voice</Label>
+              <Input
+                id="signal-voice-profile-name"
+                placeholder="Name your voice..."
+                value={voiceProfileName}
+                onChange={(e) => setVoiceProfileName(e.target.value)}
+                className="bg-background"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Upload your articles</Label>
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                <input type="file" multiple accept=".pdf,.txt" onChange={handleFileUpload} className="hidden" id="signal-voice-files" />
+                <label htmlFor="signal-voice-files" className="cursor-pointer flex flex-col items-center gap-2">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                  <div className="text-sm font-medium">Click to upload articles</div>
+                  <div className="text-xs text-muted-foreground">PDF or TXT files only</div>
+                </label>
+              </div>
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-2 mt-2">
+                  {uploadedFiles.map((file, i) => (
+                    <div key={i} className="flex items-center justify-between bg-muted/50 rounded-lg p-2 px-3">
+                      <span className="text-sm truncate flex-1">{file.name}</span>
+                      <button onClick={() => removeFile(i)} className="ml-2 text-destructive hover:text-destructive/80"><X className="h-4 w-4" /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setVoiceProfileModalOpen(false); setUploadedFiles([]); setVoiceProfileName(""); }} disabled={isUploadingProfile}>Cancel</Button>
+            <Button onClick={handleSubmitVoiceProfile} disabled={uploadedFiles.length === 0 || !voiceProfileName.trim() || isUploadingProfile} className="bg-gradient-primary hover:shadow-glow">
+              {isUploadingProfile ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Generating...</>) : (<><Sparkles className="h-4 w-4 mr-2" />Generate Voice Profile</>)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
