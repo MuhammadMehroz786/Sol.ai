@@ -903,6 +903,16 @@ const SocialAlchemist = () => {
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 pointer-events-none" />
 
+      {/* Subtle dot grid */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, hsl(21, 58%, 40%) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+          opacity: 0.04,
+        }}
+      />
+
       {/* Floating Gradient Orbs */}
       <div
         className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full opacity-[0.07] blur-3xl pointer-events-none"
@@ -960,12 +970,12 @@ const SocialAlchemist = () => {
         }
       `}</style>
 
-      {/* Header - Fixed Height with glassmorphism */}
-      <header className="shrink-0 h-16 border-b border-border/50 bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-elegant relative z-10">
+      {/* Header */}
+      <header className="shrink-0 h-16 border-b border-border/50 bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm relative z-10">
         <div className="h-full flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <div
-              className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-lg hover:scale-110 transition-all duration-300"
+              className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-lg"
               style={{ animation: 'shimmerGlow 3s ease-in-out infinite' }}
             >
               <Wand2 className="h-5 w-5 text-white relative z-10" />
@@ -975,221 +985,250 @@ const SocialAlchemist = () => {
               <p className="text-xs text-muted-foreground">Transform content across platforms</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Completion indicator in header */}
-            <div className="hidden md:flex items-center gap-1.5 mr-3 px-3 py-1.5 rounded-full bg-white/60 dark:bg-card/60 backdrop-blur-sm border border-border/50">
-              {[step1Done, step2Done, step3Done].map((done, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-500",
-                    done ? "w-6 bg-gradient-to-r from-primary to-accent" : "w-1.5 bg-muted"
-                  )}
-                />
-              ))}
-            </div>
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-accent/20 hover:scale-110 transition-all duration-300">
-              <User className="h-5 w-5" />
-            </Button>
+          <div className="hidden md:flex items-center gap-1.5 bg-white/60 dark:bg-card/60 backdrop-blur-sm border border-border/50 rounded-full px-3 py-2">
+            {[
+              { num: "01", done: step1Done },
+              { num: "02", done: step2Done },
+              { num: "03", done: step3Done },
+            ].map((step, i) => (
+              <div key={i} className="flex items-center">
+                {i > 0 && (
+                  <div className={cn(
+                    "h-[1px] w-6 mx-1 transition-all duration-700",
+                    step.done ? "bg-gradient-to-r from-primary to-accent" : "bg-border"
+                  )} />
+                )}
+                <div className={cn(
+                  "flex items-center justify-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all duration-500",
+                  step.done
+                    ? "bg-gradient-to-r from-primary to-accent text-white shadow-sm"
+                    : "text-muted-foreground/60"
+                )}>
+                  {step.done && <CheckCircle2 className="h-3 w-3" />}
+                  <span>{step.num}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </header>
 
-      {/* Main Content - Calculated Height to prevent overflow */}
+      {/* Main Content */}
       <main className="flex-1 min-h-0 relative z-10">
         <div className="h-full px-6 py-5">
-          <div className="h-full grid grid-cols-[420px,1fr] gap-5">
+          <div className="h-full grid grid-cols-[400px,1fr] gap-5">
 
-            {/* Left Panel - Controls with glassmorphism */}
-            <div className="flex flex-col gap-3 bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-white/50 dark:border-border/50 rounded-2xl p-5 shadow-elegant hover:shadow-xl transition-all duration-500 relative overflow-hidden">
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-accent/[0.02] pointer-events-none rounded-2xl" />
+            {/* ─── LEFT PANEL: Numbered Steps ─── */}
+            <div className="flex flex-col bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-white/50 dark:border-border/50 rounded-2xl shadow-elegant overflow-hidden">
 
-              {/* Progress Indicator - Enhanced */}
-              <div className="relative flex items-center justify-center gap-0 mb-1">
-                {/* Connecting line */}
-                <div className="absolute top-1/2 left-[calc(50%-48px)] w-24 h-[2px] bg-muted rounded-full -translate-y-1/2" />
-                <div
-                  className="absolute top-1/2 left-[calc(50%-48px)] h-[2px] bg-gradient-to-r from-primary to-accent rounded-full -translate-y-1/2 transition-all duration-700"
-                  style={{ width: `${(completedSteps / 3) * 96}px` }}
-                />
-                {[step1Done, step2Done, step3Done].map((done, i) => (
+              {/* Scrollable steps area */}
+              <div className="flex-1 overflow-y-auto min-h-0 p-5 space-y-0">
+
+                {/* ── Step 01: Voice Profile ── */}
+                <div className="relative">
                   <div
-                    key={i}
-                    className={cn(
-                      "relative z-10 h-3 w-3 rounded-full transition-all duration-500 mx-5",
-                      done
-                        ? "bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/40"
-                        : "bg-white dark:bg-card border-2 border-muted"
-                    )}
-                    style={done ? { animation: 'progressPulse 2s ease-in-out infinite', animationDelay: `${i * 0.3}s` } : undefined}
-                  />
-                ))}
-              </div>
-              <div className="text-center text-[11px] font-medium text-muted-foreground mb-1 relative z-10">
-                {completedSteps === 3 && (
-                  <span className="text-primary font-semibold inline-flex items-center gap-1">
-                    <Zap className="h-3 w-3" /> Ready to generate
-                  </span>
-                )}
-                {completedSteps < 3 && (
-                  <span>
-                    {!step1Done && "Select a voice profile to begin"}
-                    {step1Done && !step2Done && "Choose target platforms"}
-                    {step1Done && step2Done && !step3Done && "Add your source content"}
-                  </span>
-                )}
-              </div>
-
-              {/* Voice Selector */}
-              <div className="space-y-1.5 relative z-10">
-                <Label className="text-sm font-bold flex items-center gap-2 text-foreground">
-                  <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
-                    <User className="h-3.5 w-3.5 text-primary" />
+                    className="absolute -top-2 -left-2 text-[80px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
+                    style={{ color: step1Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step1Done ? 0.1 : 0.06 }}
+                  >
+                    01
                   </div>
-                  Voice Profile
-                  {selectedVoice && <CheckCircle2 className="h-4 w-4 ml-auto text-emerald-500 animate-in fade-in zoom-in duration-300" />}
-                </Label>
-                <Select value={selectedVoice} onValueChange={handleVoiceChange}>
-                  <SelectTrigger className="relative h-11 border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-300 font-medium rounded-xl">
-                    <SelectValue placeholder="Select voice profile..." />
-                  </SelectTrigger>
-                  <SelectContent className="border-2 bg-popover/95 backdrop-blur-md">
-                    {voices.map(voice => {
-                      const Icon = voice.icon || User;
-                      return (
-                        <div key={voice.value} className="relative group/item">
-                          <SelectItem value={voice.value} className="pr-10 py-2.5 cursor-pointer hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 transition-all duration-200 my-1 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              <div className={cn(
-                                "flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br shadow-md group-hover/item:scale-110 transition-transform duration-200",
-                                voice.color || 'from-gray-400 to-gray-500'
-                              )}>
-                                <Icon className="h-5 w-5 text-white" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-semibold text-sm">{voice.label}</div>
-                                <div className="text-xs text-muted-foreground">{voice.description}</div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          {!voice.isDefault && (
-                            <button
-                              type="button"
-                              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-lg hover:bg-destructive/20 transition-colors z-10"
-                              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
-                              onClick={e => { e.preventDefault(); e.stopPropagation(); handleDeleteVoice(voice.value); }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                    <Separator className="my-1" />
-                    <SelectItem value="create-voice-profile" className="py-2.5 cursor-pointer">
-                      <div className="flex items-center gap-2.5 font-semibold text-sm text-primary">
-                        <Sparkles className="h-5 w-5" />
-                        Create Personal Voice
+                  <div className="relative z-10 pt-4 pl-11 space-y-2.5 pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={cn(
+                        "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
+                        step1Done ? "bg-gradient-to-br from-primary to-accent shadow-sm shadow-primary/30" : "bg-muted"
+                      )}>
+                        <User className={cn("h-3.5 w-3.5", step1Done ? "text-white" : "text-muted-foreground")} />
                       </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Separator className="my-0.5 opacity-50" />
-
-              {/* Target Platforms */}
-              <div className="space-y-1.5 relative z-10">
-                <Label className="text-sm font-bold flex items-center gap-2 text-foreground">
-                  <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-accent/20 to-primary/10 flex items-center justify-center">
-                    <Sparkles className="h-3.5 w-3.5 text-accent" />
+                      <Label className="text-sm font-bold text-foreground">Voice Profile</Label>
+                      {step1Done && <CheckCircle2 className="h-4 w-4 text-emerald-500 ml-auto animate-in fade-in zoom-in duration-300" />}
+                    </div>
+                    <Select value={selectedVoice} onValueChange={handleVoiceChange}>
+                      <SelectTrigger className="h-11 border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-300 font-medium rounded-xl">
+                        <SelectValue placeholder="Select voice profile..." />
+                      </SelectTrigger>
+                      <SelectContent className="border-2 bg-popover/95 backdrop-blur-md">
+                        {voices.map(voice => {
+                          const Icon = voice.icon || User;
+                          return (
+                            <div key={voice.value} className="relative group/item">
+                              <SelectItem value={voice.value} className="pr-10 py-2.5 cursor-pointer hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 transition-all duration-200 my-1 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                  <div className={cn(
+                                    "flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br shadow-md group-hover/item:scale-110 transition-transform duration-200",
+                                    voice.color || 'from-gray-400 to-gray-500'
+                                  )}>
+                                    <Icon className="h-5 w-5 text-white" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="font-semibold text-sm">{voice.label}</div>
+                                    <div className="text-xs text-muted-foreground">{voice.description}</div>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                              {!voice.isDefault && (
+                                <button
+                                  type="button"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-lg hover:bg-destructive/20 transition-colors z-10"
+                                  onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
+                                  onClick={e => { e.preventDefault(); e.stopPropagation(); handleDeleteVoice(voice.value); }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <Separator className="my-1" />
+                        <SelectItem value="create-voice-profile" className="py-2.5 cursor-pointer">
+                          <div className="flex items-center gap-2.5 font-semibold text-sm text-primary">
+                            <Sparkles className="h-5 w-5" />
+                            Create Personal Voice
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  Target Platforms
-                  {selectedPlatforms.length > 0 && (
-                    <Badge variant="secondary" className="ml-auto bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-                      {selectedPlatforms.length}
-                    </Badge>
-                  )}
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(Object.keys(platformConfigs) as Platform[]).map(platform => {
-                    const config = platformConfigs[platform];
-                    const Icon = config.icon;
-                    const isSelected = selectedPlatforms.includes(platform);
-
-                    return (
-                      <button
-                        key={platform}
-                        type="button"
-                        className={cn(
-                          "flex items-center gap-2 rounded-xl border-2 p-3 cursor-pointer transition-all duration-300 relative group",
-                          isSelected
-                            ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 scale-[1.03] shadow-lg shadow-primary/15"
-                            : "border-border/80 bg-white/50 dark:bg-background/50 backdrop-blur-sm hover:border-primary/40 hover:bg-accent/10 hover:scale-[1.02] hover:shadow-md"
-                        )}
-                        onClick={() => togglePlatform(platform)}
-                      >
-                        {isSelected && (
-                          <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 blur-sm opacity-50 -z-10"></div>
-                        )}
-                        <Checkbox checked={isSelected} className="h-4 w-4" />
-                        <Icon className={cn("h-5 w-5 group-hover:scale-110 transition-transform duration-200", config.color)} />
-                        <span className="text-xs font-semibold flex-1 text-left">{config.label}</span>
-                      </button>
-                    );
-                  })}
                 </div>
+
+                {/* Connector 01→02 */}
+                <div className="ml-14 flex py-1">
+                  <div className={cn(
+                    "w-[2px] h-6 rounded-full transition-colors duration-700",
+                    step1Done ? "bg-gradient-to-b from-primary to-accent/40" : "bg-border/30"
+                  )} />
+                </div>
+
+                {/* ── Step 02: Target Platforms ── */}
+                <div className="relative">
+                  <div
+                    className="absolute -top-2 -left-2 text-[80px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
+                    style={{ color: step2Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step2Done ? 0.1 : 0.06 }}
+                  >
+                    02
+                  </div>
+                  <div className="relative z-10 pt-4 pl-11 space-y-2.5 pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={cn(
+                        "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
+                        step2Done ? "bg-gradient-to-br from-primary to-accent shadow-sm shadow-primary/30" : "bg-muted"
+                      )}>
+                        <Sparkles className={cn("h-3.5 w-3.5", step2Done ? "text-white" : "text-muted-foreground")} />
+                      </div>
+                      <Label className="text-sm font-bold text-foreground">Target Platforms</Label>
+                      {selectedPlatforms.length > 0 && (
+                        <Badge variant="secondary" className="ml-auto bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20 text-xs">
+                          {selectedPlatforms.length} selected
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(Object.keys(platformConfigs) as Platform[]).map(platform => {
+                        const config = platformConfigs[platform];
+                        const Icon = config.icon;
+                        const isSelected = selectedPlatforms.includes(platform);
+                        return (
+                          <button
+                            key={platform}
+                            type="button"
+                            className={cn(
+                              "flex items-center gap-2 rounded-xl border-2 p-3 cursor-pointer transition-all duration-300 relative group",
+                              isSelected
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 scale-[1.03] shadow-lg shadow-primary/15"
+                                : "border-border/80 bg-white/50 dark:bg-background/50 backdrop-blur-sm hover:border-primary/40 hover:bg-accent/10 hover:scale-[1.02] hover:shadow-md"
+                            )}
+                            onClick={() => togglePlatform(platform)}
+                          >
+                            {isSelected && (
+                              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 blur-sm opacity-50 -z-10" />
+                            )}
+                            <Checkbox checked={isSelected} className="h-4 w-4" />
+                            <Icon className={cn("h-5 w-5 group-hover:scale-110 transition-transform duration-200", config.color)} />
+                            <span className="text-xs font-semibold flex-1 text-left">{config.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Connector 02→03 */}
+                <div className="ml-14 flex py-1">
+                  <div className={cn(
+                    "w-[2px] h-6 rounded-full transition-colors duration-700",
+                    step2Done ? "bg-gradient-to-b from-primary to-accent/40" : "bg-border/30"
+                  )} />
+                </div>
+
+                {/* ── Step 03: Source Type ── */}
+                <div className="relative">
+                  <div
+                    className="absolute -top-2 -left-2 text-[80px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
+                    style={{ color: step3Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step3Done ? 0.1 : 0.06 }}
+                  >
+                    03
+                  </div>
+                  <div className="relative z-10 pt-4 pl-11 space-y-2.5 pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className={cn(
+                        "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
+                        step3Done ? "bg-gradient-to-br from-primary to-accent shadow-sm shadow-primary/30" : "bg-muted"
+                      )}>
+                        <FileText className={cn("h-3.5 w-3.5", step3Done ? "text-white" : "text-muted-foreground")} />
+                      </div>
+                      <Label className="text-sm font-bold text-foreground">Source Type</Label>
+                    </div>
+                    <RadioGroup value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { value: "paste", icon: FileText, label: "Paste Text" },
+                          { value: "url", icon: LinkIcon, label: "URL" },
+                          { value: "doc_id", icon: FileCode, label: "Doc ID" },
+                          { value: "transcript", icon: Mic, label: "Transcript" },
+                        ].map(({ value, icon: Icon, label }) => (
+                          <button
+                            key={value}
+                            type="button"
+                            className={cn(
+                              "flex items-center gap-2 rounded-xl border-2 p-2.5 cursor-pointer transition-all duration-300 group relative",
+                              sourceType === value
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 scale-[1.02] shadow-md shadow-primary/15"
+                                : "border-border/80 bg-white/50 dark:bg-background/50 backdrop-blur-sm hover:border-primary/40 hover:bg-accent/10 hover:scale-[1.02] hover:shadow-md"
+                            )}
+                            onClick={() => setSourceType(value as SourceType)}
+                          >
+                            <RadioGroupItem value={value} id={`src-${value}`} className="h-4 w-4" />
+                            <Icon className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+                            <Label htmlFor={`src-${value}`} className="text-xs font-semibold cursor-pointer">{label}</Label>
+                          </button>
+                        ))}
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+
               </div>
 
-              <Separator className="my-0.5 opacity-50" />
-
-              {/* Source Type */}
-              <div className="space-y-1.5 relative z-10">
-                <Label className="text-sm font-bold flex items-center gap-2 text-foreground">
-                  <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
-                    <FileText className="h-3.5 w-3.5 text-primary" />
+              {/* ── Generate Button (pinned to bottom) ── */}
+              <div className="shrink-0 p-5 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm">
+                {canGenerate && !isGenerating && (
+                  <div className="flex items-center justify-center gap-1.5 mb-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">All steps complete — ready to generate</span>
                   </div>
-                  Source Type
-                </Label>
-                <RadioGroup value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: "paste", icon: FileText, label: "Paste Text" },
-                      { value: "url", icon: LinkIcon, label: "URL" },
-                      { value: "doc_id", icon: FileCode, label: "Doc ID" },
-                      { value: "transcript", icon: Mic, label: "Transcript" },
-                    ].map(({ value, icon: Icon, label }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        className={cn(
-                          "flex items-center gap-2 rounded-xl border-2 p-2.5 cursor-pointer transition-all duration-300 group relative",
-                          sourceType === value
-                            ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 scale-[1.02] shadow-md shadow-primary/15"
-                            : "border-border/80 bg-white/50 dark:bg-background/50 backdrop-blur-sm hover:border-primary/40 hover:bg-accent/10 hover:scale-[1.02] hover:shadow-md"
-                        )}
-                        onClick={() => setSourceType(value as SourceType)}
-                      >
-                        <RadioGroupItem value={value} id={value} className="h-4 w-4" />
-                        <Icon className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-                        <Label htmlFor={value} className="text-xs font-semibold cursor-pointer">{label}</Label>
-                      </button>
-                    ))}
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Generate Button */}
-              <div className="mt-auto pt-2 relative z-10">
+                )}
+                {!canGenerate && completedSteps > 0 && (
+                  <p className="text-center text-xs text-muted-foreground mb-3">
+                    {!step1Done ? "Select a voice to continue" : !step2Done ? "Choose at least one platform" : "Add source content in the workspace"}
+                  </p>
+                )}
                 <Button
                   onClick={handleGenerate}
                   disabled={!canGenerate || isGenerating}
                   className="relative w-full h-14 text-base font-bold bg-gradient-to-r from-primary via-primary/90 to-accent shadow-lg hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 overflow-hidden group rounded-xl"
                   size="lg"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-accent to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-accent to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                   {isGenerating ? (
                     <div className="relative z-10 flex items-center">
@@ -1206,59 +1245,135 @@ const SocialAlchemist = () => {
               </div>
             </div>
 
-            {/* Right Panel - Content Input */}
-            <div className="flex flex-col gap-4 border border-white/50 dark:border-border/50 rounded-2xl p-6 bg-white/70 dark:bg-card/70 backdrop-blur-xl shadow-elegant hover:shadow-xl transition-all duration-500 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-accent/[0.02] pointer-events-none rounded-2xl"></div>
-              {/* Decorative corner accents */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary/[0.05] to-transparent rounded-bl-[80px] pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-accent/[0.05] to-transparent rounded-tr-[60px] pointer-events-none" />
+            {/* ─── RIGHT PANEL: Content Workspace ─── */}
+            <div className="relative flex flex-col border border-white/50 dark:border-border/50 rounded-2xl bg-white/70 dark:bg-card/70 backdrop-blur-xl shadow-elegant overflow-hidden">
+              {/* Corner accents */}
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/[0.04] to-transparent rounded-bl-[100px] pointer-events-none z-0" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-accent/[0.04] to-transparent rounded-tr-[80px] pointer-events-none z-0" />
 
-              <Label className="text-base font-bold flex items-center gap-2.5 text-foreground relative z-10">
-                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
-                  <FileText className="h-4 w-4 text-primary" />
+              {/* Dynamic workspace header */}
+              <div className="shrink-0 px-6 py-4 border-b border-border/30 relative z-10">
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const iconMap: Record<SourceType, any> = {
+                      paste: FileText,
+                      url: LinkIcon,
+                      doc_id: FileCode,
+                      transcript: Mic,
+                    };
+                    const labelMap: Record<SourceType, string> = {
+                      paste: "Paste raw text or long-form content",
+                      url: "Provide a URL to fetch content from",
+                      doc_id: "Reference a document by its ID",
+                      transcript: "Paste a video or audio transcript",
+                    };
+                    const Icon = iconMap[sourceType];
+                    return (
+                      <>
+                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
+                          <Icon className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-base font-bold text-foreground">Content Workspace</h2>
+                          <p className="text-xs text-muted-foreground truncate">{labelMap[sourceType]}</p>
+                        </div>
+                        {sourceContent.trim() && (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 animate-in fade-in zoom-in duration-300" />
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
-                Content
-                {sourceContent.trim() && <CheckCircle2 className="h-5 w-5 text-emerald-500 ml-auto animate-in fade-in zoom-in duration-300" />}
-              </Label>
+              </div>
 
-              {(sourceType === "paste" || sourceType === "transcript") && (
-                <Textarea
-                  placeholder={
-                    sourceType === "paste"
-                      ? "Paste your long-form content here... articles, blog posts, newsletters, or any written content you want to repurpose."
-                      : "Paste your video or audio transcript here..."
-                  }
-                  value={sourceContent}
-                  onChange={(e) => setSourceContent(e.target.value)}
-                  className="flex-1 resize-none font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 relative z-10 rounded-xl"
-                />
-              )}
-
-              {sourceType === "url" && (
-                <Input
-                  type="url"
-                  placeholder="https://example.com/article"
-                  value={sourceContent}
-                  onChange={(e) => setSourceContent(e.target.value)}
-                  className="h-14 font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 relative z-10 rounded-xl"
-                />
-              )}
-
-              {sourceType === "doc_id" && (
-                <div className="space-y-2.5 relative z-10">
-                  <Input
-                    placeholder="doc-abc123-xyz"
+              {/* Content input area */}
+              <div className="flex-1 flex flex-col p-6 gap-3 min-h-0 relative z-10">
+                {(sourceType === "paste" || sourceType === "transcript") && (
+                  <Textarea
+                    placeholder={
+                      sourceType === "paste"
+                        ? "Paste your long-form content here... articles, blog posts, newsletters, or any written content you want to repurpose."
+                        : "Paste your video or audio transcript here..."
+                    }
                     value={sourceContent}
                     onChange={(e) => setSourceContent(e.target.value)}
-                    className="h-14 font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 rounded-xl"
+                    className="flex-1 resize-none font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 rounded-xl min-h-0"
                   />
-                  <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    Enter the ID of an existing document from your library
-                  </p>
+                )}
+
+                {sourceType === "url" && (
+                  <div className="flex flex-col gap-4 h-full">
+                    <Input
+                      type="url"
+                      placeholder="https://example.com/article"
+                      value={sourceContent}
+                      onChange={(e) => setSourceContent(e.target.value)}
+                      className="h-14 font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 rounded-xl"
+                    />
+                    <div className="flex-1 rounded-xl border-2 border-dashed border-border/40 bg-white/40 dark:bg-background/40 flex items-center justify-center text-center p-8">
+                      <div className="space-y-3">
+                        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                          <LinkIcon className="h-7 w-7 text-primary" />
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">URL content will be fetched automatically</p>
+                        <p className="text-xs text-muted-foreground">Supports articles, blog posts, and public web pages</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {sourceType === "doc_id" && (
+                  <div className="flex flex-col gap-4 h-full">
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="doc-abc123-xyz"
+                        value={sourceContent}
+                        onChange={(e) => setSourceContent(e.target.value)}
+                        className="h-14 font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 rounded-xl"
+                      />
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <AlertCircle className="h-3 w-3" />
+                        Enter the ID of an existing document from your library
+                      </p>
+                    </div>
+                    <div className="flex-1 rounded-xl border-2 border-dashed border-border/40 bg-white/40 dark:bg-background/40 flex items-center justify-center text-center p-8">
+                      <div className="space-y-3">
+                        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                          <FileCode className="h-7 w-7 text-primary" />
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">Document will be retrieved by ID</p>
+                        <p className="text-xs text-muted-foreground">The document content will be used as source material</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer: character + word count */}
+              {(sourceType === "paste" || sourceType === "transcript") && (
+                <div className="shrink-0 px-6 py-3 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm relative z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{sourceContent.length.toLocaleString()} chars</span>
+                      {sourceContent.trim() && (
+                        <span>{sourceContent.trim().split(/\s+/).length.toLocaleString()} words</span>
+                      )}
+                    </div>
+                    {sourceContent && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setSourceContent("")}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
+
           </div>
         </div>
       </main>
