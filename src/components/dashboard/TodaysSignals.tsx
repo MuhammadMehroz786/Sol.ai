@@ -531,7 +531,6 @@ export const TodaysSignals = () => {
             if (error) {
               // db save failed — content was generated but not persisted
             } else {
-              const { toast } = await import("@/hooks/use-toast");
               toast({ title: "Content saved!", description: "Content has been added to your queue as draft" });
 
               setModalOpen(false);

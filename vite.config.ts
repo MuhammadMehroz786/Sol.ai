@@ -8,14 +8,6 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
-    proxy: {
-      '/api/scout-gpt': {
-        target: 'https://soleai.app.n8n.cloud',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/scout-gpt/, '/webhook/e104c437-3b72-4de2-8fc7-535d30fb57fb'),
-        secure: true,
-      }
-    }
   },
   plugins: [
     react(),
@@ -26,5 +18,28 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase': ['@supabase/supabase-js'],
+          'tanstack': ['@tanstack/react-query'],
+          'lucide': ['lucide-react'],
+          'radix-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-switch',
+          ],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
   },
 }));

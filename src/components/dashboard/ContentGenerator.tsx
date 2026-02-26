@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_VOICE_PROFILE_CREATE, WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
+import { useToast } from "@/hooks/use-toast";
 import { type VoiceOption } from "@/constants/voices";
 import { useVoices } from "@/contexts/VoicesContext";
 import {
@@ -69,6 +69,8 @@ export const ContentGenerator = () => {
   const [generatedContent, setGeneratedContent] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState("");
 
+  const { toast } = useToast();
+
   // Custom voice management (shared context)
   const { voices, addVoice, removeVoice, updateVoice } = useVoices();
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
@@ -86,11 +88,6 @@ export const ContentGenerator = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [voiceToDelete, setVoiceToDelete] = useState<CustomVoice | null>(null);
   const [isDeletingVoice, setIsDeletingVoice] = useState(false);
-
-  // Article submenu hover state
-  const [showArticleSubmenu, setShowArticleSubmenu] = useState(false);
-  const [articleItemRef, setArticleItemRef] = useState<HTMLDivElement | null>(null);
-  const [hideTimeout, setHideTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const handleVoiceChange = (value: string) => {
     if (value === "create-voice-profile") {
@@ -172,7 +169,6 @@ export const ContentGenerator = () => {
         setSelectedVoice("");
       }
 
-      const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Voice deleted",
         description: "Voice profile has been removed successfully",
@@ -181,7 +177,6 @@ export const ContentGenerator = () => {
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
     } catch (error: any) {
-      const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Delete failed",
         description: error?.message || "An error occurred while deleting the voice profile",
@@ -217,7 +212,6 @@ export const ContentGenerator = () => {
       const { data: user } = await supabase.auth.getUser();
 
       if (!user.user) {
-        const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Authentication required",
           description: "Please log in to create a voice profile",
@@ -280,7 +274,6 @@ export const ContentGenerator = () => {
         addVoice(newVoice);
         setSelectedVoice(newVoice.value);
 
-        const { toast } = await import("@/hooks/use-toast");
         toast({
           title: "Voice profile created!",
           description: "Your personal voice profile has been generated successfully",
@@ -293,7 +286,6 @@ export const ContentGenerator = () => {
         throw new Error('Failed to upload voice profile');
       }
     } catch (error) {
-      const { toast } = await import("@/hooks/use-toast");
       toast({
         title: "Upload failed",
         description: "Failed to create voice profile. Please try again.",
@@ -349,12 +341,13 @@ export const ContentGenerator = () => {
         const result = await response.json();
         const formattedContent = formatResponseData(result);
         setGeneratedContent(formattedContent);
+        setModalOpen(true);
 
         try {
           const { data: user } = await supabase.auth.getUser();
           if (user.user) {
             const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
-            const { error, data } = await supabase
+            const { error } = await supabase
               .from('content_outputs')
               .insert({
                 user_id: user.user.id,
@@ -364,36 +357,23 @@ export const ContentGenerator = () => {
                 output_type: selectedOutputType,
                 status: 'draft',
                 topic_context: topic,
-              })
-              .select();
+              });
 
             if (error) {
-              const { toast } = await import("@/hooks/use-toast");
               toast({ title: "Save failed!", description: `Database error: ${error.message}`, variant: "destructive" });
             } else {
-              const { toast } = await import("@/hooks/use-toast");
-              toast({ title: "Content saved!", description: "Content has been added to your queue as draft" });
-
               window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
               window.dispatchEvent(new CustomEvent('statsRefresh'));
-
-              if (data && data.length > 0) {
-                setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: data[0].id } }));
-                }, 300);
-              }
             }
           }
         } catch {
           // db save failed — non-critical
         }
       } else {
-        const { toast } = await import("@/hooks/use-toast");
         toast({ title: "Error generating content", description: `Error: ${response.status} ${response.statusText}`, variant: "destructive" });
       }
     } catch (error) {
-      const { toast } = await import("@/hooks/use-toast");
-      toast({ title: "Network error", description: error.message, variant: "destructive" });
+      toast({ title: "Network error", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsGenerating(false);
     }

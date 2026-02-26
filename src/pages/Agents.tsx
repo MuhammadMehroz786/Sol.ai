@@ -63,8 +63,14 @@ const AgentFormFields = ({
         <Select value={formData.role || ""} onValueChange={(v) => setFormData(p => ({ ...p, role: v as any }))}>
           <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select role" /></SelectTrigger>
           <SelectContent>
-            {["admin","editor","viewer","moderator","custom"].map(r => (
-              <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+            {[
+              { value: "content_discovery",   label: "Content Discovery" },
+              { value: "content_refinement",  label: "Content Refinement" },
+              { value: "data_analysis",       label: "Data Analysis" },
+              { value: "fallback_processing", label: "Fallback Processing" },
+              { value: "custom",              label: "Custom" },
+            ].map(r => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

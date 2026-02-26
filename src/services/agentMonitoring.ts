@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Agent } from "@/types/agents";
+import { fallbackManager } from "./fallbackManager";
 
 export interface HealthCheckResult {
   agent_id: string;
@@ -134,7 +135,6 @@ class AgentMonitoringService {
       await this.checkFallbackTriggers(authData.user.id);
 
       // Perform comprehensive system health check
-      const { fallbackManager } = await import('./fallbackManager');
       await fallbackManager.performSystemHealthCheck();
 
 
@@ -473,7 +473,6 @@ class AgentMonitoringService {
    */
   private async triggerAutomaticFallback(failedAgent: Agent): Promise<void> {
     try {
-      const { fallbackManager } = await import('./fallbackManager');
       const success = await fallbackManager.checkAutomaticFallback(failedAgent.id);
 
       if (success) {
