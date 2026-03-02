@@ -37,17 +37,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const ensureProfileExists = async (authUser: User) => {
     const { data: existing } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, email')
       .eq('user_id', authUser.id)
       .maybeSingle();
 
     if (!existing) {
+      // Create profile row — this covers OAuth, magic-link, and any signup path
       const meta = authUser.user_metadata || {};
       await supabase.from('profiles').upsert({
         user_id: authUser.id,
         email: authUser.email,
         display_name: meta.display_name || authUser.email?.split('@')[0] || 'User',
       }, { onConflict: 'user_id' });
+    } else if (existing.email !== authUser.email) {
+      // Keep email in sync if the user changed it via Supabase
+      await supabase
+        .from('profiles')
+        .update({ email: authUser.email })
+        .eq('user_id', authUser.id);
     }
   };
 
@@ -90,7 +97,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const redirectUrl = `${window.location.origin}/auth`;
 
     // Step 1: Create the auth user
     const { data, error } = await supabase.auth.signUp({
@@ -120,22 +127,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       };
     }
 
-    // Step 2: Create the profile if user was created
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: data.user.id,
-          email: data.user.email,
-          display_name: displayName || data.user.email?.split('@')[0] || 'User',
-        }, { onConflict: 'user_id' });
-
-      if (profileError) {
-        // Non-blocking — auth user was created successfully
-        return { error: null, profileWarning: profileError.message };
-      }
-    }
-
+    // Profile is created via ensureProfileExists() on the SIGNED_IN event
+    // after the user confirms their email — no insert needed here.
     return { error: null };
   };
 
