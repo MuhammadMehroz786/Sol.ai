@@ -5,11 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import {
   Eye, EyeOff, Loader2, ArrowLeft, CheckCircle,
-  Zap, Sparkles, Mic, BarChart3, ShieldCheck, Mail,
+  Zap, Sparkles, Mic, BarChart3, ShieldCheck, Mail, AlertCircle,
 } from 'lucide-react';
 import authLogo from '@/assets/Auth logo.png';
 
@@ -95,6 +94,20 @@ const PasswordField = ({ id, label, value, placeholder, show, onToggle, onChange
   </div>
 );
 
+// ─── ErrorBanner ──────────────────────────────────────────────────────────────
+
+const ErrorBanner = ({ message }: { message: string }) => (
+  <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/80 px-4 py-3">
+    <span className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-red-100 flex items-center justify-center">
+      <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+    </span>
+    <div className="min-w-0">
+      <p className="text-sm font-semibold text-red-700 leading-snug">Something went wrong</p>
+      <p className="text-xs text-red-500/90 mt-0.5 leading-relaxed">{message}</p>
+    </div>
+  </div>
+);
+
 // ─── Dot grid for left panel ──────────────────────────────────────────────────
 
 const DOT_GRID = `url("data:image/svg+xml,%3Csvg width='22' height='22' viewBox='0 0 22 22' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='white' fill-opacity='0.10'/%3E%3C/svg%3E")`;
@@ -167,7 +180,7 @@ const Auth = () => {
   // ── Effect 4: auto-redirect after confirmation / password-done screens ────────
   useEffect(() => {
     if (view === 'set-password-done') {
-      const t = setTimeout(() => navigate('/'), 1500);
+      const t = setTimeout(() => navigate('/'), 3000);
       return () => clearTimeout(t);
     }
   }, [view, navigate]);
@@ -204,8 +217,20 @@ const Auth = () => {
   const doSignIn = async () => {
     setLoading(true); setError('');
     const { error } = await signIn(email, password);
-    if (error) setError(error.message);
-    else toast({ title: 'Welcome back!', description: 'Successfully signed in to Sole Central Station.' });
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+        setError('No account found with this email, or your password is incorrect.');
+      } else if (msg.includes('email not confirmed')) {
+        setError('Please confirm your email before signing in.');
+      } else if (msg.includes('too many requests')) {
+        setError('Too many attempts. Please wait a moment and try again.');
+      } else {
+        setError(error.message);
+      }
+    } else {
+      toast({ title: 'Welcome back!', description: 'Successfully signed in to Sole Central Station.' });
+    }
     setLoading(false);
   };
 
@@ -266,8 +291,16 @@ const Auth = () => {
     setLoading(true); setError('');
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
-    if (error) setError(error.message);
-    else setView('set-password-done');
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('auth session missing') || msg.includes('session')) {
+        setError('Your reset link has expired or is invalid. Please request a new one.');
+      } else {
+        setError(error.message);
+      }
+    } else {
+      setView('set-password-done');
+    }
   };
 
   // Derived
@@ -525,7 +558,7 @@ const Auth = () => {
                 <p className="text-sm text-muted-foreground">Sign in to your Sole Central Station account.</p>
               </div>
 
-              {error && <Alert variant="destructive" className="py-2"><AlertDescription className="text-sm">{error}</AlertDescription></Alert>}
+              {error && <ErrorBanner message={error} />}
 
               <form onSubmit={handleSignIn} className="space-y-3">
                 <div className="space-y-1">
@@ -544,12 +577,7 @@ const Auth = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="si-pw" className="text-sm font-medium text-foreground/80">Password</Label>
-                    <button type="button" onClick={() => switchView('forgot')} className="text-xs text-primary hover:underline">
-                      Forgot password?
-                    </button>
-                  </div>
+                  <Label htmlFor="si-pw" className="text-sm font-medium text-foreground/80">Password</Label>
                   <PasswordField
                     id="si-pw"
                     value={password}
@@ -559,6 +587,9 @@ const Auth = () => {
                     onChange={setPassword}
                     required
                   />
+                  <button type="button" onClick={() => switchView('forgot')} className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </button>
                 </div>
 
                 <Button type="submit" className="w-full h-10 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold text-sm" disabled={loading}>
@@ -583,7 +614,7 @@ const Auth = () => {
                 <p className="text-sm text-muted-foreground">Join Sole Central Station and start creating.</p>
               </div>
 
-              {error && <Alert variant="destructive" className="py-2"><AlertDescription className="text-sm">{error}</AlertDescription></Alert>}
+              {error && <ErrorBanner message={error} />}
 
               <form onSubmit={handleSignUp} className="space-y-3">
                 <div className="space-y-1">
@@ -640,7 +671,7 @@ const Auth = () => {
                   id="su-confirm"
                   label="Confirm Password"
                   value={confirmPassword}
-                  placeholder="Repeat your password"
+                  placeholder="Confirm your password"
                   show={showConfirmPw}
                   onToggle={() => setShowConfirmPw(!showConfirmPw)}
                   onChange={(v) => { setConfirmPassword(v); checkConfirm(v); }}
@@ -673,7 +704,7 @@ const Auth = () => {
                 <p className="text-sm text-muted-foreground mt-0.5">Enter your email and we'll send a reset link.</p>
               </div>
 
-              {error && <Alert variant="destructive" className="py-2"><AlertDescription className="text-sm">{error}</AlertDescription></Alert>}
+              {error && <ErrorBanner message={error} />}
 
               <form onSubmit={handleForgot} className="space-y-3">
                 <div className="space-y-1">
@@ -705,7 +736,20 @@ const Auth = () => {
                 <p className="text-sm text-muted-foreground">Choose a strong password for your account.</p>
               </div>
 
-              {error && <Alert variant="destructive" className="py-2"><AlertDescription className="text-sm">{error}</AlertDescription></Alert>}
+              {error && (
+                <>
+                  <ErrorBanner message={error} />
+                  {error.includes('expired') && (
+                    <button
+                      type="button"
+                      onClick={() => switchView('forgot')}
+                      className="w-full text-sm text-primary hover:underline text-center"
+                    >
+                      Request a new reset link
+                    </button>
+                  )}
+                </>
+              )}
 
               <form onSubmit={handleSetPassword} className="space-y-3">
                 <div className="space-y-1">
@@ -733,7 +777,7 @@ const Auth = () => {
                   id="sp-confirm"
                   label="Confirm New Password"
                   value={confirmNew}
-                  placeholder="Repeat your new password"
+                  placeholder="Confirm your new password"
                   show={showConfirmNew}
                   onToggle={() => setShowConfirmNew(!showConfirmNew)}
                   onChange={(v) => { setConfirmNew(v); checkNewConfirm(v); }}

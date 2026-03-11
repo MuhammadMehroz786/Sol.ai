@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import soleLogoBlack from "@/assets/SOLE LOGO - BLACK WO BG.png";
+import soleLogoBlack from "@/assets/Auth logo.png";
 import {
   LayoutDashboard,
   Settings,

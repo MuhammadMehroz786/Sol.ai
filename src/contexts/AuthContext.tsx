@@ -74,9 +74,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session + verify the user still exists server-side.
+    // getSession() reads from localStorage (stale if user was deleted from Supabase),
+    // so we follow up with getUser() which hits the server to confirm validity.
+    //
+    // Skip the server check during auth callback flows (password reset, magic link, etc.)
+    // — the URL will contain ?code= (PKCE) or #access_token (implicit). Supabase is
+    // mid-exchange at this point and calling getUser() on the partial session would
+    // kill it, causing "Auth session missing" on the set-password form.
+    const isAuthCallback =
+      window.location.search.includes('code=') ||
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('type=recovery');
+
     supabase.auth.getSession()
-      .then(({ data: { session } }) => {
+      .then(async ({ data: { session } }) => {
+        if (session && !isAuthCallback) {
+          const { error } = await supabase.auth.getUser();
+          if (error) {
+            // User no longer exists on the server (deleted from dashboard, etc.)
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        }
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);

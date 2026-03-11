@@ -13,13 +13,95 @@ import { type VoiceOption } from "@/constants/voices";
 import { useVoices } from "@/contexts/VoicesContext";
 import { Label } from "@/components/ui/label";
 import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2, Link2, Wand2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
 import { useToast } from "@/hooks/use-toast";
 
 type CustomVoice = VoiceOption;
+
+// ── Search suggestions & spell correction ──────────────────────────────────
+
+const SEARCH_TOPICS = [
+  { topic: "artificial intelligence", category: "Technology" },
+  { topic: "machine learning", category: "Technology" },
+  { topic: "ai", category: "Technology" },
+  { topic: "tech", category: "Technology" },
+  { topic: "data", category: "Technology" },
+  { topic: "algorithms", category: "Technology" },
+  { topic: "cybersecurity", category: "Technology" },
+  { topic: "blockchain", category: "Technology" },
+  { topic: "innovation", category: "Technology" },
+  { topic: "digital transformation", category: "Technology" },
+  { topic: "internet", category: "Technology" },
+  { topic: "software", category: "Technology" },
+  { topic: "business", category: "Business" },
+  { topic: "career", category: "Business" },
+  { topic: "startups", category: "Business" },
+  { topic: "entrepreneurship", category: "Business" },
+  { topic: "leadership", category: "Business" },
+  { topic: "funding", category: "Business" },
+  { topic: "marketing", category: "Business" },
+  { topic: "strategy", category: "Business" },
+  { topic: "enterprise", category: "Business" },
+  { topic: "culture", category: "Society" },
+  { topic: "society", category: "Society" },
+  { topic: "community", category: "Society" },
+  { topic: "equity", category: "Society" },
+  { topic: "diversity", category: "Society" },
+  { topic: "media", category: "Media" },
+  { topic: "entertainment", category: "Media" },
+  { topic: "music", category: "Media" },
+  { topic: "hip hop", category: "Media" },
+  { topic: "art", category: "Media" },
+  { topic: "education", category: "Knowledge" },
+  { topic: "research", category: "Knowledge" },
+  { topic: "policy", category: "Knowledge" },
+  { topic: "ethics", category: "Knowledge" },
+  { topic: "science", category: "Knowledge" },
+  { topic: "lifestyle", category: "Lifestyle" },
+  { topic: "health", category: "Lifestyle" },
+  { topic: "wellness", category: "Lifestyle" },
+  { topic: "news", category: "Lifestyle" },
+  { topic: "interviews", category: "Lifestyle" },
+];
+
+const levenshtein = (a: string, b: string): number => {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+  return dp[m][n];
+};
+
+const getTopicSuggestions = (query: string) => {
+  if (query.length < 2) return [];
+  const q = query.toLowerCase().trim();
+  const startsWith = SEARCH_TOPICS.filter(s => s.topic.startsWith(q));
+  const contains = SEARCH_TOPICS.filter(s => !s.topic.startsWith(q) && s.topic.includes(q));
+  return [...startsWith, ...contains].slice(0, 6);
+};
+
+const getSpellCorrection = (query: string): string | null => {
+  if (query.length < 3) return null;
+  const q = query.toLowerCase().trim();
+  if (SEARCH_TOPICS.some(s => s.topic.includes(q))) return null;
+  let best: { topic: string; dist: number } | null = null;
+  for (const { topic } of SEARCH_TOPICS) {
+    const words = topic.split(' ');
+    const dists = [levenshtein(q, topic), ...words.map(w => levenshtein(q, w))];
+    const dist = Math.min(...dists);
+    if (!best || dist < best.dist) best = { topic, dist };
+  }
+  const threshold = Math.max(2, Math.floor(q.length / 3));
+  return best && best.dist <= threshold ? best.topic : null;
+};
 
 export const TodaysSignals = () => {
   const navigate = useNavigate();
@@ -47,6 +129,9 @@ export const TodaysSignals = () => {
   const [isFilteringByTopic, setIsFilteringByTopic] = useState(false);
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const [selectedArticleLength, setSelectedArticleLength] = useState("");
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [voiceProfileModalOpen, setVoiceProfileModalOpen] = useState(false);
@@ -134,6 +219,18 @@ export const TodaysSignals = () => {
       }
     };
     restoreSignals();
+  }, []);
+
+  // Close suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+        setActiveSuggestionIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Re-register signalsUpdated whenever topicSearch changes to avoid stale closure
@@ -774,20 +871,87 @@ export const TodaysSignals = () => {
 
             {/* Input section */}
             <div className="flex space-x-2 relative z-[60]">
-              {/* Simple Text Input */}
-              <div className="relative flex-1">
+              {/* Search Input with suggestions */}
+              <div className="relative flex-1" ref={searchContainerRef}>
                 <Input
                   value={topicSearch}
-                  onChange={(e) => setTopicSearch(e.target.value)}
+                  onChange={(e) => {
+                    setTopicSearch(e.target.value);
+                    setShowSuggestions(true);
+                    setActiveSuggestionIndex(-1);
+                  }}
+                  onFocus={() => topicSearch.length >= 2 && setShowSuggestions(true)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && topicSearch.trim()) {
-                      handleSearchWithTopic();
+                    const suggestions = getTopicSuggestions(topicSearch);
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setActiveSuggestionIndex(i => Math.min(i + 1, suggestions.length - 1));
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setActiveSuggestionIndex(i => Math.max(i - 1, -1));
+                    } else if (e.key === 'Escape') {
+                      setShowSuggestions(false);
+                      setActiveSuggestionIndex(-1);
+                    } else if (e.key === 'Enter') {
+                      if (activeSuggestionIndex >= 0 && suggestions[activeSuggestionIndex]) {
+                        setTopicSearch(suggestions[activeSuggestionIndex].topic);
+                        setShowSuggestions(false);
+                        setActiveSuggestionIndex(-1);
+                      } else if (topicSearch.trim()) {
+                        setShowSuggestions(false);
+                        handleSearchWithTopic();
+                      }
                     }
                   }}
                   placeholder="Enter a topic to search..."
                   className="w-full bg-white border-2 border-primary/20 focus:border-primary/50 hover:border-primary/40 rounded-xl text-sm transition-all duration-300 px-4 py-2 pr-10"
                 />
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+
+                {/* Suggestions dropdown */}
+                {showSuggestions && topicSearch.length >= 2 && (() => {
+                  const suggestions = getTopicSuggestions(topicSearch);
+                  const correction = suggestions.length === 0 ? getSpellCorrection(topicSearch) : null;
+                  if (suggestions.length === 0 && !correction) return null;
+                  return (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-primary/20 rounded-xl shadow-[0_8px_24px_rgba(208,126,59,0.15)] z-[70] overflow-hidden">
+                      {correction && (
+                        <button
+                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-primary/5 transition-colors flex items-center gap-2 border-b border-border/40"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setTopicSearch(correction);
+                            setShowSuggestions(false);
+                            setActiveSuggestionIndex(-1);
+                          }}
+                        >
+                          <Search className="h-3.5 w-3.5 text-primary/50 flex-shrink-0" />
+                          <span className="text-muted-foreground">Did you mean </span>
+                          <span className="font-semibold text-primary">{correction}</span>
+                          <span className="text-muted-foreground">?</span>
+                        </button>
+                      )}
+                      {suggestions.map((s, i) => (
+                        <button
+                          key={s.topic}
+                          className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors ${
+                            i === activeSuggestionIndex ? 'bg-primary/10' : 'hover:bg-primary/5'
+                          }`}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setTopicSearch(s.topic);
+                            setShowSuggestions(false);
+                            setActiveSuggestionIndex(-1);
+                          }}
+                        >
+                          <Search className="h-3.5 w-3.5 text-primary/40 flex-shrink-0" />
+                          <span className="flex-1 capitalize">{s.topic}</span>
+                          <span className="text-[10px] font-medium text-primary/50 bg-primary/8 px-2 py-0.5 rounded-full">{s.category}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
 
               {topicSearch && (
