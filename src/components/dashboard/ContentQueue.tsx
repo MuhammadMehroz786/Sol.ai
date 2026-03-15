@@ -52,32 +52,46 @@ interface ContentOutput {
 
 interface ContentQueueProps {
   onSelectOutput: (output: ContentOutput) => void;
+  pendingOpenId?: string | null;
+  onDraftOpened?: () => void;
 }
 
 const statusConfig = {
-  draft: { 
-    label: "Draft", 
-    color: "bg-muted text-muted-foreground", 
-    icon: Edit3 
+  draft: {
+    label: "Draft",
+    color: "bg-slate-100 text-slate-600 border border-slate-300",
+    accent: "border-l-slate-400",
+    headerColor: "text-slate-600",
+    dotColor: "bg-slate-400",
+    icon: Edit3
   },
-  review: { 
-    label: "Review", 
-    color: "bg-warning/20 text-warning", 
-    icon: AlertCircle 
+  review: {
+    label: "Review",
+    color: "bg-amber-50 text-amber-700 border border-amber-300",
+    accent: "border-l-amber-400",
+    headerColor: "text-amber-700",
+    dotColor: "bg-amber-400",
+    icon: AlertCircle
   },
-  final: { 
-    label: "Final", 
-    color: "bg-success/20 text-success", 
-    icon: CheckCircle 
+  final: {
+    label: "Final",
+    color: "bg-emerald-50 text-emerald-700 border border-emerald-300",
+    accent: "border-l-emerald-500",
+    headerColor: "text-emerald-700",
+    dotColor: "bg-emerald-500",
+    icon: CheckCircle
   },
-  published: { 
-    label: "Published", 
-    color: "bg-primary/20 text-primary", 
-    icon: Share 
+  published: {
+    label: "Published",
+    color: "bg-blue-50 text-blue-700 border border-blue-300",
+    accent: "border-l-blue-500",
+    headerColor: "text-blue-700",
+    dotColor: "bg-blue-500",
+    icon: Share
   }
 };
 
-export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
+export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: ContentQueueProps) => {
   const [outputs, setOutputs] = useState<ContentOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -157,6 +171,29 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
       fetchOutputs();
     }
   }, [user]);
+
+  // Open a specific draft when the queue mounts with a pendingOpenId
+  useEffect(() => {
+    if (!pendingOpenId || loading) return;
+    const found = outputs.find(o => o.id === pendingOpenId);
+    if (found) {
+      openContentModal(found);
+      onDraftOpened?.();
+    } else if (user) {
+      supabase
+        .from('content_outputs')
+        .select('*')
+        .eq('id', pendingOpenId)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            openContentModal(data as ContentOutput);
+            fetchOutputs();
+            onDraftOpened?.();
+          }
+        });
+    }
+  }, [pendingOpenId, loading]);
 
   const fetchOutputs = async () => {
     if (!user) return;
@@ -429,13 +466,13 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
   if (loading) {
     return (
       <Card className="bg-gradient-card border border-border shadow-elegant">
-        <CardHeader>
-          <CardTitle>Content Queue</CardTitle>
-          <CardDescription>Loading your generated content...</CardDescription>
+        <CardHeader className="pb-2 pt-3">
+          <CardTitle className="text-base font-semibold">Content Queue</CardTitle>
+        <CardDescription className="text-xs">Loading your generated content...</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+            <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />
           ))}
         </CardContent>
       </Card>
@@ -444,34 +481,34 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
-      <CardHeader className="pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20">
-            <Clock className="h-5 w-5 text-accent" />
+      <CardHeader className="pb-2 pt-3">
+        <div className="flex items-center space-x-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/20">
+            <Clock className="h-4 w-4 text-accent" />
           </div>
           <div>
-            <CardTitle className="text-lg font-semibold">Content Queue</CardTitle>
-            <CardDescription className="text-sm">
+            <CardTitle className="text-base font-semibold">Content Queue</CardTitle>
+            <CardDescription className="text-xs">
               Manage your generated content pipeline
             </CardDescription>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-3">
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search content..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-background"
+              className="pl-8 bg-background h-8 text-xs"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-32 bg-background">
+            <SelectTrigger className="w-full sm:w-28 bg-background h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -483,7 +520,7 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
             </SelectContent>
           </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-32 bg-background">
+            <SelectTrigger className="w-full sm:w-28 bg-background h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -499,89 +536,90 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
           </Select>
         </div>
 
-        <Separator />
+        <Separator className="my-0" />
 
         {/* Content Grid */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           {Object.entries(groupedOutputs).map(([status, items]) => {
             if (items.length === 0) return null;
-            
+
             const config = statusConfig[status as keyof typeof statusConfig];
             const Icon = config.icon;
-            
+
             return (
-              <div key={status} className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-medium text-sm uppercase tracking-wide text-muted-foreground">
-                    {config.label} ({items.length})
+              <div key={status} className="space-y-1.5">
+                <div className="flex items-center space-x-1.5">
+                  <div className={`h-2 w-2 rounded-full ${config.dotColor}`} />
+                  <Icon className={`h-3.5 w-3.5 ${config.headerColor}`} />
+                  <h3 className={`font-bold text-[11px] uppercase tracking-wider ${config.headerColor}`}>
+                    {config.label} <span className="opacity-60">({items.length})</span>
                   </h3>
                 </div>
-                
-                <div className="grid gap-3">
+
+                <div className="grid gap-2">
                   {items.map((output) => (
                     <div
                       key={output.id}
-                      className="bg-background rounded-lg border border-border p-4 hover:shadow-sm transition-shadow cursor-pointer"
+                      className={`bg-background rounded-lg border border-border border-l-[3px] ${config.accent} p-3 hover:shadow-md hover:shadow-black/5 transition-all duration-200 cursor-pointer`}
                       onClick={() => openContentModal(output)}
                     >
-                      <div className="flex items-start justify-between space-x-3">
+                      <div className="flex items-start justify-between space-x-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h4 className="font-medium text-sm truncate">{output.title}</h4>
-                            <Badge variant="outline" className="text-xs capitalize">
+                          <div className="flex items-center space-x-1.5 mb-1">
+                            <h4 className="font-medium text-xs truncate">{output.title}</h4>
+                            <Badge variant="outline" className="text-[10px] capitalize shrink-0">
                               {output.output_type.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                             </Badge>
                           </div>
-                          
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
-                            {output.content.substring(0, 120)}...
+
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mb-1.5">
+                            {output.content.substring(0, 100)}...
                           </p>
-                          
+
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="secondary" className="text-xs capitalize">
+                            <div className="flex items-center space-x-1.5">
+                              <Badge variant="secondary" className="text-[10px] capitalize">
                                 {output.persona.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                               </Badge>
                               {output.tones.length > 0 && (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-[10px]">
                                   {output.tones[0]} {output.tones.length > 1 && `+${output.tones.length - 1}`}
                                 </Badge>
                               )}
                             </div>
-                            
-                            <Badge className={`text-xs ${config.color}`}>
+
+                            <Badge className={`text-[10px] ${config.color}`}>
                               {config.label}
                             </Badge>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-1">
+
+                        <div className="flex items-center space-x-0.5">
                           {status !== 'published' && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 w-8 p-0"
+                              className="h-7 w-7 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const nextStatus = status === 'draft' ? 'review' : 
+                                const nextStatus = status === 'draft' ? 'review' :
                                                  status === 'review' ? 'final' : 'published';
                                 updateStatus(output.id, nextStatus as ContentOutput['status']);
                               }}
                             >
-                              <CheckCircle className="h-4 w-4" />
+                              <CheckCircle className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteTarget(output.id);
                             }}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
@@ -591,14 +629,14 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
               </div>
             );
           })}
-          
+
           {filteredOutputs.length === 0 && (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-medium text-foreground mb-2">No content found</h3>
-              <p className="text-sm text-muted-foreground">
-                {searchTerm || statusFilter !== "all" || typeFilter !== "all" 
-                  ? "Try adjusting your filters" 
+            <div className="text-center py-6">
+              <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <h3 className="font-medium text-sm text-foreground mb-1">No content found</h3>
+              <p className="text-xs text-muted-foreground">
+                {searchTerm || statusFilter !== "all" || typeFilter !== "all"
+                  ? "Try adjusting your filters"
                   : "Generate some content to get started"}
               </p>
             </div>
@@ -609,58 +647,50 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
       {/* Content Viewer/Editor Modal */}
       {selectedOutput && (
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="sm:max-w-4xl max-h-[90vh] bg-gradient-card border-border/50 shadow-elegant">
-            <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
-              <div className="flex items-center justify-between mb-3">
-                <DialogTitle className="text-xl font-bold text-primary uppercase">
-                  {selectedOutput.title}
-                </DialogTitle>
-                <div className="flex items-center space-x-2">
-                  {(() => {
-                    const config = statusConfig[selectedOutput.status];
-                    const Icon = config.icon;
-                    return (
-                      <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 ${
-                        selectedOutput.status === 'draft'
-                          ? 'bg-muted/30 border-muted text-muted-foreground'
-                          : selectedOutput.status === 'review'
-                          ? 'bg-muted/30 border-muted text-muted-foreground'
-                          : selectedOutput.status === 'final'
-                          ? 'bg-muted/30 border-muted text-muted-foreground'
-                          : 'bg-primary/20 border-primary/50 text-primary'
-                      }`}>
-                        <Icon className="h-5 w-5" />
-                        <span className="font-semibold text-sm uppercase tracking-wide">
-                          {config.label.toUpperCase()} MODE
-                        </span>
-                      </div>
-                    );
-                  })()}
+          <DialogContent className="sm:max-w-4xl h-[90vh] overflow-hidden flex flex-col bg-gradient-card border border-border/50 shadow-elegant p-0 z-[200]">
+            <DialogHeader className="bg-gradient-surface border-b border-border/30 px-6 pt-5 pb-4 shrink-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary shrink-0">
+                    <FileText className="h-4 w-4 text-white" />
+                  </div>
+                  <DialogTitle className="text-primary font-bold text-base leading-tight truncate">
+                    {selectedOutput.title}
+                  </DialogTitle>
                 </div>
+                {(() => {
+                  const config = statusConfig[selectedOutput.status];
+                  const Icon = config.icon;
+                  return (
+                    <Badge className={`shrink-0 ml-2 text-[10px] ${config.color}`}>
+                      <Icon className="h-3 w-3 mr-1" />{config.label}
+                    </Badge>
+                  );
+                })()}
               </div>
-              <DialogDescription className="text-muted-foreground">
-                <div className="flex items-center space-x-4">
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {selectedOutput.output_type.replace('-', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+              <DialogDescription asChild>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] capitalize">
+                    {selectedOutput.output_type.replace('-', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                   </Badge>
-                  <Badge variant="secondary" className="text-xs capitalize">
-                    {selectedOutput.persona.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                  <Badge variant="secondary" className="text-[10px] capitalize">
+                    {selectedOutput.persona.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    Created: {new Date(selectedOutput.created_at).toLocaleDateString()}
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {new Date(selectedOutput.created_at).toLocaleDateString()}
                   </span>
                 </div>
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent">
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground flex items-center uppercase">
-                    <Eye className="h-4 w-4 mr-1 text-primary" />
+                  <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
+                    <Eye className="h-3.5 w-3.5 text-primary" />
                     Content
                     {selectedOutput.status === 'review' && (
-                      <span className="ml-2 text-xs text-muted-foreground normal-case">(Editable)</span>
+                      <span className="ml-1 text-[10px] text-muted-foreground font-normal normal-case border border-border px-1.5 py-0.5 rounded">editable</span>
                     )}
                   </label>
 
@@ -670,14 +700,14 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                       variant="outline"
                       onClick={saveContent}
                       disabled={isSaving}
-                      className="text-xs bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm"
+                      className="h-7 text-[11px] px-2.5 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium shadow-sm transition-all"
                     >
                       {isSaving ? (
                         <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       ) : (
                         <Save className="h-3 w-3 mr-1" />
                       )}
-                      Save Changes
+                      Save
                     </Button>
                   )}
                 </div>
@@ -686,12 +716,12 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                   <Textarea
                     value={editableContent}
                     onChange={(e) => setEditableContent(e.target.value)}
-                    className="h-[300px] font-mono text-sm bg-background border-border resize-none"
+                    className="min-h-[52vh] font-mono text-xs bg-background border-border resize-none"
                     placeholder="Edit your content here..."
                   />
                 ) : (
                   <div
-                    className="h-[300px] font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 overflow-auto whitespace-pre-wrap"
+                    className="min-h-[52vh] font-mono text-xs bg-background border border-border rounded-lg p-4 overflow-auto whitespace-pre-wrap shadow-inner"
                     tabIndex={0}
                   >
                     {selectedOutput.content || "No content available..."}
@@ -701,60 +731,62 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
 
               {/* Quick Actions - Only show for review status */}
               {selectedOutput.status === 'review' && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground uppercase">Quick Actions</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quick Actions</label>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => handleQuickAction('poeticize')}
                         disabled={isProcessingAction === 'poeticize'}
-                        className="bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm h-10"
+                        className="h-8 text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium shadow-sm transition-all"
                       >
                         {isProcessingAction === 'poeticize' ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                         ) : (
-                          <Sparkles className="h-4 w-4 mr-2" />
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                         )}
                         Poeticize
                       </Button>
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => handleQuickAction('rewrite')}
                         disabled={isProcessingAction === 'rewrite'}
-                        className="bg-accent/30 border-accent/70 text-black hover:bg-accent/40 hover:border-accent font-medium shadow-sm h-10"
+                        className="h-8 text-xs bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50 font-medium shadow-sm transition-all"
                       >
                         {isProcessingAction === 'rewrite' ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                         ) : (
-                          <RotateCcw className="h-4 w-4 mr-2" />
+                          <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                         )}
                         Rewrite
                       </Button>
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => handleQuickAction('shorten')}
                         disabled={isProcessingAction === 'shorten'}
-                        className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
+                        className="h-8 text-xs bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50 font-medium shadow-sm transition-all"
                       >
                         {isProcessingAction === 'shorten' ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                         ) : (
-                          <Scissors className="h-4 w-4 mr-2" />
+                          <Scissors className="h-3.5 w-3.5 mr-1.5" />
                         )}
                         Shorten
                       </Button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => updateStatus(selectedOutput.id, 'final')}
-                        className="bg-success/30 border-success/70 text-black hover:bg-success/40 hover:border-success font-medium shadow-sm h-10"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Confirm Edits
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateStatus(selectedOutput.id, 'final')}
+                      className="h-8 text-xs bg-success/10 border-success/30 text-success hover:bg-success/20 hover:border-success/50 font-medium shadow-sm transition-all"
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                      Confirm Edits
+                    </Button>
                   </div>
                 </div>
               )}
@@ -762,51 +794,54 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
 
             {/* DialogFooter - Only show for draft and final status (not review) */}
             {selectedOutput.status !== 'review' && (
-              <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-4 pb-4">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    {/* Export/CMS buttons only for final status */}
+              <DialogFooter className="bg-gradient-surface border-t border-border/30 px-6 py-3 shrink-0">
+                <div className="flex flex-wrap items-center justify-between w-full gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {selectedOutput.status === 'final' && (
                       <>
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={sendToSocialAlchemist}
-                          className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/50 text-purple-700 hover:from-purple-500/30 hover:to-pink-500/30 hover:border-purple-500/70 font-medium shadow-sm h-10"
+                          className="h-8 text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium shadow-sm transition-all"
                         >
-                          <Wand2 className="h-4 w-4 mr-2" />
-                          Create Social Assets
+                          <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+                          Social Assets
                         </Button>
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={() => updateStatus(selectedOutput.id, 'review')}
-                          className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
+                          className="h-8 text-xs bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50 font-medium shadow-sm transition-all"
                         >
-                          <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
+                          <ArrowRight className="h-3.5 w-3.5 mr-1.5 rotate-180" />
                           Back to Review
                         </Button>
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={exportToPDF}
                           disabled={isExporting}
-                          className="bg-accent/30 border-accent/70 text-black hover:bg-accent/40 hover:border-accent font-medium shadow-sm h-10"
+                          className="h-8 text-xs bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50 font-medium shadow-sm transition-all"
                         >
                           {isExporting ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                           ) : (
-                            <FileDown className="h-4 w-4 mr-2" />
+                            <FileDown className="h-3.5 w-3.5 mr-1.5" />
                           )}
                           Export PDF
                         </Button>
                         <Button
                           variant="outline"
+                          size="sm"
                           onClick={sendToCMS}
                           disabled={isSendingToCMS}
-                          className="bg-primary/30 border-primary/70 text-black hover:bg-primary/40 hover:border-primary font-medium shadow-sm h-10"
+                          className="h-8 text-xs bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 font-medium shadow-sm transition-all"
                         >
                           {isSendingToCMS ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                           ) : (
-                            <Send className="h-4 w-4 mr-2" />
+                            <Send className="h-3.5 w-3.5 mr-1.5" />
                           )}
                           Send to CMS
                         </Button>
@@ -814,15 +849,15 @@ export const ContentQueue = ({ onSelectOutput }: ContentQueueProps) => {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {/* Status transition buttons - only for draft status */}
+                  <div className="flex items-center gap-1.5">
                     {selectedOutput.status === 'draft' && (
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => updateStatus(selectedOutput.id, 'review')}
-                        className="bg-warning/30 border-warning/70 text-black hover:bg-warning/40 hover:border-warning font-medium shadow-sm h-10"
+                        className="h-8 text-xs bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50 font-medium shadow-sm transition-all"
                       >
-                        <ArrowRight className="h-4 w-4 mr-2" />
+                        <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
                         Move to Review
                       </Button>
                     )}

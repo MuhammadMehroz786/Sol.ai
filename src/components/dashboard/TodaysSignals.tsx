@@ -125,6 +125,10 @@ export const TodaysSignals = () => {
   const [editableContent, setEditableContent] = useState("");
   const [isProcessingAction, setIsProcessingAction] = useState("");
   const [fullResponse, setFullResponse] = useState<any>(null);
+  const [trendingSignals, setTrendingSignals] = useState<Signal[]>([]);
+  const [isLoadingTrending, setIsLoadingTrending] = useState(true);
+  const [signalMode, setSignalMode] = useState<'trending' | 'topic'>('trending');
+  const [allSignalsModalSource, setAllSignalsModalSource] = useState<'trending' | 'topic'>('topic');
   const [topicSearch, setTopicSearch] = useState("");
   const [isFilteringByTopic, setIsFilteringByTopic] = useState(false);
   const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
@@ -195,21 +199,49 @@ export const TodaysSignals = () => {
     }
   ];
 
-  // Load signals on component mount — restore from database if a topic was saved
+  // Load signals on component mount
   useEffect(() => {
     loadTopicFromLocalStorage();
     initializeSignals();
 
-    // Restore previously fetched signals from Supabase
-    const restoreSignals = async () => {
+    // ── Trending signals: auto-fetch once per login session ──
+    const sessionKey = 'trending_fetched_this_session';
+    const alreadyFetched = sessionStorage.getItem(sessionKey);
+
+    if (!alreadyFetched) {
+      setIsLoadingTrending(true);
+      ScoutGptService.fetchAndSaveSignals('trending signals', 'trending')
+        .then(fresh => {
+          setTrendingSignals([...fresh].sort((a, b) => b.score - a.score));
+          sessionStorage.setItem(sessionKey, '1');
+        })
+        .catch(() => {
+          // fallback: load whatever is cached in DB
+          ScoutGptService.loadSignalsFromDatabase('trending')
+            .then(cached => {
+              if (cached.length > 0) setTrendingSignals([...cached].sort((a, b) => b.score - a.score));
+            })
+            .catch(() => {});
+        })
+        .finally(() => setIsLoadingTrending(false));
+    } else {
+      ScoutGptService.loadSignalsFromDatabase('trending')
+        .then(cached => {
+          if (cached.length > 0) setTrendingSignals([...cached].sort((a, b) => b.score - a.score));
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingTrending(false));
+    }
+
+    // ── Topic signals: restore from DB if a topic was saved ──
+    const restoreTopicSignals = async () => {
       try {
         const saved = localStorage.getItem('user_signal_topic');
         if (saved && saved.trim()) {
           setIsLoadingAllSignals(true);
-          const cached = await ScoutGptService.loadSignalsFromDatabase();
+          const cached = await ScoutGptService.loadSignalsFromDatabase('topic');
           if (cached.length > 0) {
-            const sorted = [...cached].sort((a, b) => b.score - a.score);
-            setSignals(sorted);
+            setSignals([...cached].sort((a, b) => b.score - a.score));
           }
         }
       } catch {
@@ -218,7 +250,7 @@ export const TodaysSignals = () => {
         setIsLoadingAllSignals(false);
       }
     };
-    restoreSignals();
+    restoreTopicSignals();
   }, []);
 
   // Close suggestions on click outside
@@ -274,6 +306,20 @@ export const TodaysSignals = () => {
     }
   };
 
+  const handleRefreshTrending = async () => {
+    setIsLoadingTrending(true);
+    try {
+      const fresh = await ScoutGptService.fetchAndSaveSignals('trending signals', 'trending');
+      setTrendingSignals([...fresh].sort((a, b) => b.score - a.score));
+      sessionStorage.setItem('trending_fetched_this_session', '1');
+      toast({ title: "Trending signals refreshed", description: `Loaded ${fresh.length} fresh signals` });
+    } catch (error) {
+      toast({ title: "Refresh failed", description: error.message || "Could not refresh trending signals", variant: "destructive" });
+    } finally {
+      setIsLoadingTrending(false);
+    }
+  };
+
   const handleSearchWithTopic = async () => {
     if (!topicSearch.trim()) {
       toast({
@@ -318,7 +364,7 @@ export const TodaysSignals = () => {
     try {
       setIsLoadingAllSignals(true);
 
-      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim());
+      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim(), 'topic');
 
       if (newSignals.length === 0) {
         toast({
@@ -365,7 +411,7 @@ export const TodaysSignals = () => {
       setIsLoadingAllSignals(true);
       toast({ title: "Loading new signals...", description: "Fetching latest signals" });
 
-      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim());
+      const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim(), 'topic');
       const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
       setSignals(sortedSignals);
 
@@ -635,10 +681,7 @@ export const TodaysSignals = () => {
 
               if (data && data.length > 0) {
                 const contentId = data[0].id;
-                window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
-                setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: contentId } }));
-                }, 500);
+                window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: contentId } }));
               }
             }
           }
@@ -819,19 +862,50 @@ export const TodaysSignals = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "High": return "bg-destructive/10 text-destructive border-destructive/20";
-      case "Medium": return "bg-warning/10 text-warning border-warning/20";
-      default: return "bg-muted/10 text-muted-foreground border-border";
+      case "High": return "bg-destructive/10 text-destructive border-destructive/30";
+      case "Medium": return "bg-warning/10 text-warning border-warning/30";
+      default: return "bg-muted/50 text-muted-foreground border-border";
     }
   };
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1: return <Crown className="h-3 w-3 text-yellow-500" />;
-      case 2: return <Star className="h-3 w-3 text-orange-500" />;
-      case 3: return <Target className="h-3 w-3 text-blue-500" />;
-      default: return <div className="w-3 h-3 rounded-full bg-muted text-xs flex items-center justify-center font-bold">{rank}</div>;
+  const getPriorityBorder = (priority: string) => {
+    switch (priority) {
+      case "High": return "border-l-destructive/50";
+      case "Medium": return "border-l-warning/50";
+      default: return "border-l-border";
     }
+  };
+
+  const getScorePillColor = (score: number) => {
+    if (score >= 80) return "bg-primary/15 text-primary border-primary/30";
+    if (score >= 60) return "bg-accent/15 text-accent-foreground border-accent/30";
+    return "bg-muted text-muted-foreground border-border";
+  };
+
+  const getRankIcon = (rank: number) => {
+    if (rank === 1) return (
+      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-primary shadow-sm shrink-0">
+        <Crown className="h-3 w-3 text-white" />
+        <span className="text-[10px] font-bold text-white">#1</span>
+      </div>
+    );
+    if (rank === 2) return (
+      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted border border-border shrink-0">
+        <Star className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] font-bold text-muted-foreground">#2</span>
+      </div>
+    );
+    if (rank === 3) return (
+      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted border border-border shrink-0">
+        <Target className="h-3 w-3 text-muted-foreground" />
+        <span className="text-[10px] font-bold text-muted-foreground">#3</span>
+      </div>
+    );
+    return (
+      <div className="flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground border border-border shrink-0">
+        {rank}
+      </div>
+    );
   };
 
   return (
@@ -841,16 +915,130 @@ export const TodaysSignals = () => {
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary">
             <TrendingUp className="h-4 w-4 text-white" />
           </div>
-          <span>Trending Signals</span>
-          <Badge className="ml-auto bg-primary/10 text-primary border-primary/20 text-sm">
-            {isLoadingAllSignals ? '...' : signals.length}
-          </Badge>
+          <span>Signals</span>
         </CardTitle>
-        <CardDescription className="text-base">
-          Priority signals ranked by relevance
+        <CardDescription className="text-sm">
+          Switch between trending signals and your topic search
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+
+        {/* ── Mode Switch ── */}
+        <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+          <button
+            onClick={() => setSignalMode('trending')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+              signalMode === 'trending'
+                ? 'bg-white shadow-sm text-primary border border-primary/20'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <TrendingUp className="h-3.5 w-3.5" />
+            Trending
+          </button>
+          <button
+            onClick={() => setSignalMode('topic')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+              signalMode === 'topic'
+                ? 'bg-white shadow-sm text-primary border border-primary/20'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Search className="h-3.5 w-3.5" />
+            My Topic
+          </button>
+        </div>
+
+        {/* ── Trending Panel ── */}
+        {signalMode === 'trending' && (
+          <div>
+            <div className="flex items-center justify-end mb-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1"
+                onClick={handleRefreshTrending}
+                disabled={isLoadingTrending}
+              >
+                <RefreshCw className={`h-3 w-3 ${isLoadingTrending ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
+            {isLoadingTrending ? (
+              <div className="flex flex-col items-center justify-center py-8 space-y-2">
+                <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading today's trending signals...</p>
+                <p className="text-xs text-muted-foreground">This usually takes 30–60 seconds</p>
+              </div>
+            ) : trendingSignals.length === 0 ? (
+              <div className="text-center py-10 px-4">
+                <div className="flex justify-center mb-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-primary blur-xl opacity-30 rounded-full" />
+                    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary shadow-lg">
+                      <TrendingUp className="h-7 w-7 text-white" />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">No trending signals yet</p>
+                <p className="text-xs text-muted-foreground">Click Refresh to fetch today's signals</p>
+              </div>
+            ) : (
+              <>
+                {trendingSignals.slice(0, 3).map((signal) => (
+                  <div key={signal.id} className={`group bg-card border border-border border-l-[3px] ${getPriorityBorder(signal.priority)} rounded-lg p-3 hover:shadow-md transition-all duration-200 mb-2`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1 pr-2 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          {getRankIcon(signal.rank)}
+                          <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 flex-1">{signal.headline}</h3>
+                          <Badge className={`text-[10px] shrink-0 ${getPriorityColor(signal.priority)}`}>{signal.priority}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{signal.summary}</p>
+                      </div>
+                      <div className="shrink-0 ml-2 text-center">
+                        <div className={`text-sm font-bold px-2 py-1 rounded-lg border ${getScorePillColor(signal.score)}`}>{signal.score}</div>
+                        {signal.engagement && <div className="text-[10px] text-success font-medium mt-0.5">{signal.engagement}</div>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {signal.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent-foreground">{tag}</Badge>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
+                          <><Clock className="h-3 w-3" /><span>{signal.timestamp}</span><span>·</span></>
+                        )}
+                        <span>{signal.source}</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button size="sm" className="h-7 text-xs px-2.5 bg-gradient-primary hover:shadow-glow transition-all duration-300" onClick={() => openEditorialModal(signal)}>
+                          <Zap className="h-3.5 w-3.5 mr-1" />Generate
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors" title="Send to agent" onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}>
+                          <Link2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {trendingSignals.length > 3 && (
+                  <Button variant="ghost" size="sm" className="w-full text-sm text-accent hover:text-accent-foreground hover:bg-accent/10 py-2"
+                    onClick={() => { setAllSignalsModalSource('trending'); setAllSignalsModalOpen(true); }}>
+                    <BarChart3 className="h-4 w-4 mr-2" />View All Trending ({trendingSignals.length})
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Topic Panel ── */}
+        {signalMode === 'topic' && (
+          <div>
         {/* Topic Filter Section */}
         <div className="relative mb-4 z-50">
           {/* Multi-layer glow effects */}
@@ -999,104 +1187,85 @@ export const TodaysSignals = () => {
           <div className="flex flex-col items-center justify-center py-8 space-y-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <div className="text-center space-y-1">
-              <p className="text-base font-medium text-foreground">Discovering trending signals...</p>
-              <p className="text-sm text-muted-foreground">
-                {topicSearch ? `Analyzing signals about "${topicSearch}"` : 'Scanning the latest conversations and trends'}
+              <p className="text-sm font-medium text-foreground">Discovering signals...</p>
+              <p className="text-xs text-muted-foreground">
+                {topicSearch ? `Analyzing signals about "${topicSearch}"` : 'Scanning the latest conversations'}
               </p>
-              <p className="text-xs text-muted-foreground mt-2">This usually takes 30-60 seconds</p>
+              <p className="text-xs text-muted-foreground">This usually takes 30–60 seconds</p>
             </div>
           </div>
         ) : signals.length === 0 ? (
           <div className="text-center py-12 px-6">
             <div className="mb-6 flex justify-center">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-primary blur-xl opacity-30 rounded-full"></div>
+                <div className="absolute inset-0 bg-gradient-primary blur-xl opacity-30 rounded-full" />
                 <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-lg">
                   <Search className="h-8 w-8 text-white" />
                 </div>
               </div>
             </div>
-            <h3 className="text-lg font-bold text-foreground mb-2">
-              Discover Trending Signals
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              Enter any topic in the search bar above to discover the latest trending signals and conversations. Scout GPT will analyze and rank the most relevant content for you.
+            <h3 className="text-base font-bold text-foreground mb-2">Discover Trending Signals</h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+              Type a topic above and we'll scan live conversations, rank what's gaining momentum, and surface the signals worth your attention.
             </p>
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
-                <span>Ready to search</span>
-              </div>
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span>Ready to search</span>
             </div>
           </div>
         ) : (
-          // Always display only top 3 signals in main view
           signals.slice(0, 3).map((signal) => (
-          <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-4 hover:shadow-md transition-all duration-300 hover:border-primary/30">
-            {/* Compact Rank */}
-            <div className="absolute -top-1 -left-1 bg-background border border-primary rounded-full p-1">
-              {getRankIcon(signal.rank)}
-            </div>
-            
-            <div className="flex justify-between items-start mb-3 pl-4">
-              <div className="flex-1 pr-3">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
+          <div key={signal.id} className={`group bg-card border border-border border-l-[3px] ${getPriorityBorder(signal.priority)} rounded-lg p-3 hover:shadow-md transition-all duration-200`}>
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex-1 pr-2 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {getRankIcon(signal.rank)}
+                  <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 flex-1">
                     {signal.headline}
                   </h3>
-                  <Badge className={`text-sm ${getPriorityColor(signal.priority)}`}>
+                  <Badge className={`text-[10px] shrink-0 ${getPriorityColor(signal.priority)}`}>
                     {signal.priority}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                  {signal.summary}
-                </p>
+                <p className="text-xs text-muted-foreground line-clamp-2">{signal.summary}</p>
               </div>
-              <div className="text-right">
-                <div className="text-xl font-bold text-primary">{signal.score}</div>
-                <div className="text-sm text-success">{signal.engagement}</div>
+              <div className="shrink-0 ml-2 text-center">
+                <div className={`text-sm font-bold px-2 py-1 rounded-lg border ${getScorePillColor(signal.score)}`}>{signal.score}</div>
+                {signal.engagement && <div className="text-[10px] text-success font-medium mt-0.5">{signal.engagement}</div>}
               </div>
             </div>
 
-            {/* Compact Tags */}
-            <div className="flex flex-wrap gap-1 mb-3 pl-4">
+            <div className="flex flex-wrap gap-1 mb-2">
               {signal.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-sm px-2 py-1 bg-accent/10 text-accent-foreground">
+                <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent-foreground">
                   {tag}
                 </Badge>
               ))}
             </div>
 
-            {/* Compact Footer */}
-            <div className="flex items-center justify-between pt-2 border-t border-border pl-4">
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
-                  <>
-                    <Clock className="h-4 w-4" />
-                    <span>{signal.timestamp}</span>
-                    <span>•</span>
-                  </>
+                  <><Clock className="h-3 w-3" /><span>{signal.timestamp}</span><span>·</span></>
                 )}
                 <span>{signal.source}</span>
               </div>
-              
-              <div className="flex space-x-2">
+              <div className="flex gap-1.5">
                 <Button
                   size="sm"
-                  className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-sm px-3 py-2 h-8"
+                  className="h-7 text-xs px-2.5 bg-gradient-primary hover:shadow-glow transition-all duration-300"
                   onClick={() => openEditorialModal(signal)}
                 >
-                  <Zap className="h-4 w-4 mr-1" />
-                  Generate Content
+                  <Zap className="h-3.5 w-3.5 mr-1" />Generate
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
+                  className="h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors"
                   title="Send to agent"
                   onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
                 >
-                  <Link2 className="h-4 w-4" />
+                  <Link2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
@@ -1104,17 +1273,19 @@ export const TodaysSignals = () => {
           ))
         )}
 
-        {/* View All Signals Button */}
+        {/* View All Topic Signals Button */}
         {signals.length > 0 && !isLoadingAllSignals && (
           <Button
             variant="ghost"
             size="sm"
             className="w-full text-sm text-accent hover:text-accent-foreground hover:bg-accent/10 mt-2 py-2"
-            onClick={() => setAllSignalsModalOpen(true)}
+            onClick={() => { setAllSignalsModalSource('topic'); setAllSignalsModalOpen(true); }}
           >
             <BarChart3 className="h-4 w-4 mr-2" />
-            View All Signals ({signals.length})
+            View All Topic Signals ({signals.length})
           </Button>
+        )}
+          </div>
         )}
       </CardContent>
 
@@ -1442,16 +1613,16 @@ export const TodaysSignals = () => {
           <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
             <DialogTitle className="text-xl font-bold text-primary flex items-center">
               <TrendingUp className="h-5 w-5 mr-2" />
-              All Trending Signals
+              {allSignalsModalSource === 'trending' ? 'All Trending Signals' : 'All Topic Signals'}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Complete list of {signals.length} signals ranked by score
+              Complete list of {allSignalsModalSource === 'trending' ? trendingSignals.length : signals.length} signals ranked by score
             </DialogDescription>
           </DialogHeader>
 
           <div className="overflow-y-auto max-h-[60vh] py-4">
             <div className="space-y-3">
-              {signals.map((signal) => (
+              {(allSignalsModalSource === 'trending' ? trendingSignals : signals).map((signal) => (
                 <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-4 hover:shadow-md transition-all duration-300 hover:border-primary/30">
                   {/* Compact Rank */}
                   <div className="absolute -top-1 -left-1 bg-background border border-primary rounded-full p-1">

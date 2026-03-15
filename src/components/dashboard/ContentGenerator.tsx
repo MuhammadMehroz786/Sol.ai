@@ -25,9 +25,6 @@ import {
   FileImage,
   Palette,
   Edit,
-  Download,
-  RotateCcw,
-  Scissors,
   Loader2,
   Trash2,
   Plus,
@@ -65,9 +62,6 @@ export const ContentGenerator = () => {
   const [selectedArticleLength, setSelectedArticleLength] = useState("");
   const [topic, setTopic] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState("");
-  const [isProcessingAction, setIsProcessingAction] = useState("");
 
   const { toast } = useToast();
 
@@ -340,14 +334,12 @@ export const ContentGenerator = () => {
       if (response.ok) {
         const result = await response.json();
         const formattedContent = formatResponseData(result);
-        setGeneratedContent(formattedContent);
-        setModalOpen(true);
 
         try {
           const { data: user } = await supabase.auth.getUser();
           if (user.user) {
             const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
-            const { error } = await supabase
+            const { data: saved, error } = await supabase
               .from('content_outputs')
               .insert({
                 user_id: user.user.id,
@@ -357,13 +349,15 @@ export const ContentGenerator = () => {
                 output_type: selectedOutputType,
                 status: 'draft',
                 topic_context: topic,
-              });
+              })
+              .select('id')
+              .single();
 
             if (error) {
               toast({ title: "Save failed!", description: `Database error: ${error.message}`, variant: "destructive" });
             } else {
-              window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
               window.dispatchEvent(new CustomEvent('statsRefresh'));
+              window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: saved.id } }));
             }
           }
         } catch {
@@ -477,97 +471,38 @@ export const ContentGenerator = () => {
     return formatted;
   };
 
-  const handleQuickAction = async (action: string) => {
-    if (!generatedContent) return;
-
-    setIsProcessingAction(action);
-
-    try {
-      const voiceDetails = voices.find(v => v.value === selectedVoice);
-
-      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          voice_name: voiceDetails?.label || selectedVoice,
-          signal: {
-            headline: topic,
-            summary: topic
-          },
-          output_type: selectedOutputType,
-          content: generatedContent,
-          quick_action: action
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setGeneratedContent(formatResponseData(result));
-      }
-    } catch {
-      // quick action failed silently
-    } finally {
-      setIsProcessingAction("");
-    }
-  };
-
-  const downloadContent = (format: 'txt' | 'md') => {
-    if (!generatedContent) return;
-
-    const filename = `${topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${format}`;
-    const blob = new Blob([generatedContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const canGenerate = selectedVoice && selectedOutputType && topic.trim();
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
-      <CardHeader className="pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
-            <Sparkles className="h-5 w-5 text-primary" />
+      <CardHeader className="pb-2 pt-4">
+        <div className="flex items-center space-x-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20">
+            <Sparkles className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-xl font-semibold">Content Generator</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="text-base font-semibold">Content Generator</CardTitle>
+            <CardDescription className="text-xs">
               Create tailored content with AI personas
             </CardDescription>
+          </div>
+          {/* Inline progress dots */}
+          <div className="ml-auto flex items-center gap-1.5">
+            <div className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${selectedVoice ? 'bg-primary scale-110' : 'bg-muted'}`} />
+            <div className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${selectedOutputType ? 'bg-primary scale-110' : 'bg-muted'}`} />
+            <div className={`h-1.5 w-1.5 rounded-full transition-all duration-300 ${topic.trim() ? 'bg-primary scale-110' : 'bg-muted'}`} />
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
-        {/* Progress Indicator */}
-        <div className="flex items-center justify-center space-x-2 mb-2">
-          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedVoice ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
-          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${selectedOutputType ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
-          <div className={`h-2 w-2 rounded-full transition-all duration-300 ${topic.trim() ? 'bg-gradient-to-r from-primary to-accent scale-110 shadow-lg shadow-primary/50' : 'bg-muted'}`} />
-        </div>
-        <div className="text-center text-xs text-muted-foreground mb-4">
-          {!selectedVoice && "Start by selecting a voice"}
-          {selectedVoice && !selectedOutputType && "Great! Now select an output type"}
-          {selectedVoice && selectedOutputType && !topic.trim() && "Almost there! Add your topic"}
-          {selectedVoice && selectedOutputType && topic.trim() && "Perfect! Ready to generate"}
-        </div>
-
+      <CardContent className="space-y-3 pb-4">
         {/* Voice Selector */}
-        <div className="space-y-3 relative">
+        <div className="space-y-1.5 relative">
           <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
-          <Label className="text-base font-semibold flex items-center space-x-2 relative">
-            <User className="h-4 w-4 text-primary" />
+          <Label className="text-xs font-semibold flex items-center space-x-1.5 relative text-muted-foreground uppercase tracking-wide">
+            <User className="h-3 w-3 text-primary" />
             <span>Voice</span>
-            {selectedVoice && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+            {selectedVoice && <CheckCircle2 className="h-3 w-3 ml-1 text-success animate-in fade-in zoom-in duration-300" />}
           </Label>
           <Select value={selectedVoice} onValueChange={handleVoiceChange}>
             <SelectTrigger className="relative bg-white/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 hover:scale-[1.02]">
@@ -642,15 +577,15 @@ export const ContentGenerator = () => {
           </Select>
         </div>
 
-        <Separator />
+        <Separator className="my-0" />
 
         {/* Output Type */}
-        <div className="space-y-3 relative">
+        <div className="space-y-1.5 relative">
           <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 blur-xl opacity-50 rounded-2xl" />
-          <Label className="text-base font-semibold flex items-center space-x-2 relative">
-            <FileText className="h-4 w-4 text-warning" />
+          <Label className="text-xs font-semibold flex items-center space-x-1.5 relative text-muted-foreground uppercase tracking-wide">
+            <FileText className="h-3 w-3 text-warning" />
             <span>Output Type</span>
-            {selectedOutputType && <CheckCircle2 className="h-4 w-4 ml-2 text-success animate-in fade-in zoom-in duration-300" />}
+            {selectedOutputType && <CheckCircle2 className="h-3 w-3 ml-1 text-success animate-in fade-in zoom-in duration-300" />}
           </Label>
           <Select
             value={selectedOutputType.startsWith('article-') ? 'article' : selectedOutputType}
@@ -700,27 +635,23 @@ export const ContentGenerator = () => {
 
           {/* Article Size Selection - appears when Article is selected */}
           {(selectedOutputType === 'article' || selectedOutputType.startsWith('article-')) && (
-            <div className="flex gap-2 animate-in slide-in-from-top duration-300 relative z-10">
+            <div className="flex gap-1.5 animate-in slide-in-from-top duration-300 relative z-10">
               {articleLengths.map((length) => {
                 const articleValue = `article-${length.value}`;
                 const isSelected = selectedOutputType === articleValue;
-
                 return (
                   <button
                     key={length.value}
                     type="button"
-                    onClick={() => {
-                      setSelectedOutputType(articleValue);
-                      setSelectedArticleLength(length.value);
-                    }}
-                    className={`flex-1 py-2 px-3 rounded-lg border-2 transition-all duration-300 relative z-10 ${
+                    onClick={() => { setSelectedOutputType(articleValue); setSelectedArticleLength(length.value); }}
+                    className={`flex-1 py-1.5 px-2 rounded-lg border-2 transition-all duration-300 relative z-10 ${
                       isSelected
-                        ? "border-primary bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30 scale-105"
-                        : "border-border hover:border-primary/50 hover:bg-accent/10 hover:scale-102"
+                        ? "border-primary bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md scale-105"
+                        : "border-border hover:border-primary/50 hover:bg-accent/10"
                     }`}
                   >
-                    <div className="font-semibold text-sm">{length.label}</div>
-                    <div className="text-xs opacity-80 mt-0.5">{length.description}</div>
+                    <div className="font-semibold text-xs">{length.label}</div>
+                    <div className="text-[10px] opacity-75">{length.description}</div>
                   </button>
                 );
               })}
@@ -728,25 +659,24 @@ export const ContentGenerator = () => {
           )}
         </div>
 
-        <Separator />
+        <Separator className="my-0" />
 
         {/* Topic Input */}
-        <div className="space-y-3">
-          <Label className="text-base font-medium">Topic & Context</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Topic & Context</Label>
           <Textarea
             placeholder="Describe the topic, provide context, or paste source material..."
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            className="min-h-[100px] resize-none bg-background"
+            className="min-h-[72px] resize-none bg-background text-sm"
           />
         </div>
 
         {/* Generate Button */}
-        <Button 
+        <Button
           onClick={handleGenerate}
           disabled={!canGenerate || isGenerating}
           className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300"
-          size="lg"
         >
           {isGenerating ? (
             <div className="flex items-center space-x-2">
@@ -763,119 +693,11 @@ export const ContentGenerator = () => {
 
         {/* Status Info */}
         {canGenerate && (
-          <div className="text-xs text-muted-foreground text-center">
-            Ready to generate {selectedOutputType.replace(/-/g, ' ')} content with {voices.find(v => v.value === selectedVoice)?.label || selectedVoice} voice
-          </div>
+          <p className="text-[11px] text-muted-foreground text-center leading-tight">
+            Ready · {selectedOutputType.replace(/-/g, ' ')} · {voices.find(v => v.value === selectedVoice)?.label || selectedVoice}
+          </p>
         )}
       </CardContent>
-
-      {/* Generated Content Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-4xl bg-gradient-card border-border/50 shadow-elegant">
-          <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
-            <DialogTitle className="text-xl font-bold text-primary">
-              Generated Content
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Generated by <strong className="text-primary">{voices.find(v => v.value === selectedVoice)?.label || selectedVoice}</strong> voice as <strong className="text-accent">{selectedOutputType}</strong> for: <strong className="text-foreground">{topic}</strong>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-foreground flex items-center">
-                  <Edit className="h-4 w-4 mr-1 text-primary" />
-                  Generated Content
-                </label>
-                <div className="flex space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => downloadContent('txt')}
-                    className="text-xs bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 hover:shadow-md transition-all duration-200 font-medium"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    .txt
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => downloadContent('md')}
-                    className="text-xs bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    .md
-                  </Button>
-                </div>
-              </div>
-              <div className="h-[300px] font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 select-none overflow-auto whitespace-pre-wrap">
-                {generatedContent || "Generated content will appear here..."}
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Quick Actions</label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickAction('poeticize')}
-                  disabled={isProcessingAction === 'poeticize' || !generatedContent}
-                  className="text-sm bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  {isProcessingAction === 'poeticize' ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-1" />
-                  )}
-                  Poeticize
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickAction('rewrite')}
-                  disabled={isProcessingAction === 'rewrite' || !generatedContent}
-                  className="text-sm bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  {isProcessingAction === 'rewrite' ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <RotateCcw className="h-4 w-4 mr-1" />
-                  )}
-                  Rewrite
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleQuickAction('shorten')}
-                  disabled={isProcessingAction === 'shorten' || !generatedContent}
-                  className="text-sm bg-warning/20 border-warning/50 text-warning hover:bg-warning/30 hover:border-warning/70 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  {isProcessingAction === 'shorten' ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Scissors className="h-4 w-4 mr-1" />
-                  )}
-                  Shorten
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setModalOpen(false)}
-              disabled={!!isProcessingAction}
-              className="bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
-            >
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Custom Voice Modal */}
       <Dialog open={voiceModalOpen} onOpenChange={setVoiceModalOpen}>
