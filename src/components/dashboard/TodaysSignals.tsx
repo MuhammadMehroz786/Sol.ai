@@ -780,20 +780,22 @@ export const TodaysSignals = () => {
 
             if (error) {
               // db save failed — content was generated but not persisted
+              setModalMode('results');
             } else {
-              toast({ title: "Content saved!", description: "Content has been added to your queue as draft" });
+              toast({ title: "Content saved!", description: "Draft added to your queue — refine it below or close." });
 
-              setModalOpen(false);
+              setModalMode('results');
               window.dispatchEvent(new CustomEvent('statsRefresh'));
 
               if (data && data.length > 0) {
                 const contentId = data[0].id;
-                window.dispatchEvent(new CustomEvent('openDraftModal', { detail: { id: contentId } }));
+                window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
               }
             }
           }
         } catch {
-          // db save failed — non-critical
+          // db save failed — non-critical, still show results
+          setModalMode('results');
         }
       } else {
         toast({ title: `Send failed (${response.status})`, description: response.statusText, variant: 'destructive' });
@@ -811,7 +813,6 @@ export const TodaysSignals = () => {
     setIsProcessingAction(action);
 
     try {
-      // Get voice details
       const voiceDetails = voices.find(v => v.value === selectedVoice);
 
       const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
@@ -820,23 +821,31 @@ export const TodaysSignals = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          voice_name: voiceDetails?.label || selectedVoice,
-          signal: {
-            headline: selectedSignal.headline,
-            summary: selectedSignal.summary
-          },
-          output_type: selectedOutputType,
+          persona: voiceDetails?.label || selectedVoice,
+          outputType: selectedOutputType,
+          tone: voiceDetails?.description || '',
+          engagement: selectedSignal?.engagement || '',
           content: editableContent,
-          quick_action: action
+          quickAction: action,
         })
       });
 
       if (response.ok) {
         const result = await response.json();
         setEditableContent(formatResponseData(result));
+      } else {
+        toast({
+          title: `${action.charAt(0).toUpperCase() + action.slice(1)} failed`,
+          description: `Server responded with ${response.status}. Please try again.`,
+          variant: 'destructive',
+        });
       }
-    } catch {
-      // quick action failed silently
+    } catch (error) {
+      toast({
+        title: 'Quick action failed',
+        description: error instanceof Error ? error.message : 'Network error — please check your connection.',
+        variant: 'destructive',
+      });
     } finally {
       setIsProcessingAction("");
     }
@@ -1320,8 +1329,8 @@ export const TodaysSignals = () => {
 
       {/* Editorial Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className={`${modalMode === 'results' ? "sm:max-w-4xl" : "sm:max-w-md"} bg-gradient-card border-border/50 shadow-elegant`}>
-          <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4">
+        <DialogContent className={`${modalMode === 'results' ? "sm:max-w-4xl h-[88vh] flex flex-col overflow-hidden p-0" : "sm:max-w-md"} bg-gradient-card border-border/50 shadow-elegant`}>
+          <DialogHeader className={`bg-gradient-surface border-b border-border/30 pb-4 shrink-0 ${modalMode === 'results' ? 'px-6 pt-6' : ''}`}>
             <DialogTitle className="text-xl font-bold text-primary">
               {modalMode === 'form' ? 'Generate Content' : 'Generated Content'}
             </DialogTitle>
@@ -1498,9 +1507,9 @@ export const TodaysSignals = () => {
               </div>
             </div>
           ) : (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
+            <div className="flex-1 overflow-hidden flex flex-col px-6 py-4 space-y-3 min-h-0">
+              <div className="flex-1 flex flex-col min-h-0 space-y-2">
+                <div className="flex items-center justify-between shrink-0">
                   <label className="text-sm font-medium text-foreground flex items-center">
                     <Edit className="h-4 w-4 mr-1 text-primary" />
                     Generated Content
@@ -1526,13 +1535,13 @@ export const TodaysSignals = () => {
                     </Button>
                   </div>
                 </div>
-                <div className="h-[300px] font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 select-none overflow-auto whitespace-pre-wrap">
+                <div className="flex-1 min-h-0 font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 select-none overflow-auto whitespace-pre-wrap">
                   {editableContent || "Generated content will appear here..."}
                 </div>
               </div>
 
               {/* Quick Actions */}
-              <div className="space-y-2">
+              <div className="space-y-2 shrink-0">
                 <label className="text-sm font-medium text-foreground">Quick Actions</label>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -1582,7 +1591,7 @@ export const TodaysSignals = () => {
             </div>
           )}
 
-          <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-4">
+          <DialogFooter className={`bg-gradient-surface border-t border-border/30 pt-4 shrink-0 ${modalMode === 'results' ? 'px-6 pb-4' : ''}`}>
             {modalMode === 'form' ? (
               <>
                 <Button

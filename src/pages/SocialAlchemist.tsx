@@ -825,7 +825,7 @@ const SocialAlchemist = () => {
   const completedSteps = [step1Done, step2Done, step3Done].filter(Boolean).length;
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden relative">
+    <div className="h-[calc(100vh-10rem)] flex flex-col overflow-hidden relative">
       {/* Animated Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 pointer-events-none" />
 
@@ -897,8 +897,8 @@ const SocialAlchemist = () => {
       `}</style>
 
       {/* Header */}
-      <header className="shrink-0 h-16 border-b border-border/50 bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm relative z-10">
-        <div className="h-full flex items-center justify-between px-6">
+      <header className="shrink-0 h-14 border-b border-border/50 bg-white/80 dark:bg-card/80 backdrop-blur-md shadow-sm relative z-10">
+        <div className="h-full flex items-center justify-between px-5">
           <div className="flex items-center gap-3">
             <div
               className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-primary/90 to-accent flex items-center justify-center shadow-lg"
@@ -941,24 +941,24 @@ const SocialAlchemist = () => {
 
       {/* Main Content */}
       <main className="flex-1 min-h-0 relative z-10">
-        <div className="h-full px-6 py-5">
-          <div className="h-full grid grid-cols-[400px,1fr] gap-5">
+        <div className="h-full px-5 py-4">
+          <div className="h-full grid grid-cols-[380px,1fr] gap-4">
 
             {/* ─── LEFT PANEL: Numbered Steps ─── */}
             <div className="flex flex-col bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-white/50 dark:border-border/50 rounded-2xl shadow-elegant overflow-hidden">
 
-              {/* Scrollable steps area */}
-              <div className="flex-1 overflow-y-auto min-h-0 p-5 space-y-0">
+              {/* Steps area */}
+              <div className="flex-1 overflow-hidden min-h-0 p-3 space-y-0">
 
                 {/* ── Step 01: Voice Profile ── */}
                 <div className="relative">
                   <div
-                    className="absolute -top-2 -left-2 text-[80px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
+                    className="absolute -top-1 -left-1 text-[56px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
                     style={{ color: step1Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step1Done ? 0.1 : 0.06 }}
                   >
                     01
                   </div>
-                  <div className="relative z-10 pt-4 pl-11 space-y-2.5 pb-2">
+                  <div className="relative z-10 pt-1.5 pl-10 space-y-1.5 pb-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={cn(
                         "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
@@ -970,7 +970,7 @@ const SocialAlchemist = () => {
                       {step1Done && <CheckCircle2 className="h-4 w-4 text-emerald-500 ml-auto animate-in fade-in zoom-in duration-300" />}
                     </div>
                     <Select value={selectedVoice} onValueChange={handleVoiceChange}>
-                      <SelectTrigger className="h-11 border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-300 font-medium rounded-xl">
+                      <SelectTrigger className="h-10 border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-300 font-medium rounded-xl">
                         <SelectValue placeholder="Select voice profile..." />
                       </SelectTrigger>
                       <SelectContent className="border-2 bg-popover/95 backdrop-blur-md">
@@ -1018,9 +1018,9 @@ const SocialAlchemist = () => {
                 </div>
 
                 {/* Connector 01→02 */}
-                <div className="ml-14 flex py-1">
+                <div className="ml-12 flex py-0.5">
                   <div className={cn(
-                    "w-[2px] h-6 rounded-full transition-colors duration-700",
+                    "w-[2px] h-3 rounded-full transition-colors duration-700",
                     step1Done ? "bg-gradient-to-b from-primary to-accent/40" : "bg-border/30"
                   )} />
                 </div>
@@ -1028,12 +1028,12 @@ const SocialAlchemist = () => {
                 {/* ── Step 02: Target Platforms ── */}
                 <div className="relative">
                   <div
-                    className="absolute -top-2 -left-2 text-[80px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
+                    className="absolute -top-1 -left-1 text-[56px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
                     style={{ color: step2Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step2Done ? 0.1 : 0.06 }}
                   >
                     02
                   </div>
-                  <div className="relative z-10 pt-4 pl-11 space-y-2.5 pb-2">
+                  <div className="relative z-10 pt-1.5 pl-10 space-y-1.5 pb-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={cn(
                         "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
@@ -1058,19 +1058,16 @@ const SocialAlchemist = () => {
                             key={platform}
                             type="button"
                             className={cn(
-                              "flex items-center gap-2 rounded-xl border-2 p-3 cursor-pointer transition-all duration-300 relative group",
+                              "flex items-center gap-2 rounded-xl border-2 py-2.5 px-3 cursor-pointer transition-all duration-200 relative group",
                               isSelected
-                                ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 scale-[1.03] shadow-lg shadow-primary/15"
-                                : "border-border/80 bg-white/50 dark:bg-background/50 backdrop-blur-sm hover:border-primary/40 hover:bg-accent/10 hover:scale-[1.02] hover:shadow-md"
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 shadow-sm shadow-primary/15"
+                                : "border-border/80 bg-white/50 dark:bg-background/50 hover:border-primary/40 hover:bg-accent/10"
                             )}
                             onClick={() => togglePlatform(platform)}
                           >
-                            {isSelected && (
-                              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 blur-sm opacity-50 -z-10" />
-                            )}
-                            <Checkbox checked={isSelected} className="h-4 w-4" />
-                            <Icon className={cn("h-5 w-5 group-hover:scale-110 transition-transform duration-200", config.color)} />
-                            <span className="text-xs font-semibold flex-1 text-left">{config.label}</span>
+                            <Checkbox checked={isSelected} className="h-4 w-4 shrink-0" />
+                            <Icon className={cn("h-5 w-5 shrink-0", config.color)} />
+                            <span className="text-xs font-semibold flex-1 text-left truncate">{config.label}</span>
                           </button>
                         );
                       })}
@@ -1079,9 +1076,9 @@ const SocialAlchemist = () => {
                 </div>
 
                 {/* Connector 02→03 */}
-                <div className="ml-14 flex py-1">
+                <div className="ml-12 flex py-2">
                   <div className={cn(
-                    "w-[2px] h-6 rounded-full transition-colors duration-700",
+                    "w-[2px] h-4 rounded-full transition-colors duration-700",
                     step2Done ? "bg-gradient-to-b from-primary to-accent/40" : "bg-border/30"
                   )} />
                 </div>
@@ -1089,12 +1086,12 @@ const SocialAlchemist = () => {
                 {/* ── Step 03: Source Type ── */}
                 <div className="relative">
                   <div
-                    className="absolute -top-2 -left-2 text-[80px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
+                    className="absolute -top-1 -left-1 text-[56px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
                     style={{ color: step3Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step3Done ? 0.1 : 0.06 }}
                   >
                     03
                   </div>
-                  <div className="relative z-10 pt-4 pl-11 space-y-2.5 pb-2">
+                  <div className="relative z-10 pt-1.5 pl-10 space-y-1.5 pb-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={cn(
                         "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
@@ -1105,27 +1102,26 @@ const SocialAlchemist = () => {
                       <Label className="text-sm font-bold text-foreground">Source Type</Label>
                     </div>
                     <RadioGroup value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-4 gap-1">
                         {[
-                          { value: "paste", icon: FileText, label: "Paste Text" },
+                          { value: "paste", icon: FileText, label: "Paste" },
                           { value: "url", icon: LinkIcon, label: "URL" },
                           { value: "doc_id", icon: FileCode, label: "Doc ID" },
-                          { value: "transcript", icon: Mic, label: "Transcript" },
+                          { value: "transcript", icon: Mic, label: "Script" },
                         ].map(({ value, icon: Icon, label }) => (
                           <button
                             key={value}
                             type="button"
                             className={cn(
-                              "flex items-center gap-2 rounded-xl border-2 p-2.5 cursor-pointer transition-all duration-300 group relative",
+                              "flex flex-col items-center gap-1 rounded-lg border-2 py-2 px-1 cursor-pointer transition-all duration-200 group",
                               sourceType === value
-                                ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 scale-[1.02] shadow-md shadow-primary/15"
-                                : "border-border/80 bg-white/50 dark:bg-background/50 backdrop-blur-sm hover:border-primary/40 hover:bg-accent/10 hover:scale-[1.02] hover:shadow-md"
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-accent/10 shadow-sm"
+                                : "border-border/80 bg-white/50 dark:bg-background/50 hover:border-primary/40 hover:bg-accent/10"
                             )}
                             onClick={() => setSourceType(value as SourceType)}
                           >
-                            <RadioGroupItem value={value} id={`src-${value}`} className="h-4 w-4" />
-                            <Icon className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-                            <Label htmlFor={`src-${value}`} className="text-xs font-semibold cursor-pointer">{label}</Label>
+                            <Icon className={cn("h-4 w-4", sourceType === value ? "text-primary" : "text-muted-foreground")} />
+                            <span className={cn("text-[10px] font-semibold leading-none", sourceType === value ? "text-primary" : "text-muted-foreground")}>{label}</span>
                           </button>
                         ))}
                       </div>
@@ -1136,22 +1132,22 @@ const SocialAlchemist = () => {
               </div>
 
               {/* ── Generate Button (pinned to bottom) ── */}
-              <div className="shrink-0 p-5 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm">
+              <div className="shrink-0 p-3 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm">
                 {canGenerate && !isGenerating && (
-                  <div className="flex items-center justify-center gap-1.5 mb-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                  <div className="flex items-center justify-center gap-1.5 mb-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
                     <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">All steps complete — ready to generate</span>
                   </div>
                 )}
                 {!canGenerate && completedSteps > 0 && (
-                  <p className="text-center text-xs text-muted-foreground mb-3">
+                  <p className="text-center text-xs text-muted-foreground mb-2">
                     {!step1Done ? "Select a voice to continue" : !step2Done ? "Choose at least one platform" : "Add source content in the workspace"}
                   </p>
                 )}
                 <Button
                   onClick={handleGenerate}
                   disabled={!canGenerate || isGenerating}
-                  className="relative w-full h-14 text-base font-bold bg-gradient-to-r from-primary via-primary/90 to-accent shadow-lg hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 overflow-hidden group rounded-xl"
+                  className="relative w-full h-12 text-sm font-bold bg-gradient-to-r from-primary via-primary/90 to-accent shadow-lg hover:shadow-2xl hover:shadow-primary/30 hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 overflow-hidden group rounded-xl"
                   size="lg"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-accent to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -1178,7 +1174,7 @@ const SocialAlchemist = () => {
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-accent/[0.04] to-transparent rounded-tr-[80px] pointer-events-none z-0" />
 
               {/* Dynamic workspace header */}
-              <div className="shrink-0 px-6 py-4 border-b border-border/30 relative z-10">
+              <div className="shrink-0 px-5 py-3 border-b border-border/30 relative z-10">
                 <div className="flex items-center gap-3">
                   {(() => {
                     const iconMap: Record<SourceType, any> = {
@@ -1213,7 +1209,7 @@ const SocialAlchemist = () => {
               </div>
 
               {/* Content input area */}
-              <div className="flex-1 flex flex-col p-6 gap-3 min-h-0 relative z-10">
+              <div className="flex-1 flex flex-col p-5 gap-3 min-h-0 relative z-10">
                 {(sourceType === "paste" || sourceType === "transcript") && (
                   <Textarea
                     placeholder={
@@ -1277,7 +1273,7 @@ const SocialAlchemist = () => {
 
               {/* Footer: character + word count */}
               {(sourceType === "paste" || sourceType === "transcript") && (
-                <div className="shrink-0 px-6 py-3 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm relative z-10">
+                <div className="shrink-0 px-5 py-2.5 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm relative z-10">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>{sourceContent.length.toLocaleString()} chars</span>

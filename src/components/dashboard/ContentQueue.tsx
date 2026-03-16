@@ -307,6 +307,22 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
     setIsSaving(false);
   };
 
+  const formatResponseData = (response: any): string => {
+    if (!response) return "";
+    const data = Array.isArray(response) && response.length > 0 ? response[0] : response;
+    if (data.text_output) return data.text_output;
+    if (data.content_markdown) return data.content_markdown;
+    if (data.headline || data.body || data.tldr || data.caption) {
+      let out = "";
+      if (data.headline) out += `**${data.headline}**\n\n`;
+      if (data.tldr) out += `${data.tldr}\n\n`;
+      if (data.body) out += `${data.body}\n\n`;
+      if (data.caption) out += `---\n${data.caption}`;
+      return out.trim();
+    }
+    return editableContent;
+  };
+
   const handleQuickAction = async (action: string) => {
     if (!selectedOutput || !editableContent) return;
 
@@ -319,52 +335,27 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          voice_name: selectedOutput.persona,
           signal: {
-            id: Date.now(),
             headline: selectedOutput.topic_context || selectedOutput.title,
             summary: selectedOutput.topic_context || selectedOutput.title,
-            tags: ["Quick Action"],
-            priority: "Medium",
-            source: "Content Queue",
-            score: 85,
-            engagement: "+25%"
           },
-          persona: selectedOutput.persona,
-          outputType: selectedOutput.output_type,
-          tone: selectedOutput.tones[0] || "poetic",
+          output_type: selectedOutput.output_type.startsWith('Article') ? 'Article' : selectedOutput.output_type,
           content: editableContent,
-          quickAction: action
+          quickAction: action,
         })
       });
 
       if (response.ok) {
         const result = await response.json();
-        let data = result;
-        if (Array.isArray(result) && result.length > 0) {
-          data = result[0];
-        }
-
-        // Use the text_output if available, otherwise fallback
-        const processedContent = data.text_output || data.content_markdown || JSON.stringify(data);
-        setEditableContent(processedContent);
-
-        toast({
-          title: `${action} completed`,
-          description: "Content has been processed with quick action",
-        });
+        const processed = formatResponseData(result);
+        setEditableContent(processed);
+        toast({ title: `${action.charAt(0).toUpperCase() + action.slice(1)} applied`, description: "Content updated." });
       } else {
-        toast({
-          title: "Quick action failed",
-          description: "Failed to process the quick action",
-          variant: "destructive",
-        });
+        toast({ title: "Quick action failed", description: `Server responded with ${response.status}.`, variant: "destructive" });
       }
     } catch (error) {
-      toast({
-        title: "Quick action failed",
-        description: "Network error occurred",
-        variant: "destructive",
-      });
+      toast({ title: "Quick action failed", description: error instanceof Error ? error.message : "Network error.", variant: "destructive" });
     } finally {
       setIsProcessingAction("");
     }
