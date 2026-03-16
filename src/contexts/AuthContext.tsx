@@ -34,6 +34,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Computed at render time — before any child effects can clear the URL hash.
+  // Auth.tsx Effect 1 strips the hash immediately, so computing this inside
+  // useEffect would always see an empty hash and set isAuthCallback = false,
+  // causing getUser() to kill the recovery session mid-exchange.
+  const isAuthCallback =
+    window.location.search.includes('code=') ||
+    window.location.hash.includes('access_token') ||
+    window.location.hash.includes('type=recovery');
+
   const ensureProfileExists = async (authUser: User) => {
     const { data: existing } = await supabase
       .from('profiles')
@@ -82,11 +91,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // — the URL will contain ?code= (PKCE) or #access_token (implicit). Supabase is
     // mid-exchange at this point and calling getUser() on the partial session would
     // kill it, causing "Auth session missing" on the set-password form.
-    const isAuthCallback =
-      window.location.search.includes('code=') ||
-      window.location.hash.includes('access_token') ||
-      window.location.hash.includes('type=recovery');
-
+    // NOTE: isAuthCallback is computed at render time (above) so child effects
+    // clearing the hash don't affect this check.
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
         if (session && !isAuthCallback) {

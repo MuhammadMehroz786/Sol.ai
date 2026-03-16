@@ -172,7 +172,9 @@ const Dashboard = () => {
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="text-right hidden md:block">
               <p className="text-white/55 text-[11px] font-medium leading-none mb-0.5">{greeting}</p>
-              <p className="text-white font-black text-[15px] leading-none">{user?.email?.split("@")[0]}</p>
+              <p className="text-white font-black text-[15px] leading-none">
+                {user?.user_metadata?.display_name || user?.email?.split("@")[0]}
+              </p>
             </div>
 
             {stats.inQueue > 0 && (

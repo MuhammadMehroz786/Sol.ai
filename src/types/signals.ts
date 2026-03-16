@@ -45,6 +45,14 @@ export interface Signal {
   user_id: string;
   created_at: string;
   updated_at?: string;
+  // Scout GPT enriched fields
+  rationale?: string;
+  community_context?: string;
+  narrative_stakes?: string[] | string;
+  published_at?: string;
+  analyzed_at?: string;
+  use_mode?: string;
+  confidence?: number;
 }
 
 // Database signal schema

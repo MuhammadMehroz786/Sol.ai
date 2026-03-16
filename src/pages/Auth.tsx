@@ -242,9 +242,10 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidEmail(email))       { setEmailError('Enter a valid email address'); return; }
-    if (password.length < 6)         { setError('Password must be at least 6 characters'); return; }
-    if (password !== confirmPassword) { setConfirmError('Passwords do not match'); return; }
+    if (!displayName.trim())          { setError('Display name is required'); return; }
+    if (!isValidEmail(email))         { setEmailError('Enter a valid email address'); return; }
+    if (password.length < 6)          { setError('Password must be at least 6 characters'); return; }
+    if (password !== confirmPassword)  { setConfirmError('Passwords do not match'); return; }
     setLoading(true); setError('');
 
     const result = await signUp(email, password, displayName);
@@ -619,7 +620,7 @@ const Auth = () => {
               <form onSubmit={handleSignUp} className="space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="su-name" className="text-sm font-medium text-foreground/80">
-                    Display Name <span className="text-muted-foreground font-normal">(Optional)</span>
+                    Display Name
                   </Label>
                   <Input
                     id="su-name"
@@ -627,6 +628,7 @@ const Auth = () => {
                     placeholder="How should we call you?"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
+                    required
                     className="h-10 bg-muted/40 border-border/50 focus:bg-background transition-colors"
                   />
                 </div>

@@ -103,6 +103,111 @@ const getSpellCorrection = (query: string): string | null => {
   return best && best.dist <= threshold ? best.topic : null;
 };
 
+// ── Reusable signal card ───────────────────────────────────────────────────
+const SignalCard = ({
+  signal,
+  onOpen,
+  onGenerate,
+  onLink,
+}: {
+  signal: Signal;
+  onOpen: () => void;
+  onGenerate: () => void;
+  onLink: () => void;
+}) => {
+  const priorityBar =
+    signal.priority === 'High' ? 'bg-red-400' :
+    signal.priority === 'Medium' ? 'bg-amber-400' : 'bg-emerald-400';
+
+  const scoreRing =
+    signal.score >= 80 ? 'border-primary/50 text-primary bg-primary/8' :
+    signal.score >= 60 ? 'border-amber-400/50 text-amber-600 bg-amber-50' :
+    'border-border text-muted-foreground bg-muted/30';
+
+  const rankBadge = signal.rank === 1
+    ? <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-gradient-primary text-white shrink-0"><Crown className="h-2.5 w-2.5" />#1</span>
+    : <span className="text-[10px] font-bold text-muted-foreground shrink-0">#{signal.rank}</span>;
+
+  return (
+    <div
+      onClick={onOpen}
+      className="group relative flex items-stretch gap-0 rounded-xl border border-border bg-card hover:border-primary/35 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
+    >
+      {/* Priority bar */}
+      <div className={`w-1 shrink-0 ${priorityBar} opacity-70 group-hover:opacity-100 transition-opacity`} />
+
+      <div className="flex-1 min-w-0 px-3 py-2.5">
+        {/* Row 1: rank + headline */}
+        <div className="flex items-center gap-1.5 mb-1">
+          {rankBadge}
+          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 flex-1 leading-snug">
+            {signal.headline}
+          </h3>
+        </div>
+
+        {/* Row 2: summary */}
+        <p className="text-xs text-muted-foreground line-clamp-1 mb-2 leading-relaxed">{signal.summary}</p>
+
+        {/* Row 3: tags + meta */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {signal.tags.slice(0, 2).map((tag) => (
+            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent-foreground rounded font-medium capitalize">{tag}</span>
+          ))}
+          {signal.tags.length > 0 && <span className="text-[10px] text-border">·</span>}
+          {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+              <Clock className="h-2.5 w-2.5" />{signal.timestamp}
+            </span>
+          )}
+          {signal.url ? (
+            <a
+              href={signal.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[10px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-0.5"
+            >
+              <ExternalLink className="h-2.5 w-2.5" />{signal.source}
+            </a>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">{signal.source}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Score + actions column */}
+      <div className="flex flex-col items-center justify-between py-2.5 pr-2.5 shrink-0 gap-2">
+        {/* Score circle */}
+        <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-black ${scoreRing}`}>
+          {signal.score}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={onGenerate}
+            className="h-6 px-2 rounded-lg bg-gradient-primary text-white text-[10px] font-semibold hover:shadow-glow transition-all duration-200 flex items-center gap-0.5"
+          >
+            <Zap className="h-2.5 w-2.5" />Gen
+          </button>
+          <button
+            onClick={onLink}
+            className="h-6 w-6 rounded-lg border border-border bg-card hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all duration-200 flex items-center justify-center text-muted-foreground"
+            title="Send to agent"
+          >
+            <Link2 className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Hover arrow hint */}
+      <div className="absolute right-[3.2rem] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <ArrowRight className="h-3 w-3 text-primary/40" />
+      </div>
+    </div>
+  );
+};
+
 export const TodaysSignals = () => {
   const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -145,6 +250,8 @@ export const TodaysSignals = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isUploadingProfile, setIsUploadingProfile] = useState(false);
   const [voiceProfileName, setVoiceProfileName] = useState("");
+  const [signalDetailOpen, setSignalDetailOpen] = useState(false);
+  const [detailSignal, setDetailSignal] = useState<Signal | null>(null);
   const { toast } = useToast();
 
   const outputTypes = [
@@ -884,67 +991,75 @@ export const TodaysSignals = () => {
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return (
-      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-primary shadow-sm shrink-0">
-        <Crown className="h-3 w-3 text-white" />
-        <span className="text-[10px] font-bold text-white">#1</span>
-      </div>
-    );
-    if (rank === 2) return (
-      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted border border-border shrink-0">
-        <Star className="h-3 w-3 text-muted-foreground" />
-        <span className="text-[10px] font-bold text-muted-foreground">#2</span>
-      </div>
-    );
-    if (rank === 3) return (
-      <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted border border-border shrink-0">
-        <Target className="h-3 w-3 text-muted-foreground" />
-        <span className="text-[10px] font-bold text-muted-foreground">#3</span>
-      </div>
+      <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-gradient-primary text-white shrink-0">
+        <Crown className="h-2.5 w-2.5" />#1
+      </span>
     );
     return (
-      <div className="flex items-center justify-center h-5 w-5 rounded-full bg-muted text-[10px] font-bold text-muted-foreground border border-border shrink-0">
-        {rank}
-      </div>
+      <span className="text-[10px] font-bold text-muted-foreground shrink-0">#{rank}</span>
     );
+  };
+
+  const getScoreCircle = (score: number) => {
+    if (score >= 80) return 'border-primary/50 text-primary bg-primary/8';
+    if (score >= 60) return 'border-amber-400/50 text-amber-600 bg-amber-50';
+    return 'border-border text-muted-foreground bg-muted/40';
   };
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center space-x-2 text-xl">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary">
-            <TrendingUp className="h-4 w-4 text-white" />
-          </div>
-          <span>Signals</span>
-        </CardTitle>
-        <CardDescription className="text-sm">
-          Switch between trending signals and your topic search
-        </CardDescription>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary">
+              <TrendingUp className="h-4 w-4 text-white" />
+            </div>
+            <span>Signals</span>
+            {signalMode === 'trending' && trendingSignals.length > 0 && (
+              <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">{trendingSignals.length}</span>
+            )}
+            {signalMode === 'topic' && signals.length > 0 && (
+              <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">{signals.length}</span>
+            )}
+          </CardTitle>
+          {signalMode === 'trending' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1.5"
+              onClick={handleRefreshTrending}
+              disabled={isLoadingTrending}
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoadingTrending ? 'animate-spin' : ''}`} />
+              {isLoadingTrending ? 'Fetching…' : 'Refresh'}
+            </Button>
+          )}
+        </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-1">
 
         {/* ── Mode Switch ── */}
-        <div className="flex items-center bg-muted/50 rounded-xl p-1 gap-1">
+        <div className="flex items-center bg-muted/40 rounded-xl p-1 gap-1">
           <button
             onClick={() => setSignalMode('trending')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
               signalMode === 'trending'
                 ? 'bg-white shadow-sm text-primary border border-primary/20'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <TrendingUp className="h-3.5 w-3.5" />
+            <TrendingUp className="h-3 w-3" />
             Trending
           </button>
           <button
             onClick={() => setSignalMode('topic')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
               signalMode === 'topic'
                 ? 'bg-white shadow-sm text-primary border border-primary/20'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Search className="h-3.5 w-3.5" />
+            <Search className="h-3 w-3" />
             My Topic
           </button>
         </div>
@@ -952,86 +1067,50 @@ export const TodaysSignals = () => {
         {/* ── Trending Panel ── */}
         {signalMode === 'trending' && (
           <div>
-            <div className="flex items-center justify-end mb-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1"
-                onClick={handleRefreshTrending}
-                disabled={isLoadingTrending}
-              >
-                <RefreshCw className={`h-3 w-3 ${isLoadingTrending ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
-
             {isLoadingTrending ? (
-              <div className="flex flex-col items-center justify-center py-8 space-y-2">
-                <Loader2 className="h-7 w-7 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Loading today's trending signals...</p>
-                <p className="text-xs text-muted-foreground">This usually takes 30–60 seconds</p>
+              <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                <div className="relative">
+                  <div className="h-10 w-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">Scanning for signals…</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Usually takes 30–60 seconds</p>
+                </div>
               </div>
             ) : trendingSignals.length === 0 ? (
               <div className="text-center py-10 px-4">
                 <div className="flex justify-center mb-3">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-primary blur-xl opacity-30 rounded-full" />
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary shadow-lg">
-                      <TrendingUp className="h-7 w-7 text-white" />
+                    <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-gradient-primary shadow-lg">
+                      <TrendingUp className="h-6 w-6 text-white" />
                     </div>
                   </div>
                 </div>
-                <p className="text-sm font-medium text-foreground mb-1">No trending signals yet</p>
-                <p className="text-xs text-muted-foreground">Click Refresh to fetch today's signals</p>
+                <p className="text-sm font-semibold text-foreground mb-1">No signals yet</p>
+                <p className="text-xs text-muted-foreground">Hit Refresh to fetch today's trending signals</p>
               </div>
             ) : (
-              <>
+              <div className="space-y-2">
                 {trendingSignals.slice(0, 3).map((signal) => (
-                  <div key={signal.id} className={`group bg-card border border-border border-l-[3px] ${getPriorityBorder(signal.priority)} rounded-lg p-3 hover:shadow-md transition-all duration-200 mb-2`}>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1 pr-2 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          {getRankIcon(signal.rank)}
-                          <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 flex-1">{signal.headline}</h3>
-                          <Badge className={`text-[10px] shrink-0 ${getPriorityColor(signal.priority)}`}>{signal.priority}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{signal.summary}</p>
-                      </div>
-                      <div className="shrink-0 ml-2 text-center">
-                        <div className={`text-sm font-bold px-2 py-1 rounded-lg border ${getScorePillColor(signal.score)}`}>{signal.score}</div>
-                        {signal.engagement && <div className="text-[10px] text-success font-medium mt-0.5">{signal.engagement}</div>}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {signal.tags.slice(0, 3).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent-foreground">{tag}</Badge>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
-                          <><Clock className="h-3 w-3" /><span>{signal.timestamp}</span><span>·</span></>
-                        )}
-                        <span>{signal.source}</span>
-                      </div>
-                      <div className="flex gap-1.5">
-                        <Button size="sm" className="h-7 text-xs px-2.5 bg-gradient-primary hover:shadow-glow transition-all duration-300" onClick={() => openEditorialModal(signal)}>
-                          <Zap className="h-3.5 w-3.5 mr-1" />Generate
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors" title="Send to agent" onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}>
-                          <Link2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
+                  <SignalCard
+                    key={signal.id}
+                    signal={signal}
+                    onOpen={() => { setDetailSignal(signal); setSignalDetailOpen(true); }}
+                    onGenerate={() => openEditorialModal(signal)}
+                    onLink={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
+                  />
                 ))}
                 {trendingSignals.length > 3 && (
-                  <Button variant="ghost" size="sm" className="w-full text-sm text-accent hover:text-accent-foreground hover:bg-accent/10 py-2"
-                    onClick={() => { setAllSignalsModalSource('trending'); setAllSignalsModalOpen(true); }}>
-                    <BarChart3 className="h-4 w-4 mr-2" />View All Trending ({trendingSignals.length})
-                  </Button>
+                  <button
+                    onClick={() => { setAllSignalsModalSource('trending'); setAllSignalsModalOpen(true); }}
+                    className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl transition-colors border border-dashed border-primary/25 hover:border-primary/40"
+                  >
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    View all {trendingSignals.length} trending signals
+                  </button>
                 )}
-              </>
+              </div>
             )}
           </div>
         )}
@@ -1214,76 +1293,26 @@ export const TodaysSignals = () => {
             </div>
           </div>
         ) : (
-          signals.slice(0, 3).map((signal) => (
-          <div key={signal.id} className={`group bg-card border border-border border-l-[3px] ${getPriorityBorder(signal.priority)} rounded-lg p-3 hover:shadow-md transition-all duration-200`}>
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1 pr-2 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  {getRankIcon(signal.rank)}
-                  <h3 className="font-medium text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1 flex-1">
-                    {signal.headline}
-                  </h3>
-                  <Badge className={`text-[10px] shrink-0 ${getPriorityColor(signal.priority)}`}>
-                    {signal.priority}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{signal.summary}</p>
-              </div>
-              <div className="shrink-0 ml-2 text-center">
-                <div className={`text-sm font-bold px-2 py-1 rounded-lg border ${getScorePillColor(signal.score)}`}>{signal.score}</div>
-                {signal.engagement && <div className="text-[10px] text-success font-medium mt-0.5">{signal.engagement}</div>}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-1 mb-2">
-              {signal.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent-foreground">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
-                  <><Clock className="h-3 w-3" /><span>{signal.timestamp}</span><span>·</span></>
-                )}
-                <span>{signal.source}</span>
-              </div>
-              <div className="flex gap-1.5">
-                <Button
-                  size="sm"
-                  className="h-7 text-xs px-2.5 bg-gradient-primary hover:shadow-glow transition-all duration-300"
-                  onClick={() => openEditorialModal(signal)}
-                >
-                  <Zap className="h-3.5 w-3.5 mr-1" />Generate
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary transition-colors"
-                  title="Send to agent"
-                  onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
+          <div className="space-y-2">
+            {signals.slice(0, 3).map((signal) => (
+              <SignalCard
+                key={signal.id}
+                signal={signal}
+                onOpen={() => { setDetailSignal(signal); setSignalDetailOpen(true); }}
+                onGenerate={() => openEditorialModal(signal)}
+                onLink={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
+              />
+            ))}
+            {signals.length > 3 && (
+              <button
+                onClick={() => { setAllSignalsModalSource('topic'); setAllSignalsModalOpen(true); }}
+                className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl transition-colors border border-dashed border-primary/25 hover:border-primary/40"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                View all {signals.length} topic signals
+              </button>
+            )}
           </div>
-          ))
-        )}
-
-        {/* View All Topic Signals Button */}
-        {signals.length > 0 && !isLoadingAllSignals && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-sm text-accent hover:text-accent-foreground hover:bg-accent/10 mt-2 py-2"
-            onClick={() => { setAllSignalsModalSource('topic'); setAllSignalsModalOpen(true); }}
-          >
-            <BarChart3 className="h-4 w-4 mr-2" />
-            View All Topic Signals ({signals.length})
-          </Button>
         )}
           </div>
         )}
@@ -1620,83 +1649,16 @@ export const TodaysSignals = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="overflow-y-auto max-h-[60vh] py-4">
-            <div className="space-y-3">
-              {(allSignalsModalSource === 'trending' ? trendingSignals : signals).map((signal) => (
-                <div key={signal.id} className="group relative bg-card border border-border rounded-lg p-4 hover:shadow-md transition-all duration-300 hover:border-primary/30">
-                  {/* Compact Rank */}
-                  <div className="absolute -top-1 -left-1 bg-background border border-primary rounded-full p-1">
-                    {getRankIcon(signal.rank)}
-                  </div>
-
-                  <div className="flex justify-between items-start mb-3 pl-4">
-                    <div className="flex-1 pr-3">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="font-medium text-base text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                          {signal.headline}
-                        </h3>
-                        <Badge className={`text-sm ${getPriorityColor(signal.priority)}`}>
-                          {signal.priority}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {signal.summary}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xl font-bold text-primary">{signal.score}</div>
-                      <div className="text-sm text-success">{signal.engagement}</div>
-                    </div>
-                  </div>
-
-                  {/* Compact Tags */}
-                  <div className="flex flex-wrap gap-1 mb-3 pl-4">
-                    {signal.tags.slice(0, 3).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-sm px-2 py-1 bg-accent/10 text-accent-foreground">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  {/* Compact Footer */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border pl-4">
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
-                        <>
-                          <Clock className="h-4 w-4" />
-                          <span>{signal.timestamp}</span>
-                          <span>•</span>
-                        </>
-                      )}
-                      <span>{signal.source}</span>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        className="bg-gradient-primary hover:shadow-glow transition-all duration-300 text-sm px-3 py-2 h-8"
-                        onClick={() => {
-                          setAllSignalsModalOpen(false);
-                          openEditorialModal(signal);
-                        }}
-                      >
-                        <Zap className="h-4 w-4 mr-1" />
-                        Generate Content
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="hover:bg-primary/10 hover:text-primary text-sm px-2 py-2 h-8"
-                        title="Send to agent"
-                        onClick={() => { setSignalForLink(signal); setAgentLinkModalOpen(true); }}
-                      >
-                        <Link2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="overflow-y-auto max-h-[60vh] py-4 px-1 space-y-2">
+            {(allSignalsModalSource === 'trending' ? trendingSignals : signals).map((signal) => (
+              <SignalCard
+                key={signal.id}
+                signal={signal}
+                onOpen={() => { setDetailSignal(signal); setSignalDetailOpen(true); }}
+                onGenerate={() => { setAllSignalsModalOpen(false); openEditorialModal(signal); }}
+                onLink={() => { setAllSignalsModalOpen(false); setSignalForLink(signal); setAgentLinkModalOpen(true); }}
+              />
+            ))}
           </div>
 
           <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-4">
@@ -1731,23 +1693,127 @@ export const TodaysSignals = () => {
         </DialogContent>
       </Dialog>
 
+      {/* ── Signal Detail Modal ──────────────────────────────────────────── */}
+      <Dialog open={signalDetailOpen} onOpenChange={setSignalDetailOpen}>
+        <DialogContent className="max-w-lg bg-white/95 backdrop-blur-2xl border-border/80 shadow-elegant rounded-3xl p-0 gap-0">
+          {/* Header */}
+          <div className="relative overflow-hidden rounded-t-3xl bg-gradient-primary px-6 py-5">
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.4) 0%, transparent 60%)' }} />
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {detailSignal && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      detailSignal.priority === 'High' ? 'bg-red-500/80 text-white' :
+                      detailSignal.priority === 'Medium' ? 'bg-amber-400/80 text-white' :
+                      'bg-emerald-500/80 text-white'
+                    }`}>{detailSignal.priority}</span>
+                  )}
+                  {detailSignal?.community_context && (
+                    <span className="text-[10px] font-medium bg-white/20 text-white px-2 py-0.5 rounded-full capitalize">{detailSignal.community_context}</span>
+                  )}
+                </div>
+                <h2 className="text-base font-black text-white leading-snug">{detailSignal?.headline}</h2>
+              </div>
+              <div className="shrink-0 text-center bg-white/15 border border-white/25 rounded-xl px-3 py-2">
+                <div className="text-2xl font-black text-white leading-none">{detailSignal?.score}</div>
+                <div className="text-[10px] text-white/60 mt-0.5">score</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-5 space-y-4 overflow-y-auto max-h-[60vh]">
+
+            {/* Summary */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Summary</p>
+              <p className="text-sm text-foreground leading-relaxed">{detailSignal?.summary}</p>
+            </div>
+
+            {/* Why it matters */}
+            {detailSignal?.rationale && (
+              <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-1">Why it matters</p>
+                <p className="text-sm text-foreground/80 leading-relaxed">{detailSignal.rationale}</p>
+              </div>
+            )}
+
+            {/* Tags + context */}
+            {(detailSignal?.tags?.length > 0 || detailSignal?.community_context) && (
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Narrative Stakes</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {detailSignal?.tags?.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs px-2.5 py-1 bg-accent/10 text-accent-foreground capitalize">{tag}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Meta row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-muted/40 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Source</p>
+                {detailSignal?.url ? (
+                  <a href={detailSignal.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" />{detailSignal.source}
+                  </a>
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">{detailSignal?.source}</p>
+                )}
+              </div>
+              <div className="bg-muted/40 rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Published</p>
+                <p className="text-sm font-semibold text-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  {detailSignal?.timestamp && detailSignal.timestamp !== 'recently' ? `${detailSignal.timestamp} ago` : 'Recently'}
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Footer actions */}
+          <div className="px-6 pb-5 flex gap-2 border-t border-border pt-4">
+            <Button
+              className="flex-1 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold"
+              onClick={() => { setSignalDetailOpen(false); openEditorialModal(detailSignal!); }}
+            >
+              <Zap className="h-4 w-4 mr-2" />Generate Content
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 w-10 p-0"
+              title="Send to agent"
+              onClick={() => { setSignalDetailOpen(false); setAllSignalsModalOpen(false); setSignalForLink(detailSignal); setAgentLinkModalOpen(true); }}
+            >
+              <Link2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Agent Link Modal */}
       <Dialog open={agentLinkModalOpen} onOpenChange={setAgentLinkModalOpen}>
-        <DialogContent className="sm:max-w-sm bg-gradient-card border-border/50 shadow-elegant">
-          <DialogHeader className="pb-2">
-            <DialogTitle className="text-lg font-bold text-primary flex items-center gap-2">
-              <Link2 className="h-5 w-5" />
-              Send to Agent
-            </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground line-clamp-2">
-              {signalForLink?.headline}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-sm bg-white/95 backdrop-blur-2xl border-border/80 shadow-elegant rounded-3xl p-0 gap-0">
+          {/* Header */}
+          <div className="relative overflow-hidden rounded-t-3xl bg-gradient-primary px-5 py-4">
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.4) 0%, transparent 60%)' }} />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-1">
+                <Link2 className="h-4 w-4 text-white/80" />
+                <p className="text-[11px] font-bold text-white/70 uppercase tracking-widest">Send to Agent</p>
+              </div>
+              <p className="text-sm font-bold text-white leading-snug line-clamp-2">{signalForLink?.headline}</p>
+            </div>
+          </div>
 
-          <div className="space-y-2 py-2">
+          {/* Actions */}
+          <div className="p-4 space-y-2">
             {/* Social Alchemist */}
             <button
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-left group"
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-violet-300 hover:bg-violet-50/50 transition-all duration-200 text-left group"
               onClick={() => {
                 setAgentLinkModalOpen(false);
                 setAllSignalsModalOpen(false);
@@ -1762,46 +1828,35 @@ export const TodaysSignals = () => {
                 });
               }}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-sm shrink-0">
                 <Wand2 className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">Social Alchemist</div>
-                <div className="text-xs text-muted-foreground">Repurpose into social assets</div>
+                <p className="font-semibold text-sm text-foreground group-hover:text-violet-700 transition-colors">Social Alchemist</p>
+                <p className="text-xs text-muted-foreground">Repurpose into social assets</p>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+              <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all shrink-0" />
             </button>
 
-            {/* Open source URL if available */}
+            {/* Open source URL */}
             {signalForLink?.url && (
               <button
-                className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-primary/5 transition-all duration-200 text-left group"
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 text-left group"
                 onClick={() => {
                   window.open(signalForLink.url, '_blank', 'noopener,noreferrer');
                   setAgentLinkModalOpen(false);
                 }}
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-slate-500 to-slate-600 shrink-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-slate-400 to-slate-600 shadow-sm shrink-0">
                   <ExternalLink className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">Open Source</div>
-                  <div className="text-xs text-muted-foreground truncate">{signalForLink.url}</div>
+                  <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">Open Source</p>
+                  <p className="text-xs text-muted-foreground truncate">{signalForLink?.source || new URL(signalForLink.url).hostname.replace('www.', '')}</p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
               </button>
             )}
-
-            {/* Placeholder for future agents */}
-            <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-dashed border-border/50 opacity-40 cursor-not-allowed">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted shrink-0">
-                <Sparkles className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-muted-foreground">More agents</div>
-                <div className="text-xs text-muted-foreground">Coming soon</div>
-              </div>
-            </div>
           </div>
         </DialogContent>
       </Dialog>

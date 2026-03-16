@@ -44,15 +44,15 @@ const SCOUT_GPT_ENDPOINT = WEBHOOK_SCOUT_GPT;
 
 export class ScoutGptService {
 
-  static async fetchSignalsFromScoutGpt(topic?: string): Promise<ScoutGptSignal[]> {
+  static async fetchSignalsFromScoutGpt(topic?: string, timeoutMs = 300000): Promise<ScoutGptSignal[]> {
     try {
       const endpoint = SCOUT_GPT_ENDPOINT;
 
-      // Create a timeout promise (5 minutes = 300000ms)
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
-          reject(new Error('Request timeout: The search took longer than 5 minutes and has been cancelled.'));
-        }, 300000); // 5 minutes
+          const mins = Math.round(timeoutMs / 60000);
+          reject(new Error(`Request timeout: The search took longer than ${mins} minute${mins !== 1 ? 's' : ''} and has been cancelled.`));
+        }, timeoutMs);
       });
 
       // Use POST request (n8n webhook is configured for POST)
@@ -64,7 +64,7 @@ export class ScoutGptService {
         body: JSON.stringify({
           action: 'get_signals',
           timestamp: new Date().toISOString(),
-          topic: topic || undefined
+          topic: topic || 'top trending news and viral stories from the last 72 hours',
         })
       });
 
@@ -120,17 +120,18 @@ export class ScoutGptService {
     );
   }
 
-  static async saveSignalsToDatabase(signals: ScoutGptSignal[]): Promise<ProcessedSignal[]> {
+  static async saveSignalsToDatabase(signals: ScoutGptSignal[], type: 'trending' | 'topic' = 'topic'): Promise<ProcessedSignal[]> {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) {
       throw new Error('User not authenticated');
     }
 
-    // Delete only this user's old signals before saving new ones
+    // Delete only this user's old signals of the same type
     await supabase
       .from('signals_ranked')
       .delete()
-      .eq('user_id', user.user.id);
+      .eq('user_id', user.user.id)
+      .eq('signal_type', type);
 
     const processedSignals = signals.map((signal) => {
       const headline = signal.headline || signal.topic || signal.title || 'Untitled Signal';
@@ -182,6 +183,7 @@ export class ScoutGptService {
         rationale,
         confidence: signal.confidence ?? null,
         user_id: user.user.id,
+        signal_type: type,
       };
     });
 
@@ -195,7 +197,7 @@ export class ScoutGptService {
     return this.convertToProcessedSignals(data || []);
   }
 
-  static async loadSignalsFromDatabase(): Promise<ProcessedSignal[]> {
+  static async loadSignalsFromDatabase(type: 'trending' | 'topic' = 'topic'): Promise<ProcessedSignal[]> {
     const { data: user } = await supabase.auth.getUser();
     if (!user.user) {
       throw new Error('User not authenticated');
@@ -205,6 +207,7 @@ export class ScoutGptService {
       .from('signals_ranked')
       .select('*')
       .eq('user_id', user.user.id)
+      .eq('signal_type', type)
       .order('score', { ascending: false })
       .order('analyzed_at', { ascending: false });
 
@@ -271,14 +274,15 @@ export class ScoutGptService {
     }
   }
 
-  static async fetchAndSaveSignals(topic?: string): Promise<ProcessedSignal[]> {
-    const scoutSignals = await this.fetchSignalsFromScoutGpt(topic);
+  static async fetchAndSaveSignals(topic?: string, type: 'trending' | 'topic' = 'topic'): Promise<ProcessedSignal[]> {
+    const timeoutMs = type === 'topic' ? 120000 : 300000; // 2 min for topic, 5 min for trending
+    const scoutSignals = await this.fetchSignalsFromScoutGpt(topic, timeoutMs);
 
     if (scoutSignals.length === 0) {
       throw new Error(`No signals found for topic: ${topic || 'general trends'}. Please try a different topic or try again later.`);
     }
 
-    return this.saveSignalsToDatabase(scoutSignals);
+    return this.saveSignalsToDatabase(scoutSignals, type);
   }
 }
 
