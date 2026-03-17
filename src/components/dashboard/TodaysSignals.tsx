@@ -116,94 +116,115 @@ const SignalCard = ({
   onGenerate: () => void;
   onLink: () => void;
 }) => {
-  const priorityBar =
-    signal.priority === 'High' ? 'bg-red-400' :
-    signal.priority === 'Medium' ? 'bg-amber-400' : 'bg-emerald-400';
+  const priority = signal.priority as 'High' | 'Medium' | 'Low';
 
-  const scoreRing =
-    signal.score >= 80 ? 'border-primary/50 text-primary bg-primary/8' :
-    signal.score >= 60 ? 'border-amber-400/50 text-amber-600 bg-amber-50' :
-    'border-border text-muted-foreground bg-muted/30';
+  const priorityMeta: Record<string, { bar: string; chip: string; dot: string }> = {
+    High:   { bar: 'bg-red-400',     chip: 'text-red-600 bg-red-50 border-red-200',         dot: 'bg-red-400'     },
+    Medium: { bar: 'bg-amber-400',   chip: 'text-amber-600 bg-amber-50 border-amber-200',   dot: 'bg-amber-400'   },
+    Low:    { bar: 'bg-emerald-400', chip: 'text-emerald-600 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-400' },
+  };
+  const pm = priorityMeta[priority] ?? priorityMeta.Low;
 
-  const rankBadge = signal.rank === 1
-    ? <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-gradient-primary text-white shrink-0"><Crown className="h-2.5 w-2.5" />#1</span>
-    : <span className="text-[10px] font-bold text-muted-foreground shrink-0">#{signal.rank}</span>;
+  const scoreStyle =
+    signal.score >= 80 ? 'bg-gradient-primary text-white shadow-primary/25 shadow-sm' :
+    signal.score >= 60 ? 'bg-amber-50 text-amber-700 border border-amber-300' :
+    'bg-muted/60 text-muted-foreground border border-border';
 
   return (
     <div
       onClick={onOpen}
-      className="group relative flex items-stretch gap-0 rounded-xl border border-border bg-card hover:border-primary/35 hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
+      className="group relative flex items-stretch rounded-2xl border border-border/70 bg-white hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-200 cursor-pointer overflow-hidden"
     >
-      {/* Priority bar */}
-      <div className={`w-1 shrink-0 ${priorityBar} opacity-70 group-hover:opacity-100 transition-opacity`} />
+      {/* Priority accent bar */}
+      <div className={`w-[3px] shrink-0 ${pm.bar} opacity-75 group-hover:opacity-100 transition-opacity`} />
 
-      <div className="flex-1 min-w-0 px-3 py-2.5">
-        {/* Row 1: rank + headline */}
-        <div className="flex items-center gap-1.5 mb-1">
-          {rankBadge}
-          <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 flex-1 leading-snug">
+      {/* Main content */}
+      <div className="flex-1 min-w-0 px-3.5 py-3">
+        {/* Row 1: rank + headline + score */}
+        <div className="flex items-start gap-2 mb-1.5">
+          {/* Rank */}
+          {signal.rank === 1 ? (
+            <span className="shrink-0 mt-[1px] inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-gradient-primary text-white shadow-sm">
+              <Crown className="h-2.5 w-2.5" />#1
+            </span>
+          ) : (
+            <span className="shrink-0 mt-[1px] text-[10px] font-black text-muted-foreground/45 min-w-[18px] text-center">
+              #{signal.rank}
+            </span>
+          )}
+
+          {/* Headline */}
+          <h3 className="flex-1 text-[13px] font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-primary transition-colors duration-150">
             {signal.headline}
           </h3>
+
+          {/* Score pill */}
+          <div className={`shrink-0 ml-1 px-2 py-0.5 rounded-lg text-[11px] font-black tabular-nums ${scoreStyle}`}>
+            {signal.score}
+          </div>
         </div>
 
         {/* Row 2: summary */}
-        <p className="text-xs text-muted-foreground line-clamp-1 mb-2 leading-relaxed">{signal.summary}</p>
+        <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-1 mb-2.5 pl-6">
+          {signal.summary}
+        </p>
 
-        {/* Row 3: tags + meta */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {signal.tags.slice(0, 2).map((tag) => (
-            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-accent/10 text-accent-foreground rounded font-medium capitalize">{tag}</span>
-          ))}
-          {signal.tags.length > 0 && <span className="text-[10px] text-border">·</span>}
-          {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-              <Clock className="h-2.5 w-2.5" />{signal.timestamp}
+        {/* Row 3: priority chip + tags + source */}
+        <div className="flex items-center gap-1.5 pl-6 flex-wrap">
+          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide shrink-0 ${pm.chip}`}>
+            {priority}
+          </span>
+
+          {signal.tags.slice(0, 2).map(tag => (
+            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-muted/60 text-muted-foreground rounded-md font-medium capitalize">
+              {tag}
             </span>
-          )}
-          {signal.url ? (
-            <a
-              href={signal.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-[10px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-0.5"
-            >
-              <ExternalLink className="h-2.5 w-2.5" />{signal.source}
-            </a>
-          ) : (
-            <span className="text-[10px] text-muted-foreground">{signal.source}</span>
-          )}
+          ))}
+
+          <div className="ml-auto flex items-center gap-1.5 shrink-0">
+            {signal.timestamp && signal.timestamp !== 'recently' && signal.timestamp !== 'now' && (
+              <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
+                <Clock className="h-2.5 w-2.5" />{signal.timestamp}
+              </span>
+            )}
+            {signal.url ? (
+              <a
+                href={signal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="text-[10px] text-muted-foreground/60 hover:text-primary transition-colors flex items-center gap-0.5"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />{signal.source}
+              </a>
+            ) : signal.source ? (
+              <span className="text-[10px] text-muted-foreground/50">{signal.source}</span>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Score + actions column */}
-      <div className="flex flex-col items-center justify-between py-2.5 pr-2.5 shrink-0 gap-2">
-        {/* Score circle */}
-        <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center text-xs font-black ${scoreRing}`}>
-          {signal.score}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={onGenerate}
-            className="h-6 px-2 rounded-lg bg-gradient-primary text-white text-[10px] font-semibold hover:shadow-glow transition-all duration-200 flex items-center gap-0.5"
-          >
-            <Zap className="h-2.5 w-2.5" />Gen
-          </button>
-          <button
-            onClick={onLink}
-            className="h-6 w-6 rounded-lg border border-border bg-card hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all duration-200 flex items-center justify-center text-muted-foreground"
-            title="Send to agent"
-          >
-            <Link2 className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-
-      {/* Hover arrow hint */}
-      <div className="absolute right-[3.2rem] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <ArrowRight className="h-3 w-3 text-primary/40" />
+      {/* Actions column */}
+      <div
+        className="flex flex-col items-stretch justify-center gap-1.5 px-3 border-l border-border/40 shrink-0 min-w-[88px]"
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onGenerate}
+          className="flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-xl bg-gradient-primary text-white text-[11px] font-bold hover:shadow-glow hover:scale-[1.03] active:scale-95 transition-all duration-150"
+          title="Generate content from this signal"
+        >
+          <Zap className="h-3 w-3 shrink-0" />
+          Generate
+        </button>
+        <button
+          onClick={onLink}
+          className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border/70 bg-card text-muted-foreground hover:bg-primary/8 hover:border-primary/25 hover:text-primary transition-all duration-150 text-[10px] font-semibold"
+          title="Send to agent"
+        >
+          <Link2 className="h-3 w-3 shrink-0" />
+          Link
+        </button>
       </div>
     </div>
   );
@@ -947,57 +968,65 @@ export const TodaysSignals = () => {
     <Card className="bg-gradient-card border border-border shadow-elegant">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary">
-              <TrendingUp className="h-4 w-4 text-white" />
+          <CardTitle className="flex items-center gap-2 text-base font-bold">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary shadow-sm">
+              <TrendingUp className="h-3.5 w-3.5 text-white" />
             </div>
             <span>Signals</span>
             {signalMode === 'trending' && trendingSignals.length > 0 && (
-              <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">{trendingSignals.length}</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full tabular-nums">
+                {trendingSignals.length}
+              </span>
             )}
             {signalMode === 'topic' && signals.length > 0 && (
-              <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">{signals.length}</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full tabular-nums">
+                {signals.length}
+              </span>
             )}
           </CardTitle>
           {signalMode === 'trending' && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1.5"
+            <button
               onClick={handleRefreshTrending}
               disabled={isLoadingTrending}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-primary bg-transparent hover:bg-primary/8 border border-transparent hover:border-primary/20 px-2.5 py-1.5 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`h-3 w-3 ${isLoadingTrending ? 'animate-spin' : ''}`} />
               {isLoadingTrending ? 'Fetching…' : 'Refresh'}
-            </Button>
+            </button>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3 pt-1">
 
         {/* ── Mode Switch ── */}
-        <div className="flex items-center bg-muted/40 rounded-xl p-1 gap-1">
+        <div className="flex items-center bg-muted/35 rounded-xl p-1 gap-0.5">
           <button
             onClick={() => setSignalMode('trending')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all duration-200 ${
               signalMode === 'trending'
-                ? 'bg-white shadow-sm text-primary border border-primary/20'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white shadow-sm text-primary border border-primary/15'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/50'
             }`}
           >
             <TrendingUp className="h-3 w-3" />
             Trending
+            {trendingSignals.length > 0 && signalMode !== 'trending' && (
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/40 ml-0.5" />
+            )}
           </button>
           <button
             onClick={() => setSignalMode('topic')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all duration-200 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all duration-200 ${
               signalMode === 'topic'
-                ? 'bg-white shadow-sm text-primary border border-primary/20'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white shadow-sm text-primary border border-primary/15'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/50'
             }`}
           >
             <Search className="h-3 w-3" />
             My Topic
+            {signals.length > 0 && signalMode !== 'topic' && (
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/40 ml-0.5" />
+            )}
           </button>
         </div>
 
@@ -1041,10 +1070,11 @@ export const TodaysSignals = () => {
                 {trendingSignals.length > 3 && (
                   <button
                     onClick={() => { setAllSignalsModalSource('trending'); setAllSignalsModalOpen(true); }}
-                    className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl transition-colors border border-dashed border-primary/25 hover:border-primary/40"
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] font-semibold text-primary hover:text-primary bg-primary/4 hover:bg-primary/8 rounded-xl transition-all duration-150 border border-dashed border-primary/20 hover:border-primary/35 group"
                   >
-                    <BarChart3 className="h-3.5 w-3.5" />
+                    <BarChart3 className="h-3.5 w-3.5 group-hover:scale-110 transition-transform duration-150" />
                     View all {trendingSignals.length} trending signals
+                    <ArrowRight className="h-3 w-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-150" />
                   </button>
                 )}
               </div>
@@ -1200,8 +1230,13 @@ export const TodaysSignals = () => {
 
 
         {isLoadingAllSignals ? (
-          <div className="flex flex-col items-center justify-center py-8 space-y-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex flex-col items-center justify-center py-10 space-y-3">
+            <div className="relative">
+              <div className="h-10 w-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-primary/60" />
+              </div>
+            </div>
             <div className="text-center space-y-1">
               <p className="text-sm font-medium text-foreground">Discovering signals...</p>
               <p className="text-xs text-muted-foreground">
@@ -1243,10 +1278,11 @@ export const TodaysSignals = () => {
             {signals.length > 3 && (
               <button
                 onClick={() => { setAllSignalsModalSource('topic'); setAllSignalsModalOpen(true); }}
-                className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl transition-colors border border-dashed border-primary/25 hover:border-primary/40"
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] font-semibold text-primary bg-primary/4 hover:bg-primary/8 rounded-xl transition-all duration-150 border border-dashed border-primary/20 hover:border-primary/35 group"
               >
-                <BarChart3 className="h-3.5 w-3.5" />
+                <BarChart3 className="h-3.5 w-3.5 group-hover:scale-110 transition-transform duration-150" />
                 View all {signals.length} topic signals
+                <ArrowRight className="h-3 w-3 opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-150" />
               </button>
             )}
           </div>
