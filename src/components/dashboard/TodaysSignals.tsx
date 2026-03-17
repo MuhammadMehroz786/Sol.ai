@@ -12,12 +12,13 @@ import { WEBHOOK_EDITORIAL_GPT, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants
 import { type VoiceOption } from "@/constants/voices";
 import { useVoices } from "@/contexts/VoicesContext";
 import { Label } from "@/components/ui/label";
-import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, User, Trash2, Link2, Wand2 } from "lucide-react";
+import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, CheckCircle, User, Trash2, Link2, Wand2, Save, Send, FileDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
 import { useToast } from "@/hooks/use-toast";
+import { GeneratedContentModal } from "@/components/dashboard/GeneratedContentModal";
 
 type CustomVoice = VoiceOption;
 
@@ -225,11 +226,11 @@ export const TodaysSignals = () => {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [voiceToDelete, setVoiceToDelete] = useState<CustomVoice | null>(null);
   const [isDeletingVoice, setIsDeletingVoice] = useState(false);
-  const [modalMode, setModalMode] = useState<'form' | 'results'>('form');
-  const [generatedContent, setGeneratedContent] = useState("");
-  const [editableContent, setEditableContent] = useState("");
-  const [isProcessingAction, setIsProcessingAction] = useState("");
-  const [fullResponse, setFullResponse] = useState<any>(null);
+  const [contentModalOpen, setContentModalOpen] = useState(false);
+  const [contentModalData, setContentModalData] = useState<{
+    id: string | null; title: string; content: string;
+    persona: string; outputType: string; topicContext: string; createdAt: string;
+  } | null>(null);
   const [trendingSignals, setTrendingSignals] = useState<Signal[]>([]);
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
   const [signalMode, setSignalMode] = useState<'trending' | 'topic'>('trending');
@@ -541,10 +542,6 @@ export const TodaysSignals = () => {
     setSelectedVoice("");
     setSelectedOutputType("");
     setSelectedArticleLength("");
-    setModalMode('form');
-    setGeneratedContent("");
-    setEditableContent("");
-    setIsProcessingAction("");
     setModalOpen(true);
   };
 
@@ -753,23 +750,20 @@ export const TodaysSignals = () => {
 
       if (response.ok) {
         const result = await response.json();
-        setFullResponse(result);
         const formattedContent = formatResponseData(result);
+        const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
+        const contentTitle = `${selectedOutputType.replace('-', ' ')} about ${selectedSignal.headline.substring(0, 50)}`;
 
-        // Store generated content but don't show modal
-        setGeneratedContent(formattedContent);
-        setEditableContent(formattedContent);
-
-        // Also save to database as draft
+        // Save to DB as draft
+        let savedId: string | null = null;
         try {
           const { data: user } = await supabase.auth.getUser();
           if (user.user) {
-            const voiceName = voices.find(v => v.value === selectedVoice)?.label || selectedVoice;
-            const { error, data } = await supabase
+            const { data, error } = await supabase
               .from('content_outputs')
               .insert({
                 user_id: user.user.id,
-                title: `${selectedOutputType.replace('-', ' ')} about ${selectedSignal.headline.substring(0, 50)}`,
+                title: contentTitle,
                 content: formattedContent,
                 persona: voiceName,
                 output_type: selectedOutputType,
@@ -778,25 +772,28 @@ export const TodaysSignals = () => {
               })
               .select();
 
-            if (error) {
-              // db save failed — content was generated but not persisted
-              setModalMode('results');
-            } else {
-              toast({ title: "Content saved!", description: "Draft added to your queue — refine it below or close." });
-
-              setModalMode('results');
+            if (!error && data && data.length > 0) {
+              savedId = data[0].id;
+              toast({ title: "Content saved!", description: "Draft added to your queue." });
               window.dispatchEvent(new CustomEvent('statsRefresh'));
-
-              if (data && data.length > 0) {
-                const contentId = data[0].id;
-                window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
-              }
+              window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
             }
           }
         } catch {
-          // db save failed — non-critical, still show results
-          setModalMode('results');
+          // db save failed — non-critical, still show content
         }
+
+        setContentModalData({
+          id: savedId,
+          title: contentTitle,
+          content: formattedContent,
+          persona: voiceName,
+          outputType: selectedOutputType,
+          topicContext: selectedSignal.headline,
+          createdAt: new Date().toISOString(),
+        });
+        setModalOpen(false);
+        setContentModalOpen(true);
       } else {
         toast({ title: `Send failed (${response.status})`, description: response.statusText, variant: 'destructive' });
       }
@@ -807,65 +804,6 @@ export const TodaysSignals = () => {
     }
   };
 
-  const handleQuickAction = async (action: string) => {
-    if (!selectedSignal || !editableContent) return;
-
-    setIsProcessingAction(action);
-
-    try {
-      const voiceDetails = voices.find(v => v.value === selectedVoice);
-
-      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          persona: voiceDetails?.label || selectedVoice,
-          outputType: selectedOutputType,
-          tone: voiceDetails?.description || '',
-          engagement: selectedSignal?.engagement || '',
-          content: editableContent,
-          quickAction: action,
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setEditableContent(formatResponseData(result));
-      } else {
-        toast({
-          title: `${action.charAt(0).toUpperCase() + action.slice(1)} failed`,
-          description: `Server responded with ${response.status}. Please try again.`,
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Quick action failed',
-        description: error instanceof Error ? error.message : 'Network error — please check your connection.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsProcessingAction("");
-    }
-  };
-
-  const downloadContent = (format: 'txt' | 'md') => {
-    if (!editableContent || !selectedSignal) return;
-
-    const filename = `${selectedSignal.headline.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${format}`;
-    const blob = new Blob([editableContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   const formatResponseData = (response: any) => {
     if (!response) return "";
@@ -965,16 +903,6 @@ export const TodaysSignals = () => {
     return formatted;
   };
 
-  const goBackToForm = () => {
-    setModalMode('form');
-    setSelectedVoice("");
-    setSelectedOutputType("");
-    setSelectedArticleLength("");
-    setGeneratedContent("");
-    setEditableContent("");
-    setIsProcessingAction("");
-    setFullResponse(null);
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -1329,22 +1257,17 @@ export const TodaysSignals = () => {
 
       {/* Editorial Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className={`${modalMode === 'results' ? "sm:max-w-4xl h-[88vh] flex flex-col overflow-hidden p-0" : "sm:max-w-md"} bg-gradient-card border-border/50 shadow-elegant`}>
-          <DialogHeader className={`bg-gradient-surface border-b border-border/30 pb-4 shrink-0 ${modalMode === 'results' ? 'px-6 pt-6' : ''}`}>
+        <DialogContent className="sm:max-w-md bg-gradient-card border-border/50 shadow-elegant">
+          <DialogHeader className="bg-gradient-surface border-b border-border/30 pb-4 shrink-0">
             <DialogTitle className="text-xl font-bold text-primary">
-              {modalMode === 'form' ? 'Generate Content' : 'Generated Content'}
+              Generate Content
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              {modalMode === 'form'
-                ? <>Configure content generation for: <strong className="text-foreground">{selectedSignal?.headline}</strong></>
-                : <>
-                    Generated by <strong className="text-primary">{voices.find(v => v.value === selectedVoice)?.label || selectedVoice}</strong> as <strong className="text-accent">{selectedOutputType}</strong> for: <strong className="text-foreground">{selectedSignal?.headline}</strong>
-                  </>
-              }
+              Configure content generation for: <strong className="text-foreground">{selectedSignal?.headline}</strong>
             </DialogDescription>
           </DialogHeader>
 
-          {modalMode === 'form' ? (
+          {(
             <div className="space-y-6 py-6">
               {/* Progress Indicator */}
               <div className="flex items-center justify-center space-x-2 mb-2">
@@ -1506,144 +1429,60 @@ export const TodaysSignals = () => {
                 )}
               </div>
             </div>
-          ) : (
-            <div className="flex-1 overflow-hidden flex flex-col px-6 py-4 space-y-3 min-h-0">
-              <div className="flex-1 flex flex-col min-h-0 space-y-2">
-                <div className="flex items-center justify-between shrink-0">
-                  <label className="text-sm font-medium text-foreground flex items-center">
-                    <Edit className="h-4 w-4 mr-1 text-primary" />
-                    Generated Content
-                  </label>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadContent('txt')}
-                      className="text-xs bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 hover:shadow-md transition-all duration-200 font-medium"
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      .txt
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadContent('md')}
-                      className="text-xs bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      .md
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex-1 min-h-0 font-mono text-sm bg-gradient-surface border border-border/50 rounded-md p-3 select-none overflow-auto whitespace-pre-wrap">
-                  {editableContent || "Generated content will appear here..."}
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="space-y-2 shrink-0">
-                <label className="text-sm font-medium text-foreground">Quick Actions</label>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleQuickAction('poeticize')}
-                    disabled={isProcessingAction === 'poeticize' || !editableContent}
-                    className="text-sm bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 hover:shadow-md transition-all duration-200 font-medium"
-                  >
-                    {isProcessingAction === 'poeticize' ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-1" />
-                    )}
-                    Poeticize
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleQuickAction('rewrite')}
-                    disabled={isProcessingAction === 'rewrite' || !editableContent}
-                    className="text-sm bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
-                  >
-                    {isProcessingAction === 'rewrite' ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <RotateCcw className="h-4 w-4 mr-1" />
-                    )}
-                    Rewrite
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleQuickAction('shorten')}
-                    disabled={isProcessingAction === 'shorten' || !editableContent}
-                    className="text-sm bg-warning/20 border-warning/50 text-warning hover:bg-warning/30 hover:border-warning/70 hover:shadow-md transition-all duration-200 font-medium"
-                  >
-                    {isProcessingAction === 'shorten' ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <Scissors className="h-4 w-4 mr-1" />
-                    )}
-                    Shorten
-                  </Button>
-                </div>
-              </div>
-            </div>
           )}
 
-          <DialogFooter className={`bg-gradient-surface border-t border-border/30 pt-4 shrink-0 ${modalMode === 'results' ? 'px-6 pb-4' : ''}`}>
-            {modalMode === 'form' ? (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => setModalOpen(false)}
-                  disabled={isSubmitting}
-                  className="bg-muted/20 border-muted/50 hover:bg-muted/30 hover:border-muted/70 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={sendToEditorial}
-                  disabled={!selectedVoice || !selectedOutputType || isSubmitting}
-                  className="bg-gradient-primary hover:shadow-glow hover:scale-105 transition-all duration-300 font-medium px-6"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="h-4 w-4 mr-2" />
-                      Generate Content
-                    </>
-                  )}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={goBackToForm}
-                  disabled={!!isProcessingAction}
-                  className="bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  New Generation
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setModalOpen(false)}
-                  disabled={!!isProcessingAction}
-                  className="bg-accent/20 border-accent/50 text-accent hover:bg-accent/30 hover:border-accent/70 hover:shadow-md transition-all duration-200 font-medium"
-                >
-                  Close
-                </Button>
-              </>
-            )}
+          <DialogFooter className="bg-gradient-surface border-t border-border/30 pt-4 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setModalOpen(false)}
+              disabled={isSubmitting}
+              className="bg-muted/20 border-muted/50 hover:bg-muted/30 hover:border-muted/70 hover:shadow-md transition-all duration-200 font-medium"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={sendToEditorial}
+              disabled={!selectedVoice || !selectedOutputType || isSubmitting}
+              className="bg-gradient-primary hover:shadow-glow hover:scale-105 transition-all duration-300 font-medium px-6"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2" />
+                  Generate Content
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Universal Generated Content Modal */}
+      {contentModalData && (
+        <GeneratedContentModal
+          open={contentModalOpen}
+          onOpenChange={setContentModalOpen}
+          contentId={contentModalData.id}
+          title={contentModalData.title}
+          initialContent={contentModalData.content}
+          persona={contentModalData.persona}
+          outputType={contentModalData.outputType}
+          initialStatus="draft"
+          topicContext={contentModalData.topicContext}
+          createdAt={contentModalData.createdAt}
+          onNewGeneration={() => {
+            setContentModalOpen(false);
+            setSelectedVoice("");
+            setSelectedOutputType("");
+            setSelectedArticleLength("");
+            setModalOpen(true);
+          }}
+        />
+      )}
 
       {/* All Signals Modal */}
       <Dialog open={allSignalsModalOpen} onOpenChange={setAllSignalsModalOpen}>
