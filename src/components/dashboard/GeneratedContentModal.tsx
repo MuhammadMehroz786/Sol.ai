@@ -1,41 +1,36 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
 import { useToast } from "@/hooks/use-toast";
 import {
-  FileText, Edit3, AlertCircle, CheckCircle, Share,
-  Eye, Save, Send, FileDown, Sparkles, RotateCcw, Scissors,
-  Loader2, ArrowLeft, Download, Wand2, ArrowRight
+  Edit3, AlertCircle, CheckCircle, Share2,
+  Save, Send, FileDown, Sparkles, RotateCcw, Scissors,
+  Loader2, ArrowLeft, Download, Wand2, ArrowRight, X,
+  FileText, User, Tag, Calendar,
 } from "lucide-react";
 
 type ContentStatus = 'draft' | 'review' | 'final' | 'published';
 
-const statusConfig: Record<ContentStatus, { label: string; color: string; icon: React.ElementType }> = {
-  draft: {
-    label: "Draft",
-    color: "bg-slate-100 text-slate-600 border border-slate-300",
-    icon: Edit3,
-  },
-  review: {
-    label: "Review",
-    color: "bg-amber-50 text-amber-700 border border-amber-300",
-    icon: AlertCircle,
-  },
-  final: {
-    label: "Final",
-    color: "bg-emerald-50 text-emerald-700 border border-emerald-300",
-    icon: CheckCircle,
-  },
-  published: {
-    label: "Published",
-    color: "bg-blue-50 text-blue-700 border border-blue-300",
-    icon: Share,
-  },
+const STAGES: { key: ContentStatus; label: string; icon: React.ElementType }[] = [
+  { key: 'draft',     label: 'Draft',     icon: Edit3 },
+  { key: 'review',    label: 'Review',    icon: AlertCircle },
+  { key: 'final',     label: 'Final',     icon: CheckCircle },
+  { key: 'published', label: 'Published', icon: Share2 },
+];
+
+const STAGE_INDEX: Record<ContentStatus, number> = {
+  draft: 0, review: 1, final: 2, published: 3,
+};
+
+const STAGE_HINT: Record<ContentStatus, { text: string; accent: string; border: string; dot: string }> = {
+  draft:     { text: "Your draft is ready. Download it or move it to review when you're ready to refine.", accent: "text-primary/80", border: "border-l-primary/60", dot: "bg-primary" },
+  review:    { text: "Edit the content directly, or use AI actions below to refine tone and length. Save then confirm.", accent: "text-warning/90", border: "border-l-warning/70", dot: "bg-warning" },
+  final:     { text: "Content is finalised and ready to export or publish.", accent: "text-success/80", border: "border-l-success/60", dot: "bg-success" },
+  published: { text: "This content has been published to your CMS.", accent: "text-blue-600/80", border: "border-l-blue-400/60", dot: "bg-blue-400" },
 };
 
 export interface GeneratedContentModalProps {
@@ -49,9 +44,7 @@ export interface GeneratedContentModalProps {
   initialStatus: ContentStatus;
   topicContext?: string;
   createdAt?: string;
-  /** If provided a "New Generation" button appears in draft footer */
   onNewGeneration?: () => void;
-  /** Called after any status or content change so parent can refresh its list */
   onRefresh?: () => void;
 }
 
@@ -71,6 +64,7 @@ export const GeneratedContentModal = ({
 }: GeneratedContentModalProps) => {
   const [editableContent, setEditableContent] = useState(initialContent);
   const [contentStatus, setContentStatus] = useState<ContentStatus>(initialStatus);
+  const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingToCMS, setIsSendingToCMS] = useState(false);
@@ -78,14 +72,24 @@ export const GeneratedContentModal = ({
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Sync with incoming props whenever the modal opens with new data
   useEffect(() => {
     if (open) {
       setEditableContent(initialContent);
       setContentStatus(initialStatus);
+      setIsDirty(false);
       setIsProcessingAction("");
     }
-  }, [open, contentId]); // reset only when modal opens or different content is loaded
+  }, [open, contentId]);
+
+  const wordCount = useMemo(() => {
+    const text = editableContent.trim();
+    return text ? text.split(/\s+/).length : 0;
+  }, [editableContent]);
+
+  const displayOutputType = useMemo(() => {
+    const base = outputType.startsWith('Article') ? 'Article' : outputType.replace(/-/g, ' ');
+    return base.charAt(0).toUpperCase() + base.slice(1);
+  }, [outputType]);
 
   const formatResponseData = (response: any): string => {
     if (!response) return "";
@@ -110,7 +114,7 @@ export const GeneratedContentModal = ({
         .update({ status: newStatus })
         .eq('id', contentId);
       if (error) {
-        toast({ title: "Error updating status", description: error.message, variant: "destructive" });
+        toast({ title: "Failed to update status", description: error.message, variant: "destructive" });
         return;
       }
       window.dispatchEvent(new CustomEvent('statsRefresh'));
@@ -128,9 +132,10 @@ export const GeneratedContentModal = ({
       .update({ content: editableContent })
       .eq('id', contentId);
     if (error) {
-      toast({ title: "Error saving content", description: error.message, variant: "destructive" });
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Content saved", description: "Your changes have been saved." });
+      setIsDirty(false);
+      toast({ title: "Saved", description: "Your edits have been saved." });
       window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
       onRefresh?.();
     }
@@ -147,10 +152,7 @@ export const GeneratedContentModal = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           voice_name: persona,
-          signal: {
-            headline: topicContext || title,
-            summary: topicContext || title,
-          },
+          signal: { headline: topicContext || title, summary: topicContext || title },
           output_type: baseOutputType,
           content: editableContent,
           quickAction: action,
@@ -159,12 +161,13 @@ export const GeneratedContentModal = ({
       if (response.ok) {
         const result = await response.json();
         setEditableContent(formatResponseData(result));
-        toast({ title: `${action.charAt(0).toUpperCase() + action.slice(1)} applied`, description: "Content updated." });
+        setIsDirty(true);
+        toast({ title: `${action.charAt(0).toUpperCase() + action.slice(1)} applied` });
       } else {
-        toast({ title: "Quick action failed", description: `Server responded with ${response.status}.`, variant: "destructive" });
+        toast({ title: "Action failed", description: `Server responded with ${response.status}.`, variant: "destructive" });
       }
     } catch (err) {
-      toast({ title: "Quick action failed", description: err instanceof Error ? err.message : "Network error.", variant: "destructive" });
+      toast({ title: "Action failed", description: err instanceof Error ? err.message : "Network error.", variant: "destructive" });
     } finally {
       setIsProcessingAction("");
     }
@@ -186,11 +189,11 @@ export const GeneratedContentModal = ({
 
   const exportToPDF = () => {
     setIsExporting(true);
-    const printContent = `<html><head><title>${title}</title><style>body{font-family:Arial,sans-serif;margin:20px;line-height:1.6}h1{color:#333;border-bottom:2px solid #333;padding-bottom:10px}.content{white-space:pre-wrap}</style></head><body><h1>${title}</h1><div class="content">${editableContent.replace(/\n/g, '<br>')}</div></body></html>`;
+    const printContent = `<html><head><title>${title}</title><style>body{font-family:Georgia,serif;margin:40px;line-height:1.8;color:#222}h1{font-size:1.5rem;margin-bottom:1rem;border-bottom:1px solid #ccc;padding-bottom:.5rem}.content{white-space:pre-wrap;font-size:1rem}</style></head><body><h1>${title}</h1><div class="content">${editableContent.replace(/\n/g, '<br>')}</div></body></html>`;
     const w = window.open('', '_blank');
     if (w) { w.document.write(printContent); w.document.close(); w.print(); }
     setIsExporting(false);
-    toast({ title: "Export initiated", description: "Print dialog opened for PDF export." });
+    toast({ title: "Print dialog opened", description: "Save as PDF from your browser." });
   };
 
   const sendToCMS = async () => {
@@ -201,9 +204,9 @@ export const GeneratedContentModal = ({
       .update({ status: 'published' })
       .eq('id', contentId);
     if (error) {
-      toast({ title: "Error sending to CMS", description: error.message, variant: "destructive" });
+      toast({ title: "Publish failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Sent to CMS", description: "Content has been published successfully." });
+      toast({ title: "Published", description: "Content has been sent to CMS." });
       window.dispatchEvent(new CustomEvent('statsRefresh'));
       window.dispatchEvent(new CustomEvent('contentQueueRefresh'));
       onRefresh?.();
@@ -218,191 +221,279 @@ export const GeneratedContentModal = ({
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('editorialToSocialAlchemist', { detail: { content: editableContent } }));
     }, 100);
-    toast({ title: "Content sent to Social Alchemist", description: "Generate social assets from your content." });
+    toast({ title: "Sent to Social Alchemist" });
   };
 
-  const statusCfg = statusConfig[contentStatus];
-  const StatusIcon = statusCfg.icon;
+  const currentStageIndex = STAGE_INDEX[contentStatus];
+  const hint = STAGE_HINT[contentStatus];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl h-[90vh] overflow-hidden flex flex-col bg-gradient-card border border-border/50 shadow-elegant p-0 z-[200]">
-        <DialogHeader className="bg-gradient-surface border-b border-border/30 px-6 pt-5 pb-4 shrink-0">
-          <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-primary shrink-0">
-                <FileText className="h-4 w-4 text-white" />
+      {/* h-[92vh] + flex col — nothing scrolls except the content area */}
+      <DialogContent className="sm:max-w-4xl h-[92vh] flex flex-col overflow-hidden bg-card border border-border/60 shadow-floating p-0 z-[200] gap-0">
+
+        {/* ── Header ─────────────────────────────────────────── */}
+        <div className="shrink-0 relative overflow-hidden">
+          {/* Gradient accent strip at top */}
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-primary" />
+
+          <div className="px-6 pt-5 pb-0 bg-gradient-surface border-b border-border/40">
+            {/* Title row */}
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-primary shadow-glow/30 shadow-md mt-0.5">
+                  <FileText className="h-[18px] w-[18px] text-white" />
+                </div>
+                <div className="min-w-0 pt-0.5">
+                  <h2 className="font-bold text-[15px] text-foreground leading-tight truncate">
+                    {title}
+                  </h2>
+                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                      <Tag className="h-3 w-3 text-primary/60" />{displayOutputType}
+                    </span>
+                    <span className="w-px h-3 bg-border/60" />
+                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                      <User className="h-3 w-3 text-accent/70" />
+                      {persona.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                    </span>
+                    {createdAt && (
+                      <>
+                        <span className="w-px h-3 bg-border/60" />
+                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-              <DialogTitle className="text-primary font-bold text-base leading-tight truncate">
-                {title}
-              </DialogTitle>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="shrink-0 mt-1 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border/50 transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <Badge className={`shrink-0 ml-2 text-[10px] ${statusCfg.color}`}>
-              <StatusIcon className="h-3 w-3 mr-1" />{statusCfg.label}
-            </Badge>
+
+            {/* Pipeline stepper */}
+            <div className="flex items-center pb-4">
+              {STAGES.map((stage, i) => {
+                const Icon = stage.icon;
+                const isActive = i === currentStageIndex;
+                const isDone = i < currentStageIndex;
+                const isLast = i === STAGES.length - 1;
+                return (
+                  <div key={stage.key} className="flex items-center flex-1 last:flex-none">
+                    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-300 ${
+                      isActive
+                        ? 'bg-primary text-white shadow-md shadow-primary/30'
+                        : isDone
+                          ? 'bg-success/15 text-success'
+                          : 'text-muted-foreground/35'
+                    }`}>
+                      <Icon className="h-3 w-3 shrink-0" />
+                      <span className="text-[11px] font-semibold whitespace-nowrap tracking-wide">
+                        {stage.label}
+                      </span>
+                    </div>
+                    {!isLast && (
+                      <div className={`flex-1 h-px mx-2 transition-all duration-500 ${
+                        i < currentStageIndex ? 'bg-success/50' : 'bg-border/40'
+                      }`} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <DialogDescription asChild>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline" className="text-[10px]">
-                {(() => {
-                  const base = outputType.startsWith('Article') ? 'Article' : outputType.replace(/-/g, ' ');
-                  return base.charAt(0).toUpperCase() + base.slice(1);
-                })()}
-              </Badge>
-              <Badge variant="secondary" className="text-[10px] capitalize">
-                {persona.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
-              </Badge>
-              {createdAt && (
-                <span className="text-[10px] text-muted-foreground ml-auto">
-                  {new Date(createdAt).toLocaleDateString()}
-                </span>
+        </div>
+
+        {/* ── Middle: fixed layout, only content area scrolls ── */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Stage hint bar — shrink-0 */}
+          <div className={`shrink-0 mx-4 mt-3 mb-0 border-l-[3px] ${hint.border} bg-muted/25 rounded-r-lg px-3 py-2`}>
+            <p className={`text-[11px] font-medium leading-relaxed ${hint.accent}`}>
+              <span className={`inline-block h-1.5 w-1.5 rounded-full ${hint.dot} mr-2 mb-[1px]`} />
+              {hint.text}
+            </p>
+          </div>
+
+          {/* Content toolbar — shrink-0 */}
+          <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-1.5">
+            <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.1em]">
+              Content
+            </span>
+            <div className="flex items-center gap-1.5">
+              {contentStatus === 'draft' && (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => downloadContent('txt')}
+                    className="h-7 text-[11px] px-2.5 gap-1 border-primary/20 text-primary/80 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 font-medium transition-all">
+                    <Download className="h-3 w-3" />.txt
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => downloadContent('md')}
+                    className="h-7 text-[11px] px-2.5 gap-1 border-accent/30 text-accent/80 bg-accent/5 hover:bg-accent/10 hover:border-accent/50 font-medium transition-all">
+                    <Download className="h-3 w-3" />.md
+                  </Button>
+                </>
+              )}
+              {contentStatus === 'review' && (
+                <Button size="sm" variant="outline" onClick={saveContent}
+                  disabled={isSaving || !isDirty}
+                  className={`h-7 text-[11px] px-3 gap-1.5 font-semibold transition-all ${
+                    isDirty
+                      ? 'border-primary/60 text-primary bg-primary/8 hover:bg-primary/15 hover:border-primary/80 shadow-sm'
+                      : 'border-border/40 text-muted-foreground/50 bg-transparent'
+                  }`}>
+                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  {isSaving ? 'Saving…' : isDirty ? 'Save' : 'Saved'}
+                </Button>
               )}
             </div>
-          </DialogDescription>
-        </DialogHeader>
+          </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 uppercase tracking-wide">
-                <Eye className="h-3.5 w-3.5 text-primary" />
-                Content
-                {contentStatus === 'review' && (
-                  <span className="ml-1 text-[10px] text-muted-foreground font-normal normal-case border border-border px-1.5 py-0.5 rounded">editable</span>
-                )}
-              </label>
-              <div className="flex items-center gap-2">
-                {contentStatus === 'draft' && (
-                  <>
-                    <Button size="sm" variant="outline" onClick={() => downloadContent('txt')}
-                      className="h-7 text-[11px] px-2 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium transition-all">
-                      <Download className="h-3 w-3 mr-1" />.txt
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => downloadContent('md')}
-                      className="h-7 text-[11px] px-2 bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50 font-medium transition-all">
-                      <Download className="h-3 w-3 mr-1" />.md
-                    </Button>
-                  </>
-                )}
-                {contentStatus === 'review' && (
-                  <Button size="sm" variant="outline" onClick={saveContent} disabled={isSaving}
-                    className="h-7 text-[11px] px-2.5 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium transition-all">
-                    {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
-                    Save
-                  </Button>
-                )}
-              </div>
-            </div>
-
+          {/* THE ONLY SCROLLABLE AREA */}
+          <div className="flex-1 min-h-0 px-4">
             {contentStatus === 'review' ? (
               <Textarea
                 value={editableContent}
-                onChange={(e) => setEditableContent(e.target.value)}
-                className="min-h-[52vh] font-mono text-xs bg-background border-border resize-none"
-                placeholder="Edit your content here..."
+                onChange={(e) => { setEditableContent(e.target.value); setIsDirty(true); }}
+                className="h-full w-full resize-none font-mono text-[13px] leading-relaxed bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/60 transition-colors placeholder:text-muted-foreground/40 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent"
+                placeholder="Edit your content here…"
+                disabled={!!isProcessingAction}
               />
             ) : (
-              <div
-                className="min-h-[52vh] font-mono text-xs bg-background border border-border rounded-lg p-4 overflow-auto whitespace-pre-wrap shadow-inner"
-                tabIndex={0}
-              >
-                {editableContent || "No content available..."}
+              <div className={`h-full overflow-y-auto text-[13px] leading-relaxed bg-background border border-border/50 rounded-md p-4 whitespace-pre-wrap shadow-inner [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent ${
+                contentStatus === 'published' ? 'opacity-70' : ''
+              }`}>
+                {editableContent || <span className="text-muted-foreground/50 italic">No content available.</span>}
               </div>
             )}
           </div>
 
-          {/* Quick Actions — review only */}
+          {/* Word count row — shrink-0 */}
+          <div className="shrink-0 flex items-center justify-between px-4 pt-1.5 pb-1">
+            <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+              {wordCount.toLocaleString()} words
+            </span>
+            {contentStatus === 'review' && isDirty && (
+              <span className="flex items-center gap-1.5 text-[11px] text-warning font-semibold animate-pulse-slow">
+                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                Unsaved changes
+              </span>
+            )}
+            {contentStatus === 'published' && (
+              <span className="flex items-center gap-1 text-[11px] text-blue-500 font-medium">
+                <Share2 className="h-3 w-3" />Published
+              </span>
+            )}
+          </div>
+
+          {/* AI Refinement panel — shrink-0, review only */}
           {contentStatus === 'review' && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quick Actions</label>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap gap-1.5">
-                  <Button size="sm" variant="outline" onClick={() => handleQuickAction('poeticize')}
-                    disabled={isProcessingAction === 'poeticize'}
-                    className="h-8 text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium shadow-sm transition-all">
-                    {isProcessingAction === 'poeticize' ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5" />}
-                    Poeticize
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleQuickAction('rewrite')}
-                    disabled={isProcessingAction === 'rewrite'}
-                    className="h-8 text-xs bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50 font-medium shadow-sm transition-all">
-                    {isProcessingAction === 'rewrite' ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5 mr-1.5" />}
-                    Rewrite
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleQuickAction('shorten')}
-                    disabled={isProcessingAction === 'shorten'}
-                    className="h-8 text-xs bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50 font-medium shadow-sm transition-all">
-                    {isProcessingAction === 'shorten' ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5 mr-1.5" />}
-                    Shorten
-                  </Button>
+            <div className="shrink-0 mx-4 mb-3 rounded-xl border border-primary/15 bg-gradient-to-b from-primary/5 to-accent/5 overflow-hidden">
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-primary/10 bg-primary/5">
+                <span className="text-[10px] font-bold text-primary/70 uppercase tracking-[0.12em] flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  Refine with AI
+                </span>
+                {isProcessingAction && (
+                  <span className="text-[11px] text-primary/80 flex items-center gap-1.5 font-medium">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                    Applying {isProcessingAction}…
+                  </span>
+                )}
+              </div>
+              {/* Actions row */}
+              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+                <div className="flex gap-1.5">
+                  {[
+                    { action: 'poeticize', label: 'Poeticize', icon: Sparkles,  cls: 'text-primary border-primary/30 bg-primary/8 hover:bg-primary/18 hover:border-primary/60 hover:shadow-sm hover:shadow-primary/10' },
+                    { action: 'rewrite',   label: 'Rewrite',   icon: RotateCcw, cls: 'text-accent border-accent/30 bg-accent/8 hover:bg-accent/18 hover:border-accent/60 hover:shadow-sm hover:shadow-accent/10' },
+                    { action: 'shorten',   label: 'Shorten',   icon: Scissors,  cls: 'text-warning border-warning/30 bg-warning/8 hover:bg-warning/18 hover:border-warning/60 hover:shadow-sm hover:shadow-warning/10' },
+                  ].map(({ action, label, icon: Icon, cls }) => (
+                    <Button key={action} size="sm" variant="outline"
+                      onClick={() => handleQuickAction(action)}
+                      disabled={!!isProcessingAction}
+                      className={`h-8 text-xs px-3 gap-1.5 font-semibold border transition-all disabled:opacity-35 ${cls}`}>
+                      {isProcessingAction === action
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Icon className="h-3.5 w-3.5" />}
+                      {label}
+                    </Button>
+                  ))}
                 </div>
-                <Button size="sm" variant="outline" onClick={() => updateStatus('final')}
-                  className="h-8 text-xs bg-success/10 border-success/30 text-success hover:bg-success/20 hover:border-success/50 font-medium shadow-sm transition-all">
-                  <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                <Button size="sm" onClick={() => updateStatus('final')}
+                  disabled={!!isProcessingAction}
+                  className="h-8 text-xs px-4 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
+                  <CheckCircle className="h-3.5 w-3.5" />
                   Confirm Edits
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Footer — hidden in review mode (actions are inline above) */}
+        {/* ── Footer — draft / final / published only ─────────── */}
         {contentStatus !== 'review' && (
-          <DialogFooter className="bg-gradient-surface border-t border-border/30 px-6 py-3 shrink-0">
-            <div className="flex flex-wrap items-center justify-between w-full gap-2">
-              {/* Left: final/published actions */}
-              <div className="flex flex-wrap gap-1.5">
+          <div className="shrink-0 border-t border-border/40 bg-gradient-surface px-4 py-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+
+              {/* Left: secondary actions */}
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {(contentStatus === 'final' || contentStatus === 'published') && (
                   <>
                     <Button variant="outline" size="sm" onClick={sendToSocialAlchemist}
-                      className="h-8 text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50 font-medium shadow-sm transition-all">
-                      <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+                      className="h-8 text-xs px-3 gap-1.5 font-medium border-primary/25 text-primary/80 bg-primary/5 hover:bg-primary/12 hover:border-primary/50 transition-all">
+                      <Wand2 className="h-3.5 w-3.5" />
                       Social Assets
                     </Button>
-                    {contentStatus === 'final' && (
-                      <Button variant="outline" size="sm" onClick={() => updateStatus('review')}
-                        className="h-8 text-xs bg-warning/10 border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50 font-medium shadow-sm transition-all">
-                        <ArrowRight className="h-3.5 w-3.5 mr-1.5 rotate-180" />
-                        Back to Review
-                      </Button>
-                    )}
                     <Button variant="outline" size="sm" onClick={exportToPDF} disabled={isExporting}
-                      className="h-8 text-xs bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50 font-medium shadow-sm transition-all">
-                      {isExporting ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 mr-1.5" />}
+                      className="h-8 text-xs px-3 gap-1.5 font-medium border-border/60 hover:bg-muted/50 transition-all">
+                      {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                       Export PDF
                     </Button>
                     {contentStatus === 'final' && (
-                      <Button variant="outline" size="sm" onClick={sendToCMS} disabled={isSendingToCMS}
-                        className="h-8 text-xs bg-primary/20 border-primary/50 text-primary hover:bg-primary/30 hover:border-primary/70 font-medium shadow-sm transition-all">
-                        {isSendingToCMS ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
-                        Send to CMS
+                      <Button variant="outline" size="sm" onClick={() => updateStatus('review')}
+                        className="h-8 text-xs px-3 gap-1.5 font-medium border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all">
+                        <ArrowLeft className="h-3.5 w-3.5" />
+                        Back to Review
                       </Button>
                     )}
                   </>
                 )}
-              </div>
-
-              {/* Right: draft navigation */}
-              <div className="flex items-center gap-1.5">
                 {contentStatus === 'draft' && onNewGeneration && (
                   <Button variant="outline" size="sm" onClick={onNewGeneration}
-                    disabled={!!isProcessingAction}
-                    className="h-8 text-xs bg-muted/20 border-muted/50 hover:bg-muted/30 font-medium transition-all">
-                    <ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+                    className="h-8 text-xs px-3 gap-1.5 font-medium border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all">
+                    <ArrowLeft className="h-3.5 w-3.5" />
                     New Generation
                   </Button>
                 )}
+              </div>
+
+              {/* Right: primary action */}
+              <div className="flex items-center gap-2">
                 {contentStatus === 'draft' && (
                   <Button size="sm" onClick={() => updateStatus('review')}
-                    disabled={!!isProcessingAction}
-                    className="h-8 text-xs bg-gradient-primary hover:shadow-glow font-medium transition-all px-4">
+                    className="h-8 text-xs px-5 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
                     Move to Review
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+                {contentStatus === 'final' && (
+                  <Button size="sm" onClick={sendToCMS} disabled={isSendingToCMS}
+                    className="h-8 text-xs px-5 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
+                    {isSendingToCMS ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    {isSendingToCMS ? 'Publishing…' : 'Publish'}
                   </Button>
                 )}
               </div>
             </div>
-          </DialogFooter>
+          </div>
         )}
       </DialogContent>
     </Dialog>
