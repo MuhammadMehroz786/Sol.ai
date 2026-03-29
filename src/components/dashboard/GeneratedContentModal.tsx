@@ -33,6 +33,24 @@ const STAGE_HINT: Record<ContentStatus, { text: string; accent: string; border: 
   published: { text: "This content has been published to your CMS.", accent: "text-blue-600/80", border: "border-l-blue-400/60", dot: "bg-blue-400" },
 };
 
+export interface Guardrails {
+  cultural_fluency: boolean;
+  verification_required: boolean;
+  reading_level: string;
+  empowerment_intensity: string;
+  technical_depth: string;
+  storytelling_bias: string;
+}
+
+export const DEFAULT_GUARDRAILS: Guardrails = {
+  cultural_fluency: true,
+  verification_required: true,
+  reading_level: "9-10",
+  empowerment_intensity: "medium",
+  technical_depth: "medium",
+  storytelling_bias: "medium",
+};
+
 export interface GeneratedContentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,10 +58,12 @@ export interface GeneratedContentModalProps {
   title: string;
   initialContent: string;
   persona: string;
+  voiceId: string;
   outputType: string;
   initialStatus: ContentStatus;
   topicContext?: string;
   createdAt?: string;
+  guardrails?: Guardrails;
   onNewGeneration?: () => void;
   onRefresh?: () => void;
 }
@@ -55,10 +75,12 @@ export const GeneratedContentModal = ({
   title,
   initialContent,
   persona,
+  voiceId,
   outputType,
   initialStatus,
   topicContext,
   createdAt,
+  guardrails,
   onNewGeneration,
   onRefresh,
 }: GeneratedContentModalProps) => {
@@ -146,16 +168,19 @@ export const GeneratedContentModal = ({
     if (!editableContent) return;
     setIsProcessingAction(action);
     try {
-      const baseOutputType = outputType.startsWith('Article') ? 'Article' : outputType;
+      const baseOutputType = outputType.startsWith('Article') ? 'article' : outputType.toLowerCase();
+      const topic = topicContext || title;
       const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          voice_name: persona,
-          signal: { headline: topicContext || title, summary: topicContext || title },
+          topic,
+          signal: { headline: topic, summary: topic },
+          voice_id: voiceId,
           output_type: baseOutputType,
           content: editableContent,
-          quickAction: action,
+          guardrails: guardrails ?? DEFAULT_GUARDRAILS,
+          modifiers: [action],
         }),
       });
       if (response.ok) {

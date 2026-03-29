@@ -281,27 +281,8 @@ const Dashboard = () => {
           FLOATING WINDOW — CONTENT GENERATOR
       ══════════════════════════════════════════ */}
       <Dialog open={genOpen} onOpenChange={setGenOpen}>
-        <DialogContent className="max-w-2xl h-[90vh] overflow-hidden flex flex-col bg-white/95 backdrop-blur-2xl border-border/80 shadow-elegant rounded-3xl p-0 gap-0">
-          {/* Gradient header */}
-          <div className="relative overflow-hidden rounded-t-3xl bg-gradient-primary px-6 py-5 flex-shrink-0">
-            <div className="absolute inset-0 opacity-20" style={{backgroundImage:"radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.4) 0%, transparent 60%)"}} />
-            <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="relative flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 border border-white/30 shadow-inner">
-                <Sparkles className="h-5 w-5 text-white drop-shadow" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black text-white tracking-tight">Content Generator</h2>
-                <p className="text-white/70 text-[12px] font-medium">AI-powered content from your signals</p>
-              </div>
-            </div>
-            {/* Corner dot */}
-            <div className="absolute top-3 right-4 h-2 w-2 rounded-full bg-white/50 animate-pulse" />
-          </div>
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent">
-            <ContentGenerator />
-          </div>
+        <DialogContent className="sm:max-w-lg bg-card border border-primary/25 shadow-2xl shadow-primary/15 ring-1 ring-primary/8 flex flex-col max-h-[90vh] p-0 gap-0 rounded-2xl overflow-hidden [&>button:last-child]:hidden">
+          <ContentGenerator onClose={() => setGenOpen(false)} />
         </DialogContent>
       </Dialog>
 

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
-import { GeneratedContentModal } from "@/components/dashboard/GeneratedContentModal";
+import { GeneratedContentModal, DEFAULT_GUARDRAILS, type Guardrails } from "@/components/dashboard/GeneratedContentModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -84,6 +84,8 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedOutput, setSelectedOutput] = useState<ContentOutput | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalVoiceId, setModalVoiceId] = useState("");
+  const [modalGuardrails, setModalGuardrails] = useState<Guardrails>(DEFAULT_GUARDRAILS);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -93,12 +95,16 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
     const handleRefresh = () => { fetchOutputs(); };
 
     const handleOpenDraftModal = (e: Event) => {
-      const contentId = (e as CustomEvent<{ id: string }>).detail?.id;
+      const detail = (e as CustomEvent<{ id: string; voiceId?: string; guardrails?: Guardrails }>).detail;
+      const contentId = detail?.id;
       if (!contentId) return;
+
+      const voiceId = detail?.voiceId ?? "";
+      const guardrails = detail?.guardrails ?? DEFAULT_GUARDRAILS;
 
       const output = outputs.find(o => o.id === contentId);
       if (output) {
-        openContentModal(output);
+        openContentModal(output, voiceId, guardrails);
       } else if (user) {
         supabase
           .from('content_outputs')
@@ -107,7 +113,7 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
           .single()
           .then(({ data, error }) => {
             if (!error && data) {
-              openContentModal(data as ContentOutput);
+              openContentModal(data as ContentOutput, voiceId, guardrails);
               fetchOutputs();
             }
           });
@@ -223,8 +229,10 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
     }
   };
 
-  const openContentModal = (output: ContentOutput) => {
+  const openContentModal = (output: ContentOutput, voiceId = "", guardrails: Guardrails = DEFAULT_GUARDRAILS) => {
     setSelectedOutput(output);
+    setModalVoiceId(voiceId || output.persona);
+    setModalGuardrails(guardrails);
     setModalOpen(true);
   };
 
@@ -442,10 +450,12 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
           title={selectedOutput.title}
           initialContent={selectedOutput.content}
           persona={selectedOutput.persona}
+          voiceId={modalVoiceId}
           outputType={selectedOutput.output_type}
           initialStatus={selectedOutput.status}
           topicContext={selectedOutput.topic_context}
           createdAt={selectedOutput.created_at}
+          guardrails={modalGuardrails}
           onRefresh={fetchOutputs}
         />
       )}
