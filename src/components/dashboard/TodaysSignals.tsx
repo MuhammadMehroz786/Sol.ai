@@ -697,20 +697,20 @@ export const TodaysSignals = () => {
         try {
           const { data: voiceProfileData, error: dbError } = await supabase
             .from('voice_profiles')
-            .insert({
-              profile_name: voiceProfileName.trim(),
-              style_json: result.style_json || { description: result.description || 'Custom voice profile' },
-              samples: result.samples || [],
-              user_id: user.user.id,
-            })
             .select('id')
+            .eq('user_id', user.user.id)
+            .eq('name', voiceProfileName.trim())
+            .order('created_at', { ascending: false })
+            .limit(1)
             .single();
 
-          if (!dbError) {
+          if (dbError) {
+            console.error('[voice_profiles fetch]', dbError);
+          } else {
             voiceProfileId = voiceProfileData?.id;
           }
-        } catch {
-          // non-fatal db error
+        } catch (e) {
+          console.error('[voice_profiles fetch] exception', e);
         }
 
         const newVoice: CustomVoice = {
@@ -757,6 +757,7 @@ export const TodaysSignals = () => {
     try {
       // Get voice details
       const voiceDetails = voices.find(v => v.value === selectedVoice);
+      const resolvedVoiceId = voiceDetails?.databaseId ?? selectedVoice;
 
       const baseOutputType = selectedOutputType.startsWith('Article-') ? 'article' : selectedOutputType.toLowerCase();
       const contentSize = selectedOutputType.startsWith('Article-') ? selectedOutputType.replace('Article-', '').toLowerCase() : selectedArticleLength.toLowerCase() || undefined;
@@ -767,7 +768,7 @@ export const TodaysSignals = () => {
           headline: selectedSignal.headline,
           summary: selectedSignal.summary
         },
-        voice_id: selectedVoice,
+        voice_id: resolvedVoiceId,
         output_type: baseOutputType,
         guardrails,
       };
@@ -824,7 +825,7 @@ export const TodaysSignals = () => {
           title: contentTitle,
           content: formattedContent,
           persona: voiceName,
-          voiceId: selectedVoice,
+          voiceId: resolvedVoiceId,
           outputType: selectedOutputType,
           topicContext: selectedSignal.headline,
           createdAt: new Date().toISOString(),
@@ -843,102 +844,40 @@ export const TodaysSignals = () => {
   };
 
 
-  const formatResponseData = (response: any) => {
+  const formatResponseData = (response: any): string => {
     if (!response) return "";
+    const data = Array.isArray(response) && response.length > 0 ? response[0] : response;
 
-    let data = Array.isArray(response) && response.length > 0 ? response[0] : response;
+    if (typeof data === "string") return data;
+    if (data.text_output) return data.text_output;
+    if (data.content_markdown) return data.content_markdown;
 
-    // If we have text_output, format it beautifully
-    if (data.text_output) {
-      return formatTextOutput(data.text_output, data);
+    const body = data.content || data.body || "";
+    const { headline, tldr, caption } = data;
+
+    if (!headline && !body && !tldr && !caption) {
+      return JSON.stringify(data, null, 2);
     }
 
-    // Fallback to old format handling with improved formatting
-    let formatted = "";
+    let out = "";
 
-    // Header with signal context
-    formatted += `# 🎯 **Generated Content**\n\n`;
-    formatted += `> *Created by ${data.persona || 'AI Assistant'} • ${data.output_type || 'Content'} • ${new Date().toLocaleDateString()}*\n\n`;
-    formatted += `---\n\n`;
-
-    // Title/Headline
-    if (data.headline) {
-      formatted += `## 📰 **Headline**\n\n**${data.headline}**\n\n---\n\n`;
+    if (headline) {
+      out += `# ${headline}\n\n`;
     }
 
-    // Main Content
-    if (data.content_markdown) {
-      formatted += `## 📝 **Main Content**\n\n${data.content_markdown}\n\n---\n\n`;
+    if (tldr) {
+      out += `## In Brief\n\n${tldr}\n\n`;
     }
 
-    // TLDR
-    if (data.tldr) {
-      formatted += `## ⚡ **TL;DR**\n\n**Key Takeaway:** ${data.tldr}\n\n---\n\n`;
+    if (body) {
+      out += `## Full Story\n\n${body}\n\n`;
     }
 
-    // Caption
-    if (data.caption) {
-      formatted += `## 💬 **Social Caption**\n\n${data.caption}\n\n---\n\n`;
+    if (caption) {
+      out += `## Caption\n\n${caption}`;
     }
 
-    // If no main content sections found, show all available fields
-    if (!data.headline && !data.content_markdown && !data.tldr && !data.caption && !data.text_output) {
-      formatted += `## 📋 **Full Response**\n\n`;
-      Object.entries(data).forEach(([key, value]) => {
-        const formattedKey = key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());
-        if (typeof value === 'string') {
-          formatted += `**${formattedKey}:** ${value}\n\n`;
-        } else {
-          formatted += `**${formattedKey}:**\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\`\n\n`;
-        }
-      });
-    } else if (!data.text_output) {
-      // Metadata footer
-      formatted += `## 📊 **Generation Details**\n\n`;
-      if (data.persona) formatted += `👤 **Persona:** ${data.persona}\n\n`;
-      if (data.output_type) formatted += `📄 **Output Type:** ${data.output_type}\n\n`;
-      if (data.slug) formatted += `🔗 **Slug:** ${data.slug}\n\n`;
-      if (data.created_at) formatted += `📅 **Created:** ${new Date(data.created_at).toLocaleString()}\n\n`;
-    }
-
-    return formatted;
-  };
-
-  const formatTextOutput = (textOutput: string, metadata: any) => {
-    // Enhanced formatting for better readability
-    let formatted = textOutput;
-
-    // Add header if not present
-    if (!formatted.startsWith('#')) {
-      formatted = `# 🎯 **Generated Content**\n\n${formatted}`;
-    }
-
-    // Add metadata footer if available
-    if (metadata) {
-      formatted += `\n\n---\n\n`;
-      formatted += `### 📊 **Generation Details**\n\n`;
-      if (metadata.persona) formatted += `👤 **Persona:** ${metadata.persona}  \n`;
-      if (metadata.output_type) formatted += `📄 **Output Type:** ${metadata.output_type}  \n`;
-      if (metadata.created_at) formatted += `📅 **Created:** ${new Date(metadata.created_at).toLocaleString()}  \n`;
-      formatted += `🤖 **Generated with SOLE AI**`;
-    }
-
-    // Enhance formatting with better structure
-    formatted = formatted
-      // Make headers more prominent
-      .replace(/^## /gm, '## 🔹 **')
-      .replace(/^### /gm, '### 💫 **')
-      // Close bold headers
-      .replace(/^(#{2,3} [🔹💫] \*\*[^*]+)\*\*/gm, '$1**')
-      // Enhance bullet points
-      .replace(/^- /gm, '✅ ')
-      .replace(/^\* /gm, '⭐ ')
-      // Add spacing around sections
-      .replace(/^(#{1,3})/gm, '\n$1')
-      // Clean up extra newlines
-      .replace(/\n{3,}/g, '\n\n');
-
-    return formatted;
+    return out.trim();
   };
 
 

@@ -465,13 +465,11 @@ const SocialAlchemist = () => {
       let databaseId: string | undefined;
       const { data: dbRecord, error: dbError } = await supabase
         .from('voice_profiles')
-        .insert({
-          profile_name: voiceProfileName.trim(),
-          user_id: userData.user.id,
-          style_json: { description: result.description || 'Custom voice profile' },
-          samples: uploadedFiles.map(f => f.name),
-        })
         .select('id')
+        .eq('user_id', userData.user.id)
+        .eq('name', voiceProfileName.trim())
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (dbError) {
@@ -535,16 +533,16 @@ const SocialAlchemist = () => {
     setResults(null);
 
     try {
-      // Get voice profile name from selected voice
+      // Get voice profile — resolve databaseId for RAG support
       const selectedVoiceProfile = voices.find(v => v.value === selectedVoice);
-      const voiceProfileName = selectedVoiceProfile?.label || selectedVoice;
+      const resolvedVoiceId = selectedVoiceProfile?.databaseId ?? selectedVoice;
 
       // Prepare API request payload according to schema
       const requestBody: SocialAlchemistRequest = {
         idempotencyKey: key,
         userId: userData.user.id,
         payload: {
-          voiceProfile: voiceProfileName,
+          voiceProfile: resolvedVoiceId,
           sourceType: mapSourceTypeToApi(sourceType),
           source: sourceContent,
           targetPlatforms: selectedPlatforms.map(mapPlatformToApi)

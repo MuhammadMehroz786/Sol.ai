@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
 import { useToast } from "@/hooks/use-toast";
+import { useVoices } from "@/contexts/VoicesContext";
 import {
   Edit3, AlertCircle, CheckCircle, Share2,
   Save, Send, FileDown, Sparkles, RotateCcw, Scissors,
@@ -91,8 +93,10 @@ export const GeneratedContentModal = ({
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingToCMS, setIsSendingToCMS] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState("");
+  const [isEditingReview, setIsEditingReview] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { voices } = useVoices();
 
   useEffect(() => {
     if (open) {
@@ -114,19 +118,37 @@ export const GeneratedContentModal = ({
   }, [outputType]);
 
   const formatResponseData = (response: any): string => {
-    if (!response) return "";
+    if (!response) return editableContent;
     const data = Array.isArray(response) && response.length > 0 ? response[0] : response;
+
+    if (typeof data === "string") return data;
     if (data.text_output) return data.text_output;
     if (data.content_markdown) return data.content_markdown;
-    if (data.headline || data.body || data.tldr || data.caption) {
-      let out = "";
-      if (data.headline) out += `**${data.headline}**\n\n`;
-      if (data.tldr) out += `${data.tldr}\n\n`;
-      if (data.body) out += `${data.body}\n\n`;
-      if (data.caption) out += `---\n${data.caption}`;
-      return out.trim();
+
+    const body = data.content || data.body || "";
+    const { headline, tldr, caption } = data;
+
+    if (!headline && !body && !tldr && !caption) return editableContent;
+
+    let out = "";
+
+    if (headline) {
+      out += `# ${headline}\n\n`;
     }
-    return editableContent;
+
+    if (tldr) {
+      out += `## In Brief\n\n${tldr}\n\n`;
+    }
+
+    if (body) {
+      out += `## Full Story\n\n${body}\n\n`;
+    }
+
+    if (caption) {
+      out += `## Caption\n\n${caption}`;
+    }
+
+    return out.trim();
   };
 
   const updateStatus = async (newStatus: ContentStatus) => {
@@ -144,6 +166,7 @@ export const GeneratedContentModal = ({
       onRefresh?.();
     }
     setContentStatus(newStatus);
+    setIsEditingReview(false);
   };
 
   const saveContent = async () => {
@@ -168,16 +191,23 @@ export const GeneratedContentModal = ({
     if (!editableContent) return;
     setIsProcessingAction(action);
     try {
-      const baseOutputType = outputType.startsWith('Article') ? 'article' : outputType.toLowerCase();
+      const isArticle = outputType.toLowerCase().startsWith('article');
+      const baseOutputType = isArticle ? 'article' : outputType.toLowerCase();
+      const contentSize = isArticle ? outputType.replace(/^article-?/i, '').toLowerCase() || undefined : undefined;
       const topic = topicContext || title;
+      const resolvedVoiceId =
+        voices.find(v => v.value === voiceId)?.databaseId ??
+        voices.find(v => v.label === voiceId)?.databaseId ??
+        voiceId;
       const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic,
           signal: { headline: topic, summary: topic },
-          voice_id: voiceId,
+          voice_id: resolvedVoiceId,
           output_type: baseOutputType,
+          ...(contentSize && { content_size: contentSize }),
           content: editableContent,
           guardrails: guardrails ?? DEFAULT_GUARDRAILS,
           modifiers: [action],
@@ -252,40 +282,89 @@ export const GeneratedContentModal = ({
   const currentStageIndex = STAGE_INDEX[contentStatus];
   const hint = STAGE_HINT[contentStatus];
 
+  const mdComponents: React.ComponentProps<typeof ReactMarkdown>['components'] = {
+    h1: ({ children }) => (
+      <div className="mb-8 pb-5 border-b border-border/40">
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="w-5 h-[2px] rounded-full bg-primary" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary/50">Editorial</span>
+        </div>
+        <h1 className="text-[21px] font-bold tracking-tight text-foreground leading-[1.25]">{children}</h1>
+      </div>
+    ),
+    h2: ({ children }) => (
+      <div className="flex items-center gap-2.5 mt-7 mb-3.5 -mx-8 px-8 py-2 bg-muted/35 border-y border-border/25">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-foreground/50">{children}</span>
+      </div>
+    ),
+    h3: ({ children }) => (
+      <h3 className="text-[11px] font-semibold text-primary/60 mt-4 mb-1.5 uppercase tracking-[0.14em]">{children}</h3>
+    ),
+    p: ({ children }) => (
+      <p className="text-[13.5px] leading-[1.9] text-foreground/80 mb-4 last:mb-0">{children}</p>
+    ),
+    blockquote: ({ children }) => (
+      <div className="my-4 relative rounded-lg overflow-hidden border border-primary/20">
+        <div className="absolute left-0 inset-y-0 w-[3px] bg-gradient-to-b from-primary to-accent" />
+        <div className="px-5 py-3 bg-primary/5">
+          <div className="text-[13px] leading-[1.75] text-foreground/80 [&_p]:mb-0">{children}</div>
+        </div>
+      </div>
+    ),
+    hr: () => (
+      <div className="my-5 flex items-center gap-3 opacity-25">
+        <div className="flex-1 h-px bg-foreground/40" />
+        <div className="flex gap-1.5">
+          <div className="w-1 h-1 rounded-full bg-foreground" />
+          <div className="w-1 h-1 rounded-full bg-foreground/50" />
+          <div className="w-1 h-1 rounded-full bg-foreground/20" />
+        </div>
+        <div className="flex-1 h-px bg-foreground/40" />
+      </div>
+    ),
+    strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+    em: ({ children }) => <em className="not-italic text-[12.5px] text-muted-foreground/70">{children}</em>,
+    ul: ({ children }) => <ul className="my-3.5 space-y-2">{children}</ul>,
+    ol: ({ children }) => <ol className="my-3.5 space-y-2 list-decimal pl-5">{children}</ol>,
+    li: ({ children }) => (
+      <li className="text-[13.5px] leading-[1.75] text-foreground/80 flex gap-2.5 items-start">
+        <span className="mt-[0.6em] w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+        <span>{children}</span>
+      </li>
+    ),
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* h-[92vh] + flex col — nothing scrolls except the content area */}
-      <DialogContent className="sm:max-w-4xl h-[92vh] flex flex-col overflow-hidden bg-card border border-border/60 shadow-floating p-0 z-[200] gap-0">
+      <DialogContent className="sm:max-w-[860px] h-[92vh] flex flex-col overflow-hidden bg-card border border-border/50 shadow-floating p-0 z-[200] gap-0 [&>button:last-child]:hidden">
 
-        {/* ── Header ─────────────────────────────────────────── */}
-        <div className="shrink-0 relative overflow-hidden">
-          {/* Gradient accent strip at top */}
-          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-primary" />
+        {/* ── Header ── */}
+        <div className="shrink-0 relative">
+          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-primary" />
+          <div className="px-6 pt-5 pb-4 bg-gradient-surface border-b border-border/30">
 
-          <div className="px-6 pt-5 pb-0 bg-gradient-surface border-b border-border/40">
-            {/* Title row */}
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-primary shadow-glow/30 shadow-md mt-0.5">
-                  <FileText className="h-[18px] w-[18px] text-white" />
+            {/* Title + close */}
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-primary shadow-sm">
+                  <FileText className="h-4 w-4 text-white" />
                 </div>
-                <div className="min-w-0 pt-0.5">
-                  <h2 className="font-bold text-[15px] text-foreground leading-tight truncate">
-                    {title}
-                  </h2>
-                  <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-                      <Tag className="h-3 w-3 text-primary/60" />{displayOutputType}
+                <div className="min-w-0">
+                  <p className="font-semibold text-[14px] text-foreground leading-snug truncate">{title}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
+                      <Tag className="h-3 w-3 text-primary/50" />{displayOutputType}
                     </span>
-                    <span className="w-px h-3 bg-border/60" />
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
-                      <User className="h-3 w-3 text-accent/70" />
+                    <span className="w-px h-3 bg-border/50" />
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
+                      <User className="h-3 w-3 text-accent/60" />
                       {persona.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
                     </span>
                     {createdAt && (
                       <>
-                        <span className="w-px h-3 bg-border/60" />
-                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span className="w-px h-3 bg-border/50" />
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/70">
                           <Calendar className="h-3 w-3" />
                           {new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
@@ -296,14 +375,14 @@ export const GeneratedContentModal = ({
               </div>
               <button
                 onClick={() => onOpenChange(false)}
-                className="shrink-0 mt-1 rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border/50 transition-all"
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground/60 hover:text-foreground hover:bg-muted/60 transition-all"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Pipeline stepper */}
-            <div className="flex items-center pb-4">
+            <div className="flex items-center gap-0">
               {STAGES.map((stage, i) => {
                 const Icon = stage.icon;
                 const isActive = i === currentStageIndex;
@@ -311,21 +390,17 @@ export const GeneratedContentModal = ({
                 const isLast = i === STAGES.length - 1;
                 return (
                   <div key={stage.key} className="flex items-center flex-1 last:flex-none">
-                    <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-300 ${
-                      isActive
-                        ? 'bg-primary text-white shadow-md shadow-primary/30'
-                        : isDone
-                          ? 'bg-success/15 text-success'
-                          : 'text-muted-foreground/35'
+                    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all duration-300 ${
+                      isActive  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/25'
+                      : isDone  ? 'bg-success/12 text-success border border-success/25'
+                      :           'text-muted-foreground/40'
                     }`}>
                       <Icon className="h-3 w-3 shrink-0" />
-                      <span className="text-[11px] font-semibold whitespace-nowrap tracking-wide">
-                        {stage.label}
-                      </span>
+                      <span className="whitespace-nowrap">{stage.label}</span>
                     </div>
                     {!isLast && (
-                      <div className={`flex-1 h-px mx-2 transition-all duration-500 ${
-                        i < currentStageIndex ? 'bg-success/50' : 'bg-border/40'
+                      <div className={`flex-1 h-px mx-1.5 transition-all duration-500 ${
+                        i < currentStageIndex ? 'bg-success/40' : 'bg-border/30'
                       }`} />
                     )}
                   </div>
@@ -335,191 +410,187 @@ export const GeneratedContentModal = ({
           </div>
         </div>
 
-        {/* ── Middle: fixed layout, only content area scrolls ── */}
+        {/* ── Body ── */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* Stage hint bar — shrink-0 */}
-          <div className={`shrink-0 mx-4 mt-3 mb-0 border-l-[3px] ${hint.border} bg-muted/25 rounded-r-lg px-3 py-2`}>
-            <p className={`text-[11px] font-medium leading-relaxed ${hint.accent}`}>
-              <span className={`inline-block h-1.5 w-1.5 rounded-full ${hint.dot} mr-2 mb-[1px]`} />
-              {hint.text}
-            </p>
+          {/* Hint strip */}
+          <div className={`shrink-0 flex items-center gap-2 px-5 py-2 border-b border-border/20 bg-muted/15`}>
+            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${hint.dot}`} />
+            <p className={`text-[11px] font-medium ${hint.accent}`}>{hint.text}</p>
           </div>
 
-          {/* Content toolbar — shrink-0 */}
-          <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-1.5">
-            <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.1em]">
-              Content
-            </span>
+          {/* Toolbar */}
+          <div className="shrink-0 flex items-center justify-between px-5 py-2 border-b border-border/20">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50 mr-2">
+                {wordCount.toLocaleString()} words
+              </span>
+              {contentStatus === 'review' && isDirty && (
+                <span className="flex items-center gap-1 text-[10px] text-warning/80 font-medium">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                  Unsaved
+                </span>
+              )}
+              {contentStatus === 'published' && (
+                <span className="flex items-center gap-1 text-[10px] text-blue-500/80 font-medium">
+                  <Share2 className="h-3 w-3" />Published
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5">
               {contentStatus === 'draft' && (
                 <>
-                  <Button size="sm" variant="outline" onClick={() => downloadContent('txt')}
-                    className="h-7 text-[11px] px-2.5 gap-1 border-primary/20 text-primary/80 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 font-medium transition-all">
+                  <Button size="sm" variant="ghost" onClick={() => downloadContent('txt')}
+                    className="h-7 text-[11px] px-2.5 gap-1 text-muted-foreground hover:text-foreground">
                     <Download className="h-3 w-3" />.txt
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => downloadContent('md')}
-                    className="h-7 text-[11px] px-2.5 gap-1 border-accent/30 text-accent/80 bg-accent/5 hover:bg-accent/10 hover:border-accent/50 font-medium transition-all">
+                  <Button size="sm" variant="ghost" onClick={() => downloadContent('md')}
+                    className="h-7 text-[11px] px-2.5 gap-1 text-muted-foreground hover:text-foreground">
                     <Download className="h-3 w-3" />.md
                   </Button>
                 </>
               )}
               {contentStatus === 'review' && (
-                <Button size="sm" variant="outline" onClick={saveContent}
-                  disabled={isSaving || !isDirty}
-                  className={`h-7 text-[11px] px-3 gap-1.5 font-semibold transition-all ${
-                    isDirty
-                      ? 'border-primary/60 text-primary bg-primary/8 hover:bg-primary/15 hover:border-primary/80 shadow-sm'
-                      : 'border-border/40 text-muted-foreground/50 bg-transparent'
-                  }`}>
-                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  {isSaving ? 'Saving…' : isDirty ? 'Save' : 'Saved'}
-                </Button>
+                <>
+                  <Button size="sm" variant="ghost"
+                    onClick={() => setIsEditingReview(v => !v)}
+                    className="h-7 text-[11px] px-2.5 gap-1.5 text-muted-foreground hover:text-foreground">
+                    {isEditingReview
+                      ? <><FileText className="h-3 w-3" />Preview</>
+                      : <><Edit3 className="h-3 w-3" />Edit</>}
+                  </Button>
+                  {isEditingReview && (
+                    <Button size="sm" variant="outline" onClick={saveContent}
+                      disabled={isSaving || !isDirty}
+                      className={`h-7 text-[11px] px-3 gap-1 font-semibold transition-all ${
+                        isDirty
+                          ? 'border-primary/50 text-primary bg-primary/8 hover:bg-primary/15'
+                          : 'border-border/30 text-muted-foreground/40 bg-transparent'
+                      }`}>
+                      {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                      {isSaving ? 'Saving…' : isDirty ? 'Save' : 'Saved'}
+                    </Button>
+                  )}
+                </>
+              )}
+              {(contentStatus === 'final' || contentStatus === 'published') && (
+                <>
+                  <Button size="sm" variant="ghost" onClick={exportToPDF} disabled={isExporting}
+                    className="h-7 text-[11px] px-2.5 gap-1 text-muted-foreground hover:text-foreground">
+                    {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+                    Export PDF
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={sendToSocialAlchemist}
+                    className="h-7 text-[11px] px-2.5 gap-1 text-muted-foreground hover:text-foreground">
+                    <Wand2 className="h-3 w-3" />Social Assets
+                  </Button>
+                </>
               )}
             </div>
           </div>
 
-          {/* THE ONLY SCROLLABLE AREA */}
-          <div className="flex-1 min-h-0 px-4">
-            {contentStatus === 'review' ? (
+          {/* Content area — only this scrolls */}
+          <div className="flex-1 min-h-0 overflow-hidden px-4 pb-1 pt-3">
+            {contentStatus === 'review' && isEditingReview ? (
               <Textarea
                 value={editableContent}
                 onChange={(e) => { setEditableContent(e.target.value); setIsDirty(true); }}
-                className="h-full w-full resize-none font-mono text-[13px] leading-relaxed bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/40 focus-visible:border-primary/60 transition-colors placeholder:text-muted-foreground/40 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent"
+                className="h-full w-full resize-none text-[13.5px] leading-[1.85] bg-background border-border/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-colors placeholder:text-muted-foreground/30 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent"
                 placeholder="Edit your content here…"
                 disabled={!!isProcessingAction}
               />
             ) : (
-              <div className={`h-full overflow-y-auto text-[13px] leading-relaxed bg-background border border-border/50 rounded-md p-4 whitespace-pre-wrap shadow-inner [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent ${
-                contentStatus === 'published' ? 'opacity-70' : ''
+              <div className={`h-full overflow-y-auto rounded-md bg-background border border-border/30 shadow-inner [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:transparent ${
+                contentStatus === 'published' ? 'opacity-60' : ''
               }`}>
-                {editableContent || <span className="text-muted-foreground/50 italic">No content available.</span>}
+                {editableContent ? (
+                  <div className="px-8 py-7">
+                    <ReactMarkdown components={mdComponents}>{editableContent}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground/40 italic text-sm">
+                    No content available.
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Word count row — shrink-0 */}
-          <div className="shrink-0 flex items-center justify-between px-4 pt-1.5 pb-1">
-            <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-              {wordCount.toLocaleString()} words
-            </span>
-            {contentStatus === 'review' && isDirty && (
-              <span className="flex items-center gap-1.5 text-[11px] text-warning font-semibold animate-pulse-slow">
-                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                Unsaved changes
-              </span>
-            )}
-            {contentStatus === 'published' && (
-              <span className="flex items-center gap-1 text-[11px] text-blue-500 font-medium">
-                <Share2 className="h-3 w-3" />Published
-              </span>
-            )}
-          </div>
-
-          {/* AI Refinement panel — shrink-0, review only */}
+          {/* AI Refinement — review only */}
           {contentStatus === 'review' && (
-            <div className="shrink-0 mx-4 mb-3 rounded-xl border border-primary/15 bg-gradient-to-b from-primary/5 to-accent/5 overflow-hidden">
-              {/* Panel header */}
-              <div className="flex items-center justify-between px-3 py-2 border-b border-primary/10 bg-primary/5">
-                <span className="text-[10px] font-bold text-primary/70 uppercase tracking-[0.12em] flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3 text-primary" />
-                  Refine with AI
+            <div className="shrink-0 mx-4 my-2 rounded-xl border border-border/30 bg-muted/20 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/20">
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60 flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-primary/60" />Refine with AI
                 </span>
                 {isProcessingAction && (
-                  <span className="text-[11px] text-primary/80 flex items-center gap-1.5 font-medium">
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                    Applying {isProcessingAction}…
+                  <span className="text-[11px] text-primary/70 flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />Applying {isProcessingAction}…
                   </span>
                 )}
               </div>
-              {/* Actions row */}
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5">
                 <div className="flex gap-1.5">
                   {[
-                    { action: 'poeticize', label: 'Poeticize', icon: Sparkles,  cls: 'text-primary border-primary/30 bg-primary/8 hover:bg-primary/18 hover:border-primary/60 hover:shadow-sm hover:shadow-primary/10' },
-                    { action: 'rewrite',   label: 'Rewrite',   icon: RotateCcw, cls: 'text-accent border-accent/30 bg-accent/8 hover:bg-accent/18 hover:border-accent/60 hover:shadow-sm hover:shadow-accent/10' },
-                    { action: 'shorten',   label: 'Shorten',   icon: Scissors,  cls: 'text-warning border-warning/30 bg-warning/8 hover:bg-warning/18 hover:border-warning/60 hover:shadow-sm hover:shadow-warning/10' },
+                    { action: 'poeticize', label: 'Poeticize', icon: Sparkles,  cls: 'text-primary/80 border-primary/25 hover:bg-primary/8 hover:border-primary/50' },
+                    { action: 'rewrite',   label: 'Rewrite',   icon: RotateCcw, cls: 'text-accent/80 border-accent/25 hover:bg-accent/8 hover:border-accent/50' },
+                    { action: 'shorten',   label: 'Shorten',   icon: Scissors,  cls: 'text-warning/80 border-warning/25 hover:bg-warning/8 hover:border-warning/50' },
                   ].map(({ action, label, icon: Icon, cls }) => (
                     <Button key={action} size="sm" variant="outline"
                       onClick={() => handleQuickAction(action)}
                       disabled={!!isProcessingAction}
-                      className={`h-8 text-xs px-3 gap-1.5 font-semibold border transition-all disabled:opacity-35 ${cls}`}>
-                      {isProcessingAction === action
-                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        : <Icon className="h-3.5 w-3.5" />}
+                      className={`h-7 text-[11px] px-3 gap-1.5 font-medium border transition-all disabled:opacity-30 ${cls}`}>
+                      {isProcessingAction === action ? <Loader2 className="h-3 w-3 animate-spin" /> : <Icon className="h-3 w-3" />}
                       {label}
                     </Button>
                   ))}
                 </div>
                 <Button size="sm" onClick={() => updateStatus('final')}
                   disabled={!!isProcessingAction}
-                  className="h-8 text-xs px-4 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  Confirm Edits
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  className="h-7 text-[11px] px-4 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow transition-all">
+                  <CheckCircle className="h-3 w-3" />Confirm
+                  <ArrowRight className="h-3 w-3" />
                 </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* ── Footer — draft / final / published only ─────────── */}
-        {contentStatus !== 'review' && (
-          <div className="shrink-0 border-t border-border/40 bg-gradient-surface px-4 py-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-
-              {/* Left: secondary actions */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {(contentStatus === 'final' || contentStatus === 'published') && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={sendToSocialAlchemist}
-                      className="h-8 text-xs px-3 gap-1.5 font-medium border-primary/25 text-primary/80 bg-primary/5 hover:bg-primary/12 hover:border-primary/50 transition-all">
-                      <Wand2 className="h-3.5 w-3.5" />
-                      Social Assets
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={exportToPDF} disabled={isExporting}
-                      className="h-8 text-xs px-3 gap-1.5 font-medium border-border/60 hover:bg-muted/50 transition-all">
-                      {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
-                      Export PDF
-                    </Button>
-                    {contentStatus === 'final' && (
-                      <Button variant="outline" size="sm" onClick={() => updateStatus('review')}
-                        className="h-8 text-xs px-3 gap-1.5 font-medium border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all">
-                        <ArrowLeft className="h-3.5 w-3.5" />
-                        Back to Review
-                      </Button>
-                    )}
-                  </>
-                )}
-                {contentStatus === 'draft' && onNewGeneration && (
-                  <Button variant="outline" size="sm" onClick={onNewGeneration}
-                    className="h-8 text-xs px-3 gap-1.5 font-medium border-border/60 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all">
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    New Generation
-                  </Button>
-                )}
-              </div>
-
-              {/* Right: primary action */}
-              <div className="flex items-center gap-2">
-                {contentStatus === 'draft' && (
-                  <Button size="sm" onClick={() => updateStatus('review')}
-                    className="h-8 text-xs px-5 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
-                    Move to Review
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {contentStatus === 'final' && (
-                  <Button size="sm" onClick={sendToCMS} disabled={isSendingToCMS}
-                    className="h-8 text-xs px-5 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
-                    {isSendingToCMS ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    {isSendingToCMS ? 'Publishing…' : 'Publish'}
-                  </Button>
-                )}
-              </div>
+        {/* ── Footer ── */}
+        <div className="shrink-0 border-t border-border/30 bg-gradient-surface px-5 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              {contentStatus === 'draft' && onNewGeneration && (
+                <Button variant="ghost" size="sm" onClick={onNewGeneration}
+                  className="h-8 text-[11px] px-3 gap-1.5 text-muted-foreground hover:text-foreground">
+                  <ArrowLeft className="h-3.5 w-3.5" />New Generation
+                </Button>
+              )}
+              {contentStatus === 'final' && (
+                <Button variant="ghost" size="sm" onClick={() => updateStatus('review')}
+                  className="h-8 text-[11px] px-3 gap-1.5 text-muted-foreground hover:text-foreground">
+                  <ArrowLeft className="h-3.5 w-3.5" />Back to Review
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {contentStatus === 'draft' && (
+                <Button size="sm" onClick={() => updateStatus('review')}
+                  className="h-8 text-[12px] px-5 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
+                  Move to Review <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              {contentStatus === 'final' && (
+                <Button size="sm" onClick={sendToCMS} disabled={isSendingToCMS}
+                  className="h-8 text-[12px] px-5 gap-1.5 font-bold bg-gradient-primary hover:shadow-glow hover:scale-[1.02] active:scale-[0.99] transition-all">
+                  {isSendingToCMS ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {isSendingToCMS ? 'Publishing…' : 'Publish'}
+                </Button>
+              )}
             </div>
           </div>
-        )}
+        </div>
+
       </DialogContent>
     </Dialog>
   );

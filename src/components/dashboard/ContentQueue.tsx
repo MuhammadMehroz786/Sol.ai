@@ -134,6 +134,16 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
     }
   }, [user]);
 
+  // Keep selectedOutput in sync with the latest fetched data so that
+  // reopening the modal after a status change shows the correct stage.
+  useEffect(() => {
+    if (!selectedOutput) return;
+    const fresh = outputs.find(o => o.id === selectedOutput.id);
+    if (fresh && fresh.status !== selectedOutput.status) {
+      setSelectedOutput(fresh);
+    }
+  }, [outputs]);
+
   // Open a specific draft when the queue mounts with a pendingOpenId
   useEffect(() => {
     if (!pendingOpenId || loading) return;
@@ -159,8 +169,9 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
 
   const fetchOutputs = async () => {
     if (!user) return;
-    
-    setLoading(true);
+    // Only show skeleton on initial load — background refreshes while the modal
+    // is open must NOT trigger setLoading(true) or the modal unmounts and resets.
+    if (!modalOpen) setLoading(true);
     const { data, error } = await supabase
       .from('content_outputs')
       .select('*')
