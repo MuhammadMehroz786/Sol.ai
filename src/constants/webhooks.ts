@@ -24,3 +24,6 @@ export const WEBHOOK_VOICE_PROFILE_CREATE = `${N8N_BASE}/66bc4c62-262d-4a3c-8d18
 
 // ─── Workflow 4: Social Alchemist ───
 export const WEBHOOK_SOCIAL_ALCHEMIST = `${N8N_BASE}/ab4dc726-d881-46c6-bcc3-3b1bffd2c7c4`;
+
+// ─── Workflow 5: Content Refinement (quick actions + custom modifiers) ───
+export const WEBHOOK_CONTENT_REFINEMENT = `https://soleai.app.n8n.cloud/webhook/9487a6d7-b909-4ace-87de-5609027ddf6e`;

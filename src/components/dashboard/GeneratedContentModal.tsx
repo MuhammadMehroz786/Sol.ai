@@ -5,14 +5,15 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_EDITORIAL_GPT } from "@/constants/webhooks";
+import { WEBHOOK_EDITORIAL_GPT, WEBHOOK_CONTENT_REFINEMENT } from "@/constants/webhooks";
 import { useToast } from "@/hooks/use-toast";
 import { useVoices } from "@/contexts/VoicesContext";
+import { Input } from "@/components/ui/input";
 import {
   Edit3, AlertCircle, CheckCircle, Share2,
   Save, Send, FileDown, Sparkles, RotateCcw, Scissors,
   Loader2, ArrowLeft, Download, Wand2, ArrowRight, X,
-  FileText, User, Tag, Calendar,
+  FileText, User, Tag, Calendar, SendHorizonal,
 } from "lucide-react";
 
 type ContentStatus = 'draft' | 'review' | 'final' | 'published';
@@ -94,6 +95,8 @@ export const GeneratedContentModal = ({
   const [isSendingToCMS, setIsSendingToCMS] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState("");
   const [isEditingReview, setIsEditingReview] = useState(false);
+  const [customModifier, setCustomModifier] = useState("");
+  const [contentHistory, setContentHistory] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { voices } = useVoices();
@@ -104,6 +107,7 @@ export const GeneratedContentModal = ({
       setContentStatus(initialStatus);
       setIsDirty(false);
       setIsProcessingAction("");
+      setContentHistory([]);
     }
   }, [open, contentId]);
 
@@ -187,40 +191,72 @@ export const GeneratedContentModal = ({
     setIsSaving(false);
   };
 
+  const parseContentFields = (md: string) => {
+    const get = (label: string) => {
+      const re = new RegExp(`##\\s+${label}\\s*\\n([\\s\\S]*?)(?=\\n##\\s|$)`, 'i');
+      return (md.match(re)?.[1] ?? "").trim();
+    };
+    const headlineMatch = md.match(/^#\s+(.+)/m);
+    return {
+      headline: (headlineMatch?.[1] ?? "").trim(),
+      tldr:     get('In Brief'),
+      content:  get('Full Story') || md.replace(/^#\s+.+\n?/m, '').trim(),
+      caption:  get('Caption'),
+    };
+  };
+
+  const sendToWebhook = async (label: string, quickAction: string | null, modifiers: string[]) => {
+    const { headline, content, tldr, caption } = parseContentFields(editableContent);
+    const response = await fetch(WEBHOOK_CONTENT_REFINEMENT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        headline,
+        content,
+        tldr,
+        caption,
+        quick_action: quickAction,
+        modifiers,
+      }),
+    });
+    if (response.ok) {
+      const result = await response.json();
+      setContentHistory(prev => [...prev, editableContent]);
+      setEditableContent(formatResponseData(result));
+      setIsDirty(true);
+      toast({ title: `${label} applied` });
+    } else {
+      toast({ title: "Action failed", description: `Server responded with ${response.status}.`, variant: "destructive" });
+    }
+  };
+
   const handleQuickAction = async (action: string) => {
     if (!editableContent) return;
     setIsProcessingAction(action);
     try {
-      const isArticle = outputType.toLowerCase().startsWith('article');
-      const baseOutputType = isArticle ? 'article' : outputType.toLowerCase();
-      const contentSize = isArticle ? outputType.replace(/^article-?/i, '').toLowerCase() || undefined : undefined;
-      const topic = topicContext || title;
-      const resolvedVoiceId =
-        voices.find(v => v.value === voiceId)?.databaseId ??
-        voices.find(v => v.label === voiceId)?.databaseId ??
-        voiceId;
-      const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          signal: { headline: topic, summary: topic },
-          voice_id: resolvedVoiceId,
-          output_type: baseOutputType,
-          ...(contentSize && { content_size: contentSize }),
-          content: editableContent,
-          guardrails: guardrails ?? DEFAULT_GUARDRAILS,
-          modifiers: [action],
-        }),
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setEditableContent(formatResponseData(result));
-        setIsDirty(true);
-        toast({ title: `${action.charAt(0).toUpperCase() + action.slice(1)} applied` });
-      } else {
-        toast({ title: "Action failed", description: `Server responded with ${response.status}.`, variant: "destructive" });
-      }
+      await sendToWebhook(action.charAt(0).toUpperCase() + action.slice(1), action, []);
+    } catch (err) {
+      toast({ title: "Action failed", description: err instanceof Error ? err.message : "Network error.", variant: "destructive" });
+    } finally {
+      setIsProcessingAction("");
+    }
+  };
+
+  const handleRevert = () => {
+    if (!contentHistory.length) return;
+    const prev = contentHistory[contentHistory.length - 1];
+    setContentHistory(h => h.slice(0, -1));
+    setEditableContent(prev);
+    setIsDirty(true);
+    toast({ title: "Reverted", description: "Restored previous version." });
+  };
+
+  const handleCustomModifier = async () => {
+    if (!editableContent || !customModifier.trim()) return;
+    setIsProcessingAction("custom");
+    try {
+      await sendToWebhook(customModifier.trim(), null, [customModifier.trim()]);
+      setCustomModifier("");
     } catch (err) {
       toast({ title: "Action failed", description: err instanceof Error ? err.message : "Network error.", variant: "destructive" });
     } finally {
@@ -351,7 +387,7 @@ export const GeneratedContentModal = ({
                   <FileText className="h-4 w-4 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-semibold text-[14px] text-foreground leading-snug truncate">{title}</p>
+                  <p className="font-semibold text-[14px] text-foreground leading-snug truncate">Content Workshop</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
                       <Tag className="h-3 w-3 text-primary/50" />{displayOutputType}
@@ -523,13 +559,42 @@ export const GeneratedContentModal = ({
                 <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/60 flex items-center gap-1.5">
                   <Sparkles className="h-3 w-3 text-primary/60" />Refine with AI
                 </span>
-                {isProcessingAction && (
-                  <span className="text-[11px] text-primary/70 flex items-center gap-1.5">
-                    <Loader2 className="h-3 w-3 animate-spin" />Applying {isProcessingAction}…
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {isProcessingAction && (
+                    <span className="text-[11px] text-primary/70 flex items-center gap-1.5">
+                      <Loader2 className="h-3 w-3 animate-spin" />Applying {isProcessingAction}…
+                    </span>
+                  )}
+                  {contentHistory.length > 0 && !isProcessingAction && (
+                    <button
+                      onClick={handleRevert}
+                      className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground/60 hover:text-foreground transition-colors"
+                      title={`Revert to previous version (${contentHistory.length} available)`}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Revert ({contentHistory.length})
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center justify-between gap-2 px-4 py-2.5">
+              {/* Custom modifier input */}
+              <div className="flex items-center gap-2 px-4 py-2.5">
+                <Input
+                  value={customModifier}
+                  onChange={(e) => setCustomModifier(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleCustomModifier(); } }}
+                  placeholder="Custom instruction… e.g. Make the opening punchier"
+                  disabled={!!isProcessingAction}
+                  className="h-8 text-[12px] bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 placeholder:text-muted-foreground/40 disabled:opacity-40"
+                />
+                <Button size="sm" onClick={handleCustomModifier}
+                  disabled={!!isProcessingAction || !customModifier.trim()}
+                  className="h-8 w-8 p-0 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-all">
+                  {isProcessingAction === 'custom' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SendHorizonal className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 px-4 pb-3 border-t border-border/20 pt-2.5">
                 <div className="flex gap-1.5">
                   {[
                     { action: 'poeticize', label: 'Poeticize', icon: Sparkles,  cls: 'text-primary/80 border-primary/25 hover:bg-primary/8 hover:border-primary/50' },

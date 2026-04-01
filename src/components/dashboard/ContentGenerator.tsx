@@ -451,7 +451,7 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
                 <ArrowLeft className="h-4 w-4 text-primary" />
               </button>
               <div className="flex-1 min-w-0">
-                <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">AI Guardrails</h2>
+                <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">Brand Guardrails</h2>
                 <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">Fine-tune quality, tone & compliance</p>
               </div>
               {guardrailsCustomized && (
@@ -679,7 +679,7 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
                 </div>
                 <div className="text-left">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[12px] font-bold text-foreground">AI Guardrails</span>
+                    <span className="text-[12px] font-bold text-foreground">Brand Guardrails</span>
                     {guardrailsCustomized
                       ? <Badge className="h-3.5 text-[8px] px-1.5 bg-primary/20 text-primary border border-primary/30 font-bold">Custom</Badge>
                       : <Badge variant="outline" className="h-3.5 text-[8px] px-1 border-border/60 text-muted-foreground font-medium">Default</Badge>

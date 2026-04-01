@@ -1277,7 +1277,7 @@ export const TodaysSignals = () => {
                 )}
                 <div className="flex-1 min-w-0">
                   <h2 className="text-[15px] font-extrabold text-foreground tracking-tight">
-                    {showGuardrails ? 'AI Guardrails' : 'Generate Content'}
+                    {showGuardrails ? 'Brand Guardrails' : 'Generate Content'}
                   </h2>
                   <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
                     {showGuardrails ? 'Fine-tune quality, tone & compliance' : 'Configure voice, format & guardrails'}
@@ -1503,7 +1503,7 @@ export const TodaysSignals = () => {
                   </div>
                   <div className="text-left">
                     <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-bold text-foreground">AI Guardrails</span>
+                      <span className="text-[13px] font-bold text-foreground">Brand Guardrails</span>
                       {guardrailsCustomized ? (
                         <Badge className="h-4 text-[9px] px-1.5 bg-primary/20 text-primary border border-primary/30 font-bold">Custom</Badge>
                       ) : (

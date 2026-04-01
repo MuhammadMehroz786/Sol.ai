@@ -290,34 +290,62 @@ const Dashboard = () => {
           FLOATING WINDOW — CONTENT PIPELINE
       ══════════════════════════════════════════ */}
       <Dialog open={queueOpen} onOpenChange={setQueueOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col bg-white/95 backdrop-blur-2xl border-border/80 shadow-elegant rounded-3xl p-0 gap-0">
-          {/* Gradient header */}
-          <div className="relative overflow-hidden rounded-t-3xl bg-gradient-primary px-6 py-5 flex-shrink-0">
-            <div className="absolute inset-0 opacity-20" style={{backgroundImage:"radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.4) 0%, transparent 60%)"}} />
-            <div className="absolute inset-0 animate-shimmer bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <div className="relative flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 border border-white/30 shadow-inner">
-                  <Activity className="h-5 w-5 text-white drop-shadow" />
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col bg-card border border-border/60 shadow-elegant rounded-3xl p-0 gap-0">
+
+          {/* Thin primary accent line */}
+          <div className="h-[2px] w-full bg-gradient-to-r from-primary/60 via-accent to-primary/60 shrink-0 rounded-t-3xl" />
+
+          {/* Header */}
+          <div className="px-6 pt-5 pb-4 bg-gradient-surface border-b border-border/40 flex-shrink-0">
+            <div className="flex items-center justify-between gap-4">
+
+              {/* Left — icon + title */}
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/20 border border-primary/20 shadow-sm">
+                  <Activity className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-black text-white tracking-tight">Content Pipeline</h2>
-                  <p className="text-white/70 text-[12px] font-medium">Review · Approve · Publish</p>
+                  <h2 className="text-[17px] font-black text-foreground tracking-tight leading-tight">Content Pipeline</h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {['Draft', 'Review', 'Final', 'Publish'].map((s, i, arr) => (
+                      <div key={s} className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">{s}</span>
+                        {i < arr.length - 1 && <span className="text-border text-[10px] font-light">›</span>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              {stats.inQueue > 0 && (
-                <div className="flex items-center gap-2 bg-white/15 border border-white/25 rounded-full px-3 py-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white/60 animate-pulse" />
-                  <span className="text-white text-[12px] font-bold">{stats.inQueue} items in queue</span>
-                </div>
-              )}
+
+              {/* Right — stat pills */}
+              <div className="flex items-center gap-2 shrink-0">
+                {stats.inQueue > 0 && (
+                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm shadow-primary/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/70 animate-pulse" />
+                    {stats.inQueue} in queue
+                  </div>
+                )}
+                {stats.inReview > 0 && (
+                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-warning text-warning-foreground text-[11px] font-bold shadow-sm shadow-warning/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+                    {stats.inReview} in review
+                  </div>
+                )}
+                {stats.publishedToday > 0 && (
+                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-success text-success-foreground text-[11px] font-bold shadow-sm shadow-success/30">
+                    <CheckCircle className="h-3 w-3" />
+                    {stats.publishedToday} published today
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="absolute top-3 right-4 h-2 w-2 rounded-full bg-white/50 animate-pulse" />
           </div>
+
           {/* Body */}
           <div className="overflow-y-auto flex-1 px-6 py-5">
             <ContentQueue onSelectOutput={() => {}} />
           </div>
+
         </DialogContent>
       </Dialog>
 
