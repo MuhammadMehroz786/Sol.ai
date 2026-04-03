@@ -4,12 +4,41 @@ import { Badge } from "@/components/ui/badge";
 import { TodaysSignals } from "@/components/dashboard/TodaysSignals";
 import { ContentQueue } from "@/components/dashboard/ContentQueue";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
+import { GeneratedContentModal, DEFAULT_GUARDRAILS, type Guardrails } from "@/components/dashboard/GeneratedContentModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   FileText, Clock, CheckCircle, Sparkles,
   Activity, ArrowUpRight, Zap, TrendingUp,
 } from "lucide-react";
+
+/* ─── Pipeline content viewer (top-level, never nested inside another Dialog) ─── */
+const ContentQueueViewer = ({
+  open, output, voiceId, guardrails, onClose, onRefresh
+}: {
+  open: boolean;
+  output: any;
+  voiceId: string;
+  guardrails: Guardrails | null;
+  onClose: () => void;
+  onRefresh: () => void;
+}) => (
+  <GeneratedContentModal
+    open={open}
+    onOpenChange={(o) => { if (!o) onClose(); }}
+    contentId={output.id}
+    title={output.title}
+    initialContent={output.content}
+    persona={output.persona}
+    voiceId={voiceId || output.persona}
+    outputType={output.output_type}
+    initialStatus={output.status}
+    topicContext={output.topic_context}
+    createdAt={output.created_at}
+    guardrails={guardrails ?? DEFAULT_GUARDRAILS}
+    onRefresh={onRefresh}
+  />
+);
 
 /* ─── count-up hook ─── */
 function useCountUp(target: number) {
@@ -89,6 +118,10 @@ const Dashboard = () => {
   const [genOpen, setGenOpen] = useState(false);
   const [queueOpen, setQueueOpen] = useState(false);
   const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
+  const [pipelineContentOpen, setPipelineContentOpen] = useState(false);
+  const [pipelineSelectedOutput, setPipelineSelectedOutput] = useState<any>(null);
+  const [pipelineVoiceId, setPipelineVoiceId] = useState("");
+  const [pipelineGuardrails, setPipelineGuardrails] = useState<any>(null);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -290,16 +323,14 @@ const Dashboard = () => {
           FLOATING WINDOW — CONTENT PIPELINE
       ══════════════════════════════════════════ */}
       <Dialog open={queueOpen} onOpenChange={setQueueOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col bg-card border border-border/60 shadow-elegant rounded-3xl p-0 gap-0">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-card border border-border/60 shadow-elegant rounded-3xl p-0 gap-0">
 
-          {/* Thin primary accent line */}
+          {/* Top accent line */}
           <div className="h-[2px] w-full bg-gradient-to-r from-primary/60 via-accent to-primary/60 shrink-0 rounded-t-3xl" />
 
-          {/* Header */}
+          {/* Single header */}
           <div className="px-6 pt-5 pb-4 bg-gradient-surface border-b border-border/40 flex-shrink-0">
             <div className="flex items-center justify-between gap-4">
-
-              {/* Left — icon + title */}
               <div className="flex items-center gap-3.5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-accent/20 border border-primary/20 shadow-sm">
                   <Activity className="h-5 w-5 text-primary" />
@@ -307,32 +338,30 @@ const Dashboard = () => {
                 <div>
                   <h2 className="text-[17px] font-black text-foreground tracking-tight leading-tight">Content Pipeline</h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    {['Draft', 'Review', 'Final', 'Publish'].map((s, i, arr) => (
+                    {['Draft', 'Review', 'Final', 'Published'].map((s, i, arr) => (
                       <div key={s} className="flex items-center gap-1.5">
                         <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">{s}</span>
-                        {i < arr.length - 1 && <span className="text-border text-[10px] font-light">›</span>}
+                        {i < arr.length - 1 && <span className="text-border text-[10px]">›</span>}
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-
-              {/* Right — stat pills */}
               <div className="flex items-center gap-2 shrink-0">
                 {stats.inQueue > 0 && (
-                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm shadow-primary/30">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold shadow-sm">
                     <span className="h-1.5 w-1.5 rounded-full bg-white/70 animate-pulse" />
                     {stats.inQueue} in queue
                   </div>
                 )}
                 {stats.inReview > 0 && (
-                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-warning text-warning-foreground text-[11px] font-bold shadow-sm shadow-warning/30">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500 text-white text-[11px] font-bold shadow-sm">
                     <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
                     {stats.inReview} in review
                   </div>
                 )}
                 {stats.publishedToday > 0 && (
-                  <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-success text-success-foreground text-[11px] font-bold shadow-sm shadow-success/30">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-600 text-white text-[11px] font-bold shadow-sm">
                     <CheckCircle className="h-3 w-3" />
                     {stats.publishedToday} published today
                   </div>
@@ -341,13 +370,41 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Body */}
-          <div className="overflow-y-auto flex-1 px-6 py-5">
-            <ContentQueue onSelectOutput={() => {}} />
+          {/* Body — filters are static inside ContentQueue, only records scroll */}
+          <div className="flex flex-col flex-1 min-h-0">
+            <ContentQueue
+              onSelectOutput={() => {}}
+              embedded
+              onOpenContent={(output, voiceId, guardrails) => {
+                setQueueOpen(false);
+                setPipelineSelectedOutput(output);
+                setPipelineVoiceId(voiceId ?? "");
+                setPipelineGuardrails(guardrails ?? null);
+                setPipelineContentOpen(true);
+              }}
+            />
           </div>
 
         </DialogContent>
       </Dialog>
+
+      {/* ══════════════════════════════════════════
+          PIPELINE — CONTENT VIEWER (top-level, no nesting)
+      ══════════════════════════════════════════ */}
+      {pipelineSelectedOutput && (
+        <ContentQueueViewer
+          open={pipelineContentOpen}
+          output={pipelineSelectedOutput}
+          voiceId={pipelineVoiceId}
+          guardrails={pipelineGuardrails}
+          onClose={() => {
+            setPipelineContentOpen(false);
+            setPipelineSelectedOutput(null);
+            setQueueOpen(true);
+          }}
+          onRefresh={fetchStats}
+        />
+      )}
 
     </div>
   );

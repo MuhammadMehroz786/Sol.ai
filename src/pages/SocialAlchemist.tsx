@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { WEBHOOK_SOCIAL_ALCHEMIST, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
 import { useVoices } from "@/contexts/VoicesContext";
+import { VoiceDropdown } from "@/components/shared/VoiceDropdown";
 import {
   FileText,
   Link as LinkIcon,
@@ -946,17 +947,11 @@ const SocialAlchemist = () => {
             <div className="flex flex-col bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-white/50 dark:border-border/50 rounded-2xl shadow-elegant overflow-hidden">
 
               {/* Steps area */}
-              <div className="flex-1 overflow-hidden min-h-0 p-3 space-y-0">
+              <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-0">
 
                 {/* ── Step 01: Voice Profile ── */}
                 <div className="relative">
-                  <div
-                    className="absolute -top-1 -left-1 text-[56px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
-                    style={{ color: step1Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step1Done ? 0.1 : 0.06 }}
-                  >
-                    01
-                  </div>
-                  <div className="relative z-10 pt-1.5 pl-10 space-y-1.5 pb-1">
+                  <div className="relative z-10 pt-1.5 pl-2 space-y-1.5 pb-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={cn(
                         "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
@@ -967,56 +962,17 @@ const SocialAlchemist = () => {
                       <Label className="text-sm font-bold text-foreground">Voice Profile</Label>
                       {step1Done && <CheckCircle2 className="h-4 w-4 text-emerald-500 ml-auto animate-in fade-in zoom-in duration-300" />}
                     </div>
-                    <Select value={selectedVoice} onValueChange={handleVoiceChange}>
-                      <SelectTrigger className="h-10 border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.01] transition-all duration-300 font-medium rounded-xl">
-                        <SelectValue placeholder="Select voice profile..." />
-                      </SelectTrigger>
-                      <SelectContent className="border-2 bg-popover/95 backdrop-blur-md">
-                        {voices.map(voice => {
-                          const Icon = voice.icon || User;
-                          return (
-                            <div key={voice.value} className="relative group/item">
-                              <SelectItem value={voice.value} className="pr-10 py-2.5 cursor-pointer hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 transition-all duration-200 my-1 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                  <div className={cn(
-                                    "flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br shadow-md group-hover/item:scale-110 transition-transform duration-200",
-                                    voice.color || 'from-gray-400 to-gray-500'
-                                  )}>
-                                    <Icon className="h-5 w-5 text-white" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="font-semibold text-sm">{voice.label}</div>
-                                    <div className="text-xs text-muted-foreground">{voice.description}</div>
-                                  </div>
-                                </div>
-                              </SelectItem>
-                              {!voice.isDefault && (
-                                <button
-                                  type="button"
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded-lg hover:bg-destructive/20 transition-colors z-10"
-                                  onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
-                                  onClick={e => { e.preventDefault(); e.stopPropagation(); handleDeleteVoice(voice.value); }}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                        <Separator className="my-1" />
-                        <SelectItem value="create-voice-profile" className="py-2.5 cursor-pointer">
-                          <div className="flex items-center gap-2.5 font-semibold text-sm text-primary">
-                            <Sparkles className="h-5 w-5" />
-                            Create Personal Voice
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <VoiceDropdown
+                      voices={voices}
+                      value={selectedVoice}
+                      onValueChange={handleVoiceChange}
+                      onDelete={handleDeleteVoice}
+                    />
                   </div>
                 </div>
 
                 {/* Connector 01→02 */}
-                <div className="ml-12 flex py-0.5">
+                <div className="ml-4 flex py-0.5">
                   <div className={cn(
                     "w-[2px] h-3 rounded-full transition-colors duration-700",
                     step1Done ? "bg-gradient-to-b from-primary to-accent/40" : "bg-border/30"
@@ -1025,13 +981,7 @@ const SocialAlchemist = () => {
 
                 {/* ── Step 02: Target Platforms ── */}
                 <div className="relative">
-                  <div
-                    className="absolute -top-1 -left-1 text-[56px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
-                    style={{ color: step2Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step2Done ? 0.1 : 0.06 }}
-                  >
-                    02
-                  </div>
-                  <div className="relative z-10 pt-1.5 pl-10 space-y-1.5 pb-1">
+                  <div className="relative z-10 pt-1.5 pl-2 space-y-1.5 pb-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={cn(
                         "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",
@@ -1074,7 +1024,7 @@ const SocialAlchemist = () => {
                 </div>
 
                 {/* Connector 02→03 */}
-                <div className="ml-12 flex py-2">
+                <div className="ml-4 flex py-2">
                   <div className={cn(
                     "w-[2px] h-4 rounded-full transition-colors duration-700",
                     step2Done ? "bg-gradient-to-b from-primary to-accent/40" : "bg-border/30"
@@ -1083,13 +1033,7 @@ const SocialAlchemist = () => {
 
                 {/* ── Step 03: Source Type ── */}
                 <div className="relative">
-                  <div
-                    className="absolute -top-1 -left-1 text-[56px] font-black leading-none select-none pointer-events-none z-0 transition-all duration-500"
-                    style={{ color: step3Done ? 'hsl(21, 58%, 53%)' : 'hsl(220, 15%, 60%)', opacity: step3Done ? 0.1 : 0.06 }}
-                  >
-                    03
-                  </div>
-                  <div className="relative z-10 pt-1.5 pl-10 space-y-1.5 pb-1">
+                  <div className="relative z-10 pt-1.5 pl-2 space-y-1.5 pb-3">
                     <div className="flex items-center gap-2 mb-1">
                       <div className={cn(
                         "h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500",

@@ -185,104 +185,81 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Floating Island Navigation Panel */}
       <nav
         className={cn(
-          "fixed left-6 top-32 z-40 transition-all duration-500 ease-out group/island",
-          islandExpanded ? "w-64" : "w-20"
+          "fixed left-6 top-32 z-40 transition-[width] duration-500 ease-out group/island",
+          islandExpanded ? "w-[220px]" : "w-[72px]"
         )}
         onMouseEnter={() => setIslandExpanded(true)}
         onMouseLeave={() => setIslandExpanded(false)}
       >
-        {/* Island Container with Ultra Premium Glass Effect */}
-        <div className="relative">
-          {/* Multi-layer luxurious glow - dimmed */}
-          <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/25 via-accent/20 to-primary/25 blur-3xl opacity-20 group-hover/island:opacity-40 transition-all duration-700 animate-pulse-glow" />
-          <div className="absolute inset-0 -m-2 bg-gradient-to-r from-primary/15 via-transparent to-primary/15 blur-2xl opacity-25 group-hover/island:opacity-45 transition-all duration-500" />
+        {/* Outer glow — sits outside the card, not clipped */}
+        <div className="absolute inset-0 -m-4 bg-gradient-to-br from-primary/25 via-accent/20 to-primary/25 blur-3xl opacity-20 group-hover/island:opacity-40 transition-all duration-700 pointer-events-none" />
+        <div className="absolute inset-0 -m-2 bg-gradient-to-r from-primary/15 via-transparent to-primary/15 blur-2xl opacity-25 group-hover/island:opacity-45 transition-all duration-500 pointer-events-none" />
 
-          {/* Main island background */}
-          <div className="relative bg-white/98 backdrop-blur-2xl rounded-[2rem] shadow-[0_4px_20px_rgba(208,126,59,0.15),0_8px_40px_rgba(208,126,59,0.1),0_0_0_1px_rgba(208,126,59,0.1)] border-2 border-primary/20 overflow-hidden group-hover/island:shadow-[0_6px_28px_rgba(208,126,59,0.2),0_12px_50px_rgba(208,126,59,0.15)] transition-all duration-500">
-            {/* Rich gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/6 via-transparent to-primary/10 pointer-events-none" />
+        {/* Card */}
+        <div className="relative w-full bg-white/98 backdrop-blur-2xl rounded-[1.75rem] border-2 border-primary/20 overflow-hidden shadow-[0_4px_20px_rgba(208,126,59,0.15),0_8px_40px_rgba(208,126,59,0.1),0_0_0_1px_rgba(208,126,59,0.08)] group-hover/island:shadow-[0_6px_28px_rgba(208,126,59,0.22),0_12px_50px_rgba(208,126,59,0.14)] transition-shadow duration-500">
 
-            {/* Shimmer effect */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/40 to-transparent opacity-0 group-hover/island:opacity-100 transition-opacity duration-700 animate-shimmer" style={{backgroundSize: '100% 200%'}} />
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-accent pointer-events-none" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 blur-sm pointer-events-none" />
 
-            {/* Top accent line - enhanced */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary via-accent to-transparent" />
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0 blur-sm" />
+          {/* Inner gradient wash */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-accent/6 pointer-events-none" />
 
-            {/* Navigation items */}
-            <div className="relative p-4 space-y-3">
-              {navigation.map((item, index) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={cn(
-                      "flex items-center rounded-2xl text-base font-bold transition-all duration-300 group/item relative overflow-hidden",
-                      islandExpanded ? "space-x-4 px-4 py-4" : "justify-center px-3 py-4",
+          {/* Nav items */}
+          <div className="relative p-3 space-y-2">
+            {navigation.map((item, index) => {
+              const isActive = location.pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={cn(
+                    "relative flex items-center gap-3 px-3 py-3 rounded-2xl overflow-hidden transition-all duration-300 group/item",
+                    isActive
+                      ? "bg-gradient-to-r from-primary via-[hsl(26,47%,68%)] to-primary shadow-[0_6px_20px_rgba(208,126,59,0.38)]"
+                      : "hover:bg-primary/10 hover:shadow-[0_3px_12px_rgba(208,126,59,0.15)]"
+                  )}
+                >
+                  {/* Hover wash */}
+                  {!isActive && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/8 to-primary/10 opacity-0 group-hover/item:opacity-100 transition-opacity duration-300" />
+                  )}
+
+                  {/* Icon */}
+                  <div className={cn(
+                    "relative z-10 shrink-0 flex items-center justify-center w-9 h-9 rounded-xl transition-all duration-300",
+                    isActive
+                      ? "bg-white/20 shadow-[0_2px_8px_rgba(255,255,255,0.25)]"
+                      : "bg-primary/10 group-hover/item:bg-primary/18 group-hover/item:shadow-[0_2px_8px_rgba(208,126,59,0.18)]"
+                  )}>
+                    <item.icon className={cn(
+                      "h-5 w-5 transition-all duration-300",
                       isActive
-                        ? "bg-gradient-to-r from-primary via-[hsl(26,47%,70%)] to-primary text-white shadow-[0_8px_24px_rgba(208,126,59,0.4)]"
-                        : "text-[hsl(15,48%,25%)] hover:bg-gradient-to-r hover:from-primary/15 hover:to-accent/15 hover:shadow-[0_4px_16px_rgba(208,126,59,0.2)]"
-                    )}
-                    style={{
-                      transitionDelay: islandExpanded ? `${index * 50}ms` : '0ms'
-                    }}
-                  >
-                    {/* Active indicator multi-layer glow */}
-                    {isActive && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary/40 via-accent/30 to-primary/40 blur-2xl -z-10 animate-pulse-glow" />
-                        <div className="absolute inset-0 bg-primary/20 blur-xl -z-10" />
-                      </>
-                    )}
-
-                    {/* Hover gradient background - enhanced */}
-                    <div className={cn(
-                      "absolute inset-0 bg-gradient-to-r from-primary/15 via-accent/15 to-primary/15 opacity-0 group-hover/item:opacity-100 transition-opacity duration-300",
-                      isActive && "opacity-100 from-primary/20 via-accent/20 to-primary/20"
+                        ? "text-white drop-shadow-[0_1px_6px_rgba(255,255,255,0.6)]"
+                        : "text-primary group-hover/item:scale-110"
                     )} />
+                  </div>
 
-                    {/* Icon container with glow */}
-                    <div className={cn(
-                      "relative z-10 p-2.5 rounded-xl transition-all duration-300 shadow-sm",
-                      isActive
-                        ? "bg-white/25 shadow-[0_4px_12px_rgba(255,255,255,0.3)]"
-                        : "bg-primary/12 group-hover/item:bg-primary/20 group-hover/item:shadow-[0_4px_12px_rgba(208,126,59,0.2)]"
-                    )}>
-                      <item.icon className={cn(
-                        "h-6 w-6 transition-all duration-300",
-                        isActive
-                          ? "text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.5)]"
-                          : "text-primary group-hover/item:scale-110 group-hover/item:drop-shadow-[0_2px_4px_rgba(208,126,59,0.3)]"
-                      )} />
-                    </div>
+                  {/* Label — always in DOM, revealed by clipping */}
+                  <span className={cn(
+                    "relative z-10 text-[13px] font-semibold whitespace-nowrap leading-normal transition-all duration-500 ease-out overflow-hidden",
+                    islandExpanded ? "w-[120px] opacity-100" : "w-0 opacity-0",
+                    isActive ? "text-white" : "text-[hsl(15,48%,22%)]"
+                  )}>
+                    {item.name}
+                  </span>
 
-                    {/* Text label with slide animation */}
-                    {islandExpanded && (
-                      <span className={cn(
-                        "relative z-10 whitespace-nowrap transition-all duration-300 animate-fade-in",
-                        isActive ? "text-white drop-shadow-sm" : "text-[hsl(15,48%,25%)]"
-                      )}>
-                        {item.name}
-                      </span>
-                    )}
-
-                    {/* Active page indicator dot */}
-                    {isActive && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full animate-pulse" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Bottom decorative gradient */}
-            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-primary/10 via-transparent to-transparent pointer-events-none" />
-
-            {/* Corner accents */}
-            <div className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full opacity-50 group-hover/island:opacity-100 transition-opacity duration-500" />
-            <div className="absolute bottom-2 right-2 w-2 h-2 bg-accent rounded-full opacity-50 group-hover/island:opacity-100 transition-opacity duration-500" />
+                  {/* Active pulse dot */}
+                  {isActive && islandExpanded && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white/80 rounded-full animate-pulse" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
+
+          {/* Bottom fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-primary/8 via-transparent to-transparent pointer-events-none" />
         </div>
       </nav>
 

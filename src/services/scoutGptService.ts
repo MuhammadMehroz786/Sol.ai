@@ -64,7 +64,7 @@ export class ScoutGptService {
         body: JSON.stringify({
           action: 'get_signals',
           timestamp: new Date().toISOString(),
-          topic: topic || 'top trending news and viral stories from the last 72 hours',
+          topic: topic || 'emerging AI and technology stories from the last 72 hours with strong cultural, policy, and economic implications—prioritizing signals affecting authorship, ownership, labor, and Black and Brown communities',
         })
       });
 

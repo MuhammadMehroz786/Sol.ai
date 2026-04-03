@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { type VoiceOption } from "@/constants/voices";
 import { useVoices } from "@/contexts/VoicesContext";
 import { DEFAULT_GUARDRAILS, type Guardrails } from "@/components/dashboard/GeneratedContentModal";
+import { VoiceDropdown } from "@/components/shared/VoiceDropdown";
 import {
   Sparkles,
   User,
@@ -55,7 +56,6 @@ const outputTypes = [
   { value: "article", label: "Article", icon: FileText, description: "Written article content", color: "from-blue-500 to-cyan-500" },
   { value: "tweet-thread", label: "Tweet Thread", icon: Twitter, description: "Tweet thread (7–10 posts)", color: "from-sky-500 to-blue-500" },
   { value: "script", label: "Script", icon: Video, description: "Script (voiceover or video narration)", color: "from-purple-500 to-pink-500" },
-  { value: "prompt", label: "Daily Prompt", icon: Lightbulb, description: "Daily Prompt (short-form idea/question)", color: "from-yellow-500 to-orange-500" }
 ];
 
 const articleLengths = [
@@ -539,51 +539,13 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
                 Voice Profile
                 {selectedVoice && <CheckCircle2 className="h-3 w-3 ml-auto text-emerald-500 animate-in fade-in zoom-in duration-300" />}
               </Label>
-              <Select value={selectedVoice} onValueChange={handleVoiceChange}>
-                <SelectTrigger className="bg-background border-2 border-border/60 hover:border-primary/50 focus:border-primary hover:shadow-md hover:shadow-primary/8 transition-all duration-200 font-medium">
-                  <SelectValue placeholder="Select a voice...">
-                    {selectedVoice && voices.find(v => v.value === selectedVoice)?.label}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
-                  {voices.map((voice) => {
-                    const Icon = voice.icon || User;
-                    return (
-                      <div key={voice.value} className="relative group/item">
-                        <SelectItem value={voice.value} className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg pr-16">
-                          <div className="flex items-center space-x-3 py-1">
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${voice.color || 'from-gray-400 to-gray-500'} shadow-md group-hover/item:scale-110 transition-transform duration-200`}>
-                              <Icon className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="font-medium">{voice.label}</div>
-                              <div className="text-xs text-muted-foreground">{voice.description}</div>
-                            </div>
-                          </div>
-                        </SelectItem>
-                        {!voice.isDefault && (
-                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
-                            <button type="button" className="h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-primary/20 transition-colors"
-                              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
-                              onClick={e => { e.preventDefault(); e.stopPropagation(); handleEditVoice(voice); }}>
-                              <Edit className="h-3 w-3" />
-                            </button>
-                            <button type="button" className="h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-destructive/20 transition-colors"
-                              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); }}
-                              onClick={e => { e.preventDefault(); e.stopPropagation(); handleDeleteVoice(voice.value); }}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <Separator className="my-2" />
-                  <SelectItem value="create-voice-profile" className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg">
-                    <div className="flex items-center gap-2 font-medium"><Sparkles className="h-4 w-4" /><span>Create Personal Voice</span></div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <VoiceDropdown
+                voices={voices}
+                value={selectedVoice}
+                onValueChange={handleVoiceChange}
+                onDelete={handleDeleteVoice}
+                onEdit={handleEditVoice}
+              />
             </div>
 
             {/* Output Type */}
@@ -601,27 +563,41 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
                   setSelectedOutputType(value); setSelectedArticleLength("");
                 }}
               >
-                <SelectTrigger className="bg-background border-2 border-border/60 hover:border-accent/50 focus:border-accent hover:shadow-md hover:shadow-accent/8 transition-all duration-200 font-medium">
+                <SelectTrigger className="h-11 bg-background border-2 border-border/60 hover:border-accent/50 focus:border-accent hover:shadow-md hover:shadow-accent/8 transition-all duration-200 font-medium rounded-xl">
                   <SelectValue placeholder="Select output type...">
-                    {selectedOutputType && (
-                      selectedOutputType.startsWith('article-')
-                        ? `Article — ${articleLengths.find(l => l.value === selectedOutputType.replace('article-', ''))?.label}`
-                        : outputTypes.find(t => t.value === selectedOutputType)?.label
-                    )}
+                    {(() => {
+                      const activeValue = selectedOutputType.startsWith('article-') ? 'article' : selectedOutputType;
+                      const t = outputTypes.find(x => x.value === activeValue);
+                      if (!t) return null;
+                      const Icon = t.icon;
+                      const subLabel = selectedOutputType.startsWith('article-')
+                        ? ` · ${articleLengths.find(l => l.value === selectedOutputType.replace('article-', ''))?.label}`
+                        : '';
+                      return (
+                        <div className="flex items-center gap-2.5">
+                          <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br shadow-sm ${t.color}`}>
+                            <Icon className="h-3.5 w-3.5 text-white" />
+                          </div>
+                          <span className="font-semibold text-sm truncate">{t.label}{subLabel}</span>
+                        </div>
+                      );
+                    })()}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+                <SelectContent position="popper" sideOffset={6} className="bg-popover/98 backdrop-blur-xl border border-border/60 shadow-2xl rounded-2xl p-2 w-[var(--radix-select-trigger-width)]">
                   {outputTypes.map((type) => {
                     const Icon = type.icon;
+                    const isSelected = (selectedOutputType.startsWith('article-') ? 'article' : selectedOutputType) === type.value;
                     return (
-                      <SelectItem key={type.value} value={type.value} className="hover:bg-gradient-to-r hover:from-accent/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group">
-                        <div className="flex items-center space-x-3 py-1">
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${type.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                      <SelectItem key={type.value} value={type.value}
+                        className={`rounded-xl cursor-pointer transition-all duration-150 my-0.5 px-2 py-1.5 focus:bg-accent/10 data-[highlighted]:bg-accent/10 ${isSelected ? 'bg-accent/10' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br shadow-md ${type.color}`}>
                             <Icon className="h-4 w-4 text-white" />
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{type.label}</span>
-                            <span className="text-xs text-muted-foreground">{type.description}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-foreground leading-tight">{type.label}</p>
+                            <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{type.description}</p>
                           </div>
                         </div>
                       </SelectItem>

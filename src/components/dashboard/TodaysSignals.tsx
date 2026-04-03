@@ -20,6 +20,7 @@ import { ScoutGptService } from "@/services/scoutGptService";
 import { Signal } from "@/types/signals";
 import { useToast } from "@/hooks/use-toast";
 import { GeneratedContentModal, DEFAULT_GUARDRAILS, type Guardrails } from "@/components/dashboard/GeneratedContentModal";
+import { VoiceDropdown } from "@/components/shared/VoiceDropdown";
 
 type CustomVoice = VoiceOption;
 
@@ -284,7 +285,6 @@ export const TodaysSignals = () => {
     { value: "Article", label: "Article", icon: FileText, description: "In-depth written content", color: "from-blue-500 to-cyan-500", available: true },
     { value: "Tweet thread", label: "Tweet thread", icon: MessageSquare, description: "Threaded social posts", color: "from-sky-500 to-blue-500", available: true },
     { value: "Script", label: "Script", icon: Video, description: "Video or audio script", color: "from-purple-500 to-pink-500", available: true },
-    { value: "Prompt", label: "Prompt", icon: Lightbulb, description: "AI prompt template", color: "from-yellow-500 to-orange-500", available: true }
   ];
 
   const articleLengths = [
@@ -343,7 +343,7 @@ export const TodaysSignals = () => {
 
     if (!alreadyFetched) {
       setIsLoadingTrending(true);
-      ScoutGptService.fetchAndSaveSignals('trending signals', 'trending')
+      ScoutGptService.fetchAndSaveSignals(undefined, 'trending')
         .then(fresh => {
           setTrendingSignals([...fresh].sort((a, b) => b.score - a.score));
           sessionStorage.setItem(sessionKey, '1');
@@ -366,24 +366,7 @@ export const TodaysSignals = () => {
         .finally(() => setIsLoadingTrending(false));
     }
 
-    // ── Topic signals: restore from DB if a topic was saved ──
-    const restoreTopicSignals = async () => {
-      try {
-        const saved = localStorage.getItem('user_signal_topic');
-        if (saved && saved.trim()) {
-          setIsLoadingAllSignals(true);
-          const cached = await ScoutGptService.loadSignalsFromDatabase('topic');
-          if (cached.length > 0) {
-            setSignals([...cached].sort((a, b) => b.score - a.score));
-          }
-        }
-      } catch {
-        // silent — user can re-search
-      } finally {
-        setIsLoadingAllSignals(false);
-      }
-    };
-    restoreTopicSignals();
+    // Topic signals reset on every login — user must search fresh
   }, []);
 
   // Close suggestions on click outside
@@ -424,8 +407,9 @@ export const TodaysSignals = () => {
   // Topic search management functions
   const loadTopicFromLocalStorage = () => {
     try {
-      const saved = localStorage.getItem('user_signal_topic');
-      if (saved) setTopicSearch(saved);
+      // Reset topic on every login — start fresh each session
+      localStorage.removeItem('user_signal_topic');
+      setTopicSearch("");
     } catch {
       // ignore
     }
@@ -442,7 +426,7 @@ export const TodaysSignals = () => {
   const handleRefreshTrending = async () => {
     setIsLoadingTrending(true);
     try {
-      const fresh = await ScoutGptService.fetchAndSaveSignals('trending signals', 'trending');
+      const fresh = await ScoutGptService.fetchAndSaveSignals(undefined, 'trending');
       setTrendingSignals([...fresh].sort((a, b) => b.score - a.score));
       sessionStorage.setItem('trending_fetched_this_session', '1');
       toast({ title: "Trending signals refreshed", description: `Loaded ${fresh.length} fresh signals` });
@@ -1014,7 +998,7 @@ export const TodaysSignals = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {trendingSignals.slice(0, 3).map((signal) => (
+                {[...trendingSignals].sort((a, b) => b.score - a.score).slice(0, 3).map((signal) => (
                   <SignalCard
                     key={signal.id}
                     signal={signal}
@@ -1350,62 +1334,12 @@ export const TodaysSignals = () => {
                   Voice Profile
                   {selectedVoice && <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-emerald-500 animate-in fade-in zoom-in duration-300" />}
                 </label>
-                <Select value={selectedVoice} onValueChange={handleVoiceChange}>
-                  <SelectTrigger className="bg-background border-2 border-border/60 hover:border-primary/50 focus:border-primary hover:shadow-md hover:shadow-primary/8 transition-all duration-200 font-medium">
-                    <SelectValue placeholder="Select a voice...">
-                      {selectedVoice && voices.find(v => v.value === selectedVoice)?.label}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
-                    {voices.map((voice) => {
-                      const Icon = voice.icon || User;
-                      return (
-                        <div key={voice.value} className="relative group/item">
-                          <SelectItem
-                            value={voice.value}
-                            className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg pr-16"
-                          >
-                            <div className="flex items-center space-x-3 py-1">
-                              <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${voice.color || 'from-gray-400 to-gray-500'} shadow-md group-hover/item:scale-110 transition-transform duration-200`}>
-                                <Icon className="h-4 w-4 text-white" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-medium">{voice.label}</div>
-                                <div className="text-xs text-muted-foreground">{voice.description}</div>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          {!voice.isDefault && (
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 z-10">
-                              <button
-                                type="button"
-                                className="h-6 w-6 p-0 flex items-center justify-center rounded hover:bg-destructive/20 transition-colors"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                }}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleDeleteVoice(voice.value);
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3 text-destructive" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    <Separator className="my-2" />
-                    <SelectItem value="create-voice-profile" className="hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 cursor-pointer transition-all duration-200 my-1 rounded-lg">
-                      <div className="flex items-center gap-2 font-medium">
-                        <Sparkles className="h-4 w-4" />
-                        <span>Create Personal Voice</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <VoiceDropdown
+                  voices={voices}
+                  value={selectedVoice}
+                  onValueChange={handleVoiceChange}
+                  onDelete={handleDeleteVoice}
+                />
               </div>
 
               {/* Output Type Selection */}
@@ -1419,41 +1353,50 @@ export const TodaysSignals = () => {
                 <Select
                   value={selectedOutputType.startsWith('Article-') ? 'Article' : selectedOutputType}
                   onValueChange={(value) => {
-                    if (value === 'Article') {
-                      setSelectedOutputType('Article');
-                      setSelectedArticleLength("");
-                      return;
-                    }
+                    if (value === 'Article') { setSelectedOutputType('Article'); setSelectedArticleLength(""); return; }
                     setSelectedOutputType(value);
                     setSelectedArticleLength("");
                   }}
                 >
-                  <SelectTrigger className="bg-background border-2 border-border/60 hover:border-accent/50 focus:border-accent hover:shadow-md hover:shadow-accent/8 transition-all duration-200 font-medium">
+                  <SelectTrigger className="h-11 bg-background border-2 border-border/60 hover:border-accent/50 focus:border-accent hover:shadow-md hover:shadow-accent/8 transition-all duration-200 font-medium rounded-xl">
                     <SelectValue placeholder="Choose output type...">
-                      {selectedOutputType && (
-                        selectedOutputType.startsWith('Article-')
-                          ? `Article - ${articleLengths.find(l => l.value === selectedOutputType.replace('Article-', ''))?.label}`
-                          : outputTypes.find(t => t.value === selectedOutputType)?.label
-                      )}
+                      {(() => {
+                        const activeValue = selectedOutputType.startsWith('Article-') ? 'Article' : selectedOutputType;
+                        const t = outputTypes.find(x => x.value === activeValue);
+                        if (!t) return null;
+                        const Icon = t.icon;
+                        const subLabel = selectedOutputType.startsWith('Article-')
+                          ? ` · ${articleLengths.find(l => l.value === selectedOutputType.replace('Article-', ''))?.label}`
+                          : '';
+                        return (
+                          <div className="flex items-center gap-2.5">
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br shadow-sm ${t.color}`}>
+                              <Icon className="h-3.5 w-3.5 text-white" />
+                            </div>
+                            <span className="font-semibold text-sm truncate">{t.label}{subLabel}</span>
+                          </div>
+                        );
+                      })()}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="bg-popover/95 backdrop-blur-md border-border/50">
+                  <SelectContent position="popper" sideOffset={6} className="bg-popover/98 backdrop-blur-xl border border-border/60 shadow-2xl rounded-2xl p-2 w-[var(--radix-select-trigger-width)]">
                     {outputTypes.map((type) => {
                       const Icon = type.icon;
+                      const isSelected = (selectedOutputType.startsWith('Article-') ? 'Article' : selectedOutputType) === type.value;
                       return (
                         <SelectItem
                           key={type.value}
                           value={type.value}
                           disabled={!type.available}
-                          className="hover:bg-gradient-to-r hover:from-accent/10 hover:to-primary/10 cursor-pointer transition-all duration-200 my-1 rounded-lg group disabled:opacity-40 disabled:cursor-not-allowed"
+                          className={`rounded-xl cursor-pointer transition-all duration-150 my-0.5 px-2 py-1.5 focus:bg-accent/10 data-[highlighted]:bg-accent/10 disabled:opacity-40 disabled:cursor-not-allowed ${isSelected ? 'bg-accent/10' : ''}`}
                         >
-                          <div className="flex items-center space-x-3 py-1">
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r ${type.color} shadow-md group-hover:scale-110 transition-transform duration-200`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br shadow-md ${type.color}`}>
                               <Icon className="h-4 w-4 text-white" />
                             </div>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{type.label}</span>
-                              <span className="text-xs text-muted-foreground">{type.description}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-semibold text-foreground leading-tight">{type.label}</p>
+                              <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{type.description}</p>
                             </div>
                           </div>
                         </SelectItem>
@@ -1705,7 +1648,7 @@ export const TodaysSignals = () => {
           </DialogHeader>
 
           <div className="overflow-y-auto max-h-[60vh] py-4 px-1 space-y-2">
-            {(allSignalsModalSource === 'trending' ? trendingSignals : signals).map((signal) => (
+            {[...(allSignalsModalSource === 'trending' ? trendingSignals : signals)].sort((a, b) => b.score - a.score).map((signal) => (
               <SignalCard
                 key={signal.id}
                 signal={signal}

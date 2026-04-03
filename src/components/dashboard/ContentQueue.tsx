@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   FileText,
   Search,
+  X,
   Edit3,
   Share,
   Trash2,
@@ -39,6 +40,9 @@ interface ContentQueueProps {
   onSelectOutput: (output: ContentOutput) => void;
   pendingOpenId?: string | null;
   onDraftOpened?: () => void;
+  /** When true: renders without Card shell and delegates item clicks to onOpenContent */
+  embedded?: boolean;
+  onOpenContent?: (output: ContentOutput, voiceId?: string, guardrails?: Guardrails) => void;
 }
 
 const statusConfig = {
@@ -76,12 +80,14 @@ const statusConfig = {
   }
 };
 
-export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: ContentQueueProps) => {
+export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened, embedded, onOpenContent }: ContentQueueProps) => {
   const [outputs, setOutputs] = useState<ContentOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedOutput, setSelectedOutput] = useState<ContentOutput | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalVoiceId, setModalVoiceId] = useState("");
@@ -241,39 +247,75 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
   };
 
   const openContentModal = (output: ContentOutput, voiceId = "", guardrails: Guardrails = DEFAULT_GUARDRAILS) => {
+    if (embedded && onOpenContent) {
+      onOpenContent(output, voiceId || output.persona, guardrails);
+      return;
+    }
     setSelectedOutput(output);
     setModalVoiceId(voiceId || output.persona);
     setModalGuardrails(guardrails);
     setModalOpen(true);
   };
 
-  const filteredOutputs = outputs.filter(output => {
-    const matchesSearch = output.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         output.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || output.status === statusFilter;
-    const matchesType = typeFilter === "all" || output.output_type === typeFilter;
-
-    return matchesSearch && matchesStatus && matchesType;
-  });
-
-  // Get unique output types from existing data for dynamic filter
-  const availableTypes = Array.from(new Set(outputs.map(output => output.output_type)))
-    .filter(Boolean)
-    .sort();
-
-  const groupedOutputs = {
-    draft: filteredOutputs.filter(o => o.status === 'draft'),
-    review: filteredOutputs.filter(o => o.status === 'review'),
-    final: filteredOutputs.filter(o => o.status === 'final'),
-    published: filteredOutputs.filter(o => o.status === 'published')
+  // Debounce search — only update the active filter term 300ms after typing stops
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(value), 300);
   };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+    setDebouncedSearch("");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  };
+
+  // Memoised filter — only recomputes when data or filter terms actually change
+  const filteredOutputs = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return outputs.filter(output => {
+      if (q) {
+        const inTitle   = output.title.toLowerCase().includes(q);
+        const inPersona = output.persona.toLowerCase().includes(q);
+        const inTopic   = output.topic_context?.toLowerCase().includes(q) ?? false;
+        // Search first 600 chars of content to avoid scanning huge strings
+        const inContent = output.content.slice(0, 600).toLowerCase().includes(q);
+        if (!inTitle && !inPersona && !inTopic && !inContent) return false;
+      }
+      if (statusFilter !== "all" && output.status !== statusFilter) return false;
+      if (typeFilter !== "all" && output.output_type !== typeFilter) return false;
+      return true;
+    });
+  }, [outputs, debouncedSearch, statusFilter, typeFilter]);
+
+  const availableTypes = useMemo(() =>
+    Array.from(new Set(outputs.map(o => o.output_type))).filter(Boolean).sort(),
+    [outputs]
+  );
+
+  const groupedOutputs = useMemo(() => ({
+    draft:     filteredOutputs.filter(o => o.status === 'draft'),
+    review:    filteredOutputs.filter(o => o.status === 'review'),
+    final:     filteredOutputs.filter(o => o.status === 'final'),
+    published: filteredOutputs.filter(o => o.status === 'published'),
+  }), [filteredOutputs]);
+
+  const loadingEl = (
+    <div className="space-y-2 p-1">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />
+      ))}
+    </div>
+  );
+
+  if (loading && embedded) return loadingEl;
 
   if (loading) {
     return (
       <Card className="bg-gradient-card border border-border shadow-elegant">
         <CardHeader className="pb-2 pt-3">
           <CardTitle className="text-base font-semibold">Content Queue</CardTitle>
-        <CardDescription className="text-xs">Loading your generated content...</CardDescription>
+          <CardDescription className="text-xs">Loading your generated content...</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {[...Array(3)].map((_, i) => (
@@ -284,67 +326,64 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
     );
   }
 
-  return (
-    <Card className="bg-gradient-card border border-border shadow-elegant">
-      <CardHeader className="pb-2 pt-3">
-        <div className="flex items-center space-x-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/20">
-            <Clock className="h-4 w-4 text-accent" />
-          </div>
-          <div>
-            <CardTitle className="text-base font-semibold">Content Queue</CardTitle>
-            <CardDescription className="text-xs">
-              Manage your generated content pipeline
-            </CardDescription>
-          </div>
+  const queueContent = (
+    <div className={embedded ? "flex flex-col flex-1 min-h-0" : "space-y-3"}>
+
+      {/* ── Static filter bar ── */}
+      <div className={embedded
+        ? "shrink-0 flex flex-col sm:flex-row gap-2 px-6 py-3 border-b border-border/40 bg-background/60"
+        : "flex flex-col sm:flex-row gap-2"
+      }>
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search by title, voice, topic…"
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-8 pr-7 bg-background h-8 text-xs"
+          />
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-      </CardHeader>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-28 bg-background h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="review">Review</SelectItem>
+            <SelectItem value="final">Final</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-28 bg-background h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {availableTypes.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type.split('-').map(word =>
+                  word.charAt(0).toUpperCase() + word.slice(1)
+                ).join(' ')}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      <CardContent className="space-y-3">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search content..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 bg-background h-8 text-xs"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-28 bg-background h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="review">Review</SelectItem>
-              <SelectItem value="final">Final</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full sm:w-28 bg-background h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {availableTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type.split('-').map(word =>
-                    word.charAt(0).toUpperCase() + word.slice(1)
-                  ).join(' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {!embedded && <Separator className="my-0" />}
 
-        <Separator className="my-0" />
-
-        {/* Content Grid */}
-        <div className="space-y-3">
+      {/* ── Scrollable records ── */}
+      <div className={embedded ? "overflow-y-auto flex-1 px-6 py-4 space-y-3" : "space-y-3"}>
           {Object.entries(groupedOutputs).map(([status, items]) => {
             if (items.length === 0) return null;
 
@@ -447,6 +486,59 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
             </div>
           )}
         </div>
+    </div>
+  );
+
+  const deleteDialog = (
+    <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialogContent className="rounded-3xl border-2 border-red-200/40">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="font-black text-red-700">Delete content?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This content will be permanently removed from your queue.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => { if (deleteTarget) { deleteOutput(deleteTarget); setDeleteTarget(null); } }}
+            className="bg-red-600 hover:bg-red-700 rounded-xl font-bold"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  // Embedded mode — no Card shell, no internal GeneratedContentModal
+  if (embedded) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0">
+        {queueContent}
+        {deleteDialog}
+      </div>
+    );
+  }
+
+  // Standalone mode — full Card with internal content viewer
+  return (
+    <Card className="bg-gradient-card border border-border shadow-elegant">
+      <CardHeader className="pb-2 pt-3">
+        <div className="flex items-center space-x-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/20">
+            <Clock className="h-4 w-4 text-accent" />
+          </div>
+          <div>
+            <CardTitle className="text-base font-semibold">Content Queue</CardTitle>
+            <CardDescription className="text-xs">
+              Manage your generated content pipeline
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {queueContent}
       </CardContent>
 
       {/* Universal Generated Content Modal */}
@@ -471,26 +563,7 @@ export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened }: C
         />
       )}
 
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-3xl border-2 border-red-200/40">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-black text-red-700">Delete content?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This content will be permanently removed from your queue.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => { if (deleteTarget) { deleteOutput(deleteTarget); setDeleteTarget(null); } }}
-              className="bg-red-600 hover:bg-red-700 rounded-xl font-bold"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deleteDialog}
     </Card>
   );
 };
