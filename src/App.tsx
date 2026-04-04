@@ -12,6 +12,11 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
 import SocialAlchemist from "./pages/SocialAlchemist";
+import SOPGenerator from "./pages/SOPGenerator";
+import ProposalGenerator from "./pages/ProposalGenerator";
+import PersonaGPT from "./pages/PersonaGPT";
+import MeetingAgent from "./pages/MeetingAgent";
+import PostCal from "./pages/PostCal";
 import Auth from "./pages/Auth";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -51,6 +56,31 @@ const App = () => (
                   <Layout>
                     <SocialAlchemist />
                   </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/sop-generator" element={
+                <ProtectedRoute>
+                  <SOPGenerator />
+                </ProtectedRoute>
+              } />
+              <Route path="/proposal-generator" element={
+                <ProtectedRoute>
+                  <ProposalGenerator />
+                </ProtectedRoute>
+              } />
+              <Route path="/persona-gpt" element={
+                <ProtectedRoute>
+                  <PersonaGPT />
+                </ProtectedRoute>
+              } />
+              <Route path="/meeting-agent" element={
+                <ProtectedRoute>
+                  <MeetingAgent />
+                </ProtectedRoute>
+              } />
+              <Route path="/post-cal" element={
+                <ProtectedRoute>
+                  <PostCal />
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={
