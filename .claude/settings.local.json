@@ -21,7 +21,16 @@
       "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" ls-files --others --exclude-standard)",
       "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" ls-files)",
       "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" status --short)",
-      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" show --stat HEAD:_ul)"
+      "Bash(git -C \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" show --stat HEAD:_ul)",
+      "Bash(powershell -Command \"\\(Get-Content -Path ''C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\\\\src\\\\pages\\\\SocialAlchemist.tsx'' -Raw\\).Length\")",
+      "Bash(powershell -Command:*)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(cmd /c \"npm run build\")",
+      "Bash(cmd /c \"cd \"\"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\"\" && npm run build 2>&1\")",
+      "Bash(node -e:*)",
+      "Bash(cd \"C:\\\\Users\\\\Duaan\\\\OneDrive - Higher Education Commission\\\\Desktop\\\\James Upwork\\\\sole-signal-hub\" && npx supabase status 2>&1 | head -20)",
+      "Bash(supabase status:*)"
     ],
     "deny": [],
     "ask": []
