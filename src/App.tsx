@@ -8,18 +8,20 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { VoicesProvider } from "@/contexts/VoicesContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
-import Agents from "./pages/Agents";
-import SocialAlchemist from "./pages/SocialAlchemist";
-import SOPGenerator from "./pages/SOPGenerator";
-import ProposalGenerator from "./pages/ProposalGenerator";
-import PersonaGPT from "./pages/PersonaGPT";
-import MeetingAgent from "./pages/MeetingAgent";
-import PostCal from "./pages/PostCal";
-import Auth from "./pages/Auth";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Agents = lazy(() => import("./pages/Agents"));
+const SocialAlchemist = lazy(() => import("./pages/SocialAlchemist"));
+const SOPGenerator = lazy(() => import("./pages/SOPGenerator"));
+const ProposalGenerator = lazy(() => import("./pages/ProposalGenerator"));
+const PersonaGPT = lazy(() => import("./pages/PersonaGPT"));
+const MeetingAgent = lazy(() => import("./pages/MeetingAgent"));
+const PostCal = lazy(() => import("./pages/PostCal"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -35,6 +37,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
           <VoicesProvider>
+            <Suspense fallback={null}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={
@@ -92,6 +95,7 @@ const App = () => (
               } />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </VoicesProvider>
           </AuthProvider>
         </BrowserRouter>

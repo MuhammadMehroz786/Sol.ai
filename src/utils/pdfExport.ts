@@ -3,7 +3,6 @@
  * Uses html2pdf.js to generate professional PDF documents from markdown content
  */
 
-import html2pdf from 'html2pdf.js';
 
 interface PDFExportOptions {
   filename: string;
@@ -225,6 +224,7 @@ export async function exportToPDF(
   };
 
   try {
+    const html2pdf = (await import('html2pdf.js')).default;
     await html2pdf().set(pdfOptions).from(element).save();
   } finally {
     document.body.removeChild(element);
