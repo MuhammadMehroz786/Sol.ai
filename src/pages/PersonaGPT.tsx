@@ -39,7 +39,7 @@ import {
 } from "lucide-react";
 
 // Generate unique ID
-const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
+const generateId = () => crypto.randomUUID();
 
 export default function PersonaGPT() {
   const { toast } = useToast();

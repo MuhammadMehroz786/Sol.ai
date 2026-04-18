@@ -1,25 +1,10 @@
 /**
  * Action Meeting Agent Service
- * Uses OpenAI GPT-4 to generate professional meeting documents
+ * Calls the openai-proxy Edge Function — the API key never touches the browser.
  */
 
 import { MeetingAgendaInput, MeetingMinutesInput, ActionItemsInput, FollowUpEmailInput, TranscriptInput, SavedMeeting, MeetingMode } from '@/types/meeting';
-
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface OpenAIResponse {
-  choices: {
-    message: {
-      content: string;
-    };
-  }[];
-}
+import { callOpenAI } from '@/lib/openaiProxy';
 
 const MEETING_SYSTEM_PROMPT = `You are a world-class executive assistant and meeting facilitator with 20+ years of experience supporting C-suite executives at Fortune 500 companies. You are known for creating exceptionally clear, actionable, and professional meeting documentation.
 
@@ -42,14 +27,7 @@ YOUR WRITING STYLE:
 - Time-conscious
 - Results-focused`;
 
-/**
- * Generate a meeting agenda
- */
 export async function generateAgenda(input: MeetingAgendaInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
-
   const toneInstructions = {
     formal: 'Use formal, executive-level language appropriate for board meetings or senior leadership.',
     professional: 'Use standard professional business language.',
@@ -83,51 +61,18 @@ FORMAT REQUIREMENTS:
 
 Generate a complete, ready-to-send meeting agenda.`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: MEETING_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
+  const messages = [
+    { role: 'system' as const, content: MEETING_SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 2000,
-        temperature: 0.7
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 2000, temperature: 0.7 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) throw new Error('No content generated');
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-    return { content };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Generate meeting minutes
- */
 export async function generateMinutes(input: MeetingMinutesInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
-
   const userPrompt = `Transform these meeting notes into professional meeting minutes:
 
 MEETING: ${input.meetingTitle}
@@ -153,51 +98,18 @@ FORMAT REQUIREMENTS:
 
 Generate complete, formal meeting minutes ready for distribution.`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: MEETING_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
+  const messages = [
+    { role: 'system' as const, content: MEETING_SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 2500,
-        temperature: 0.6
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 2500, temperature: 0.6 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) throw new Error('No content generated');
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-    return { content };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Extract action items from meeting notes
- */
 export async function extractActionItems(input: ActionItemsInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
-
   const priorityInstructions = {
     standard: 'Assign reasonable deadlines based on complexity (typically 1-2 weeks).',
     urgent: 'Assign tight deadlines (within this week) for critical items.',
@@ -241,51 +153,18 @@ RULES:
 
 Generate a complete, actionable document.`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: MEETING_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
+  const messages = [
+    { role: 'system' as const, content: MEETING_SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 2500,
-        temperature: 0.6
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 2500, temperature: 0.6 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) throw new Error('No content generated');
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-    return { content };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Generate follow-up email
- */
 export async function generateFollowUpEmail(input: FollowUpEmailInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
-
   const toneInstructions = {
     formal: 'Use formal business email etiquette. Address recipients formally.',
     professional: 'Use standard professional email tone. Warm but businesslike.',
@@ -321,101 +200,35 @@ EMAIL REQUIREMENTS:
 
 Generate a complete, ready-to-send email with subject line.`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: MEETING_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
+  const messages = [
+    { role: 'system' as const, content: MEETING_SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 1500,
-        temperature: 0.7
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 1500, temperature: 0.7 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) throw new Error('No content generated');
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-    return { content };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Refine any meeting document
- */
 export async function refineMeetingDocument(
   currentDocument: string,
   refinementRequest: string
 ): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: MEETING_SYSTEM_PROMPT },
-    { role: 'user', content: `Here is a meeting document:\n\n${currentDocument}` },
-    { role: 'assistant', content: 'I have reviewed the document. What changes would you like?' },
-    { role: 'user', content: `Please refine this document:\n\n${refinementRequest}\n\nReturn the complete updated document.` }
+  const messages = [
+    { role: 'system' as const, content: MEETING_SYSTEM_PROMPT },
+    { role: 'user' as const, content: `Here is a meeting document:\n\n${currentDocument}` },
+    { role: 'assistant' as const, content: 'I have reviewed the document. What changes would you like?' },
+    { role: 'user' as const, content: `Please refine this document:\n\n${refinementRequest}\n\nReturn the complete updated document.` },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 2500,
-        temperature: 0.6
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 2500, temperature: 0.6 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) throw new Error('No content generated');
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-    return { content };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Process meeting transcript and generate requested documents
- */
 export async function processTranscript(input: TranscriptInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
-
   const outputInstructions = {
     minutes: `Generate professional meeting minutes with:
 - Header with meeting title, date, and attendees (extract from transcript)
@@ -471,41 +284,15 @@ IMPORTANT:
 - If information is unclear, flag it for clarification
 - Keep the tone professional but natural`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: MEETING_SYSTEM_PROMPT },
-    { role: 'user', content: userPrompt }
+  const messages = [
+    { role: 'system' as const, content: MEETING_SYSTEM_PROMPT },
+    { role: 'user' as const, content: userPrompt },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: input.outputType === 'all' ? 4000 : 2500,
-        temperature: 0.6
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: input.outputType === 'all' ? 4000 : 2500, temperature: 0.6 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) throw new Error('No content generated');
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-    return { content };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
 // ============================================
@@ -514,26 +301,18 @@ IMPORTANT:
 
 const STORAGE_KEY = 'meetingAgent_savedMeetings';
 
-const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
+const generateId = () => crypto.randomUUID();
 
-/**
- * Load all saved meetings from localStorage
- */
 export function loadSavedMeetings(): SavedMeeting[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (error) {
-    console.error('Failed to load saved meetings:', error);
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // localStorage unavailable
   }
   return [];
 }
 
-/**
- * Save a meeting to localStorage
- */
 export function saveMeeting(title: string, date: string, type: MeetingMode, content: string): SavedMeeting {
   const meeting: SavedMeeting = {
     id: generateId(),
@@ -549,16 +328,13 @@ export function saveMeeting(title: string, date: string, type: MeetingMode, cont
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(meetings));
-  } catch (error) {
-    console.error('Failed to save meeting:', error);
+  } catch {
+    // localStorage unavailable
   }
 
   return meeting;
 }
 
-/**
- * Delete a saved meeting
- */
 export function deleteSavedMeeting(id: string): boolean {
   const meetings = loadSavedMeetings();
   const filtered = meetings.filter(m => m.id !== id);
@@ -567,18 +343,13 @@ export function deleteSavedMeeting(id: string): boolean {
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (error) {
-    console.error('Failed to delete meeting:', error);
+  } catch {
     return false;
   }
 
   return true;
 }
 
-/**
- * Get a specific saved meeting
- */
 export function getSavedMeeting(id: string): SavedMeeting | null {
-  const meetings = loadSavedMeetings();
-  return meetings.find(m => m.id === id) || null;
+  return loadSavedMeetings().find(m => m.id === id) || null;
 }

@@ -1,161 +1,94 @@
 /**
  * Post Cal Service
- * Manages scheduled posts with localStorage persistence
- * Also includes AI-powered content enhancement
+ * Manages scheduled posts with localStorage persistence.
+ * AI features call the openai-proxy Edge Function — the API key never touches the browser.
  */
 
 import { ScheduledPost, Platform, PostStatus, PostFilter } from '@/types/postCal';
+import { callOpenAI } from '@/lib/openaiProxy';
 
 const STORAGE_KEY = 'postCal_scheduledPosts';
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-// Generate unique ID
-const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
+const generateId = () => crypto.randomUUID();
 
-/**
- * Load all posts from localStorage
- */
 export function loadPosts(): ScheduledPost[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch (error) {
-    console.error('Failed to load posts:', error);
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // localStorage unavailable
   }
   return [];
 }
 
-/**
- * Save posts to localStorage
- */
 export function savePosts(posts: ScheduledPost[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
-  } catch (error) {
-    console.error('Failed to save posts:', error);
+  } catch {
+    // localStorage unavailable
   }
 }
 
-/**
- * Create a new post
- */
 export function createPost(post: Omit<ScheduledPost, 'id' | 'createdAt' | 'updatedAt'>): ScheduledPost {
   const now = new Date().toISOString();
-  const newPost: ScheduledPost = {
-    ...post,
-    id: generateId(),
-    createdAt: now,
-    updatedAt: now
-  };
-
+  const newPost: ScheduledPost = { ...post, id: generateId(), createdAt: now, updatedAt: now };
   const posts = loadPosts();
   posts.push(newPost);
   savePosts(posts);
-
   return newPost;
 }
 
-/**
- * Update an existing post
- */
 export function updatePost(id: string, updates: Partial<ScheduledPost>): ScheduledPost | null {
   const posts = loadPosts();
   const index = posts.findIndex(p => p.id === id);
-
   if (index === -1) return null;
-
-  posts[index] = {
-    ...posts[index],
-    ...updates,
-    updatedAt: new Date().toISOString()
-  };
-
+  posts[index] = { ...posts[index], ...updates, updatedAt: new Date().toISOString() };
   savePosts(posts);
   return posts[index];
 }
 
-/**
- * Delete a post
- */
 export function deletePost(id: string): boolean {
   const posts = loadPosts();
   const filtered = posts.filter(p => p.id !== id);
-
   if (filtered.length === posts.length) return false;
-
   savePosts(filtered);
   return true;
 }
 
-/**
- * Get posts for a specific date
- */
 export function getPostsForDate(date: string): ScheduledPost[] {
-  const posts = loadPosts();
-  return posts.filter(p => p.scheduledDate === date);
+  return loadPosts().filter(p => p.scheduledDate === date);
 }
 
-/**
- * Get posts for a date range
- */
 export function getPostsInRange(startDate: string, endDate: string): ScheduledPost[] {
-  const posts = loadPosts();
-  return posts.filter(p => p.scheduledDate >= startDate && p.scheduledDate <= endDate);
+  return loadPosts().filter(p => p.scheduledDate >= startDate && p.scheduledDate <= endDate);
 }
 
-/**
- * Get posts by status
- */
 export function getPostsByStatus(status: PostStatus): ScheduledPost[] {
-  const posts = loadPosts();
-  return posts.filter(p => p.status === status);
+  return loadPosts().filter(p => p.status === status);
 }
 
-/**
- * Get posts by platform
- */
 export function getPostsByPlatform(platform: Platform): ScheduledPost[] {
-  const posts = loadPosts();
-  return posts.filter(p => p.platform === platform);
+  return loadPosts().filter(p => p.platform === platform);
 }
 
-/**
- * Filter posts with multiple criteria
- */
 export function filterPosts(filter: PostFilter): ScheduledPost[] {
   let posts = loadPosts();
-
-  if (filter.platforms.length > 0) {
-    posts = posts.filter(p => filter.platforms.includes(p.platform));
-  }
-
-  if (filter.statuses.length > 0) {
-    posts = posts.filter(p => filter.statuses.includes(p.status));
-  }
-
+  if (filter.platforms.length > 0) posts = posts.filter(p => filter.platforms.includes(p.platform));
+  if (filter.statuses.length > 0) posts = posts.filter(p => filter.statuses.includes(p.status));
   if (filter.dateRange) {
     posts = posts.filter(p =>
-      p.scheduledDate >= filter.dateRange!.start &&
-      p.scheduledDate <= filter.dateRange!.end
+      p.scheduledDate >= filter.dateRange!.start && p.scheduledDate <= filter.dateRange!.end
     );
   }
-
   return posts;
 }
 
-/**
- * Get upcoming posts (next 7 days)
- */
 export function getUpcomingPosts(): ScheduledPost[] {
   const today = new Date();
   const nextWeek = new Date(today);
   nextWeek.setDate(nextWeek.getDate() + 7);
 
-  const posts = loadPosts();
-  return posts
+  return loadPosts()
     .filter(p =>
       p.status === 'scheduled' &&
       p.scheduledDate >= today.toISOString().split('T')[0] &&
@@ -168,23 +101,12 @@ export function getUpcomingPosts(): ScheduledPost[] {
     });
 }
 
-/**
- * Mark post as published
- */
 export function markAsPublished(id: string): ScheduledPost | null {
-  return updatePost(id, {
-    status: 'published',
-    publishedAt: new Date().toISOString()
-  });
+  return updatePost(id, { status: 'published', publishedAt: new Date().toISOString() });
 }
 
-/**
- * Duplicate a post
- */
 export function duplicatePost(id: string, newDate?: string, newTime?: string): ScheduledPost | null {
-  const posts = loadPosts();
-  const original = posts.find(p => p.id === id);
-
+  const original = loadPosts().find(p => p.id === id);
   if (!original) return null;
 
   const now = new Date().toISOString();
@@ -200,15 +122,12 @@ export function duplicatePost(id: string, newDate?: string, newTime?: string): S
     publishedAt: undefined
   };
 
+  const posts = loadPosts();
   posts.push(duplicate);
   savePosts(posts);
-
   return duplicate;
 }
 
-/**
- * Get analytics summary
- */
 export function getAnalytics(): {
   total: number;
   byStatus: Record<PostStatus, number>;
@@ -222,25 +141,10 @@ export function getAnalytics(): {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const byStatus: Record<PostStatus, number> = {
-    draft: 0,
-    scheduled: 0,
-    published: 0,
-    failed: 0,
-    cancelled: 0
-  };
-
+  const byStatus: Record<PostStatus, number> = { draft: 0, scheduled: 0, published: 0, failed: 0, cancelled: 0 };
   const byPlatform: Record<Platform, number> = {
-    twitter: 0,
-    linkedin: 0,
-    instagram: 0,
-    facebook: 0,
-    threads: 0,
-    tiktok: 0,
-    youtube: 0,
-    blog: 0,
-    newsletter: 0,
-    other: 0
+    twitter: 0, linkedin: 0, instagram: 0, facebook: 0, threads: 0,
+    tiktok: 0, youtube: 0, blog: 0, newsletter: 0, other: 0
   };
 
   posts.forEach(post => {
@@ -248,47 +152,31 @@ export function getAnalytics(): {
     byPlatform[post.platform]++;
   });
 
-  const thisWeek = posts.filter(p =>
-    p.scheduledDate >= weekStart.toISOString().split('T')[0]
-  ).length;
-
-  const thisMonth = posts.filter(p =>
-    p.scheduledDate >= monthStart.toISOString().split('T')[0]
-  ).length;
-
   return {
     total: posts.length,
     byStatus,
     byPlatform,
-    thisWeek,
-    thisMonth
+    thisWeek: posts.filter(p => p.scheduledDate >= weekStart.toISOString().split('T')[0]).length,
+    thisMonth: posts.filter(p => p.scheduledDate >= monthStart.toISOString().split('T')[0]).length,
   };
 }
 
-/**
- * AI: Enhance content for a specific platform
- */
-export async function enhanceContent(
-  content: string,
-  platform: Platform
-): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { content: '', error: 'OpenAI API key not configured.' };
-  }
+// ─── AI features ───
 
-  const platformInstructions: Record<Platform, string> = {
-    twitter: 'Optimize for Twitter/X. Keep under 280 characters. Make it punchy, engaging, and shareable. Use relevant hashtags sparingly (1-2 max).',
-    linkedin: 'Optimize for LinkedIn. Professional yet personable tone. Add line breaks for readability. Include a call to action.',
-    instagram: 'Optimize for Instagram. Engaging caption with emojis. Include relevant hashtags at the end (5-10). Start with a hook.',
-    facebook: 'Optimize for Facebook. Conversational and engaging. Encourage comments and shares. Medium length.',
-    threads: 'Optimize for Threads. Conversational, authentic voice. Keep under 500 characters. Trendy but not forced.',
-    tiktok: 'Optimize for TikTok caption. Very short, catchy, with trending hooks. Use Gen-Z friendly language naturally.',
-    youtube: 'Optimize for YouTube description. Include key points, timestamps suggestion, and call to action for likes/subscribes.',
-    blog: 'Optimize for blog post. Well-structured with clear paragraphs. Professional yet accessible tone.',
-    newsletter: 'Optimize for email newsletter. Personal tone, clear value proposition, strong subject line suggestion included.',
-    other: 'Enhance for general social media. Make it engaging and shareable.'
-  };
+const platformInstructions: Record<Platform, string> = {
+  twitter: 'Optimize for Twitter/X. Keep under 280 characters. Make it punchy, engaging, and shareable. Use relevant hashtags sparingly (1-2 max).',
+  linkedin: 'Optimize for LinkedIn. Professional yet personable tone. Add line breaks for readability. Include a call to action.',
+  instagram: 'Optimize for Instagram. Engaging caption with emojis. Include relevant hashtags at the end (5-10). Start with a hook.',
+  facebook: 'Optimize for Facebook. Conversational and engaging. Encourage comments and shares. Medium length.',
+  threads: 'Optimize for Threads. Conversational, authentic voice. Keep under 500 characters. Trendy but not forced.',
+  tiktok: 'Optimize for TikTok caption. Very short, catchy, with trending hooks. Use Gen-Z friendly language naturally.',
+  youtube: 'Optimize for YouTube description. Include key points, timestamps suggestion, and call to action for likes/subscribes.',
+  blog: 'Optimize for blog post. Well-structured with clear paragraphs. Professional yet accessible tone.',
+  newsletter: 'Optimize for email newsletter. Personal tone, clear value proposition, strong subject line suggestion included.',
+  other: 'Enhance for general social media. Make it engaging and shareable.'
+};
 
+export async function enhanceContent(content: string, platform: Platform): Promise<{ content: string; error?: string }> {
   const messages = [
     {
       role: 'system' as const,
@@ -303,61 +191,17 @@ RULES:
     },
     {
       role: 'user' as const,
-      content: `${platformInstructions[platform]}
-
-Original content:
-${content}
-
-Return the enhanced version only.`
-    }
+      content: `${platformInstructions[platform]}\n\nOriginal content:\n${content}\n\nReturn the enhanced version only.`
+    },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 500,
-        temperature: 0.8
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 500, temperature: 0.8 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    let enhanced = data.choices[0]?.message?.content;
-
-    if (!enhanced) throw new Error('No content generated');
-
-    // Remove em dashes
-    enhanced = enhanced.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content: enhanced };
-  } catch (error) {
-    return { content: '', error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * AI: Generate hashtags for content
- */
-export async function generateHashtags(
-  content: string,
-  platform: Platform,
-  count: number = 5
-): Promise<{ hashtags: string[]; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { hashtags: [], error: 'OpenAI API key not configured.' };
-  }
-
+export async function generateHashtags(content: string, platform: Platform, count = 5): Promise<{ hashtags: string[]; error?: string }> {
   const messages = [
     {
       role: 'system' as const,
@@ -366,48 +210,17 @@ export async function generateHashtags(
     {
       role: 'user' as const,
       content: `Generate ${count} relevant hashtags for this ${platform} content:\n\n${content}`
-    }
+    },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 100,
-        temperature: 0.7
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 100, temperature: 0.7 });
+  if (error || !raw) return { hashtags: [], error: error || 'No hashtags generated' };
 
-    if (!response.ok) throw new Error('API error');
-
-    const data = await response.json();
-    const result = data.choices[0]?.message?.content || '';
-    const hashtags = result.match(/#\w+/g) || [];
-
-    return { hashtags };
-  } catch (error) {
-    return { hashtags: [], error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  const hashtags = raw.match(/#\w+/g) || [];
+  return { hashtags };
 }
 
-/**
- * AI: Generate content ideas
- */
-export async function generateContentIdeas(
-  topic: string,
-  platform: Platform,
-  count: number = 5
-): Promise<{ ideas: string[]; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return { ideas: [], error: 'OpenAI API key not configured.' };
-  }
-
+export async function generateContentIdeas(topic: string, platform: Platform, count = 5): Promise<{ ideas: string[]; error?: string }> {
   const messages = [
     {
       role: 'system' as const,
@@ -422,35 +235,16 @@ RULES:
     {
       role: 'user' as const,
       content: `Generate ${count} content ideas about "${topic}" for ${platform}.`
-    }
+    },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 500,
-        temperature: 0.9
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 500, temperature: 0.9 });
+  if (error || !raw) return { ideas: [], error: error || 'No ideas generated' };
 
-    if (!response.ok) throw new Error('API error');
+  const ideas = raw
+    .split('\n')
+    .filter((line: string) => line.match(/^\d+[.)]/) )
+    .map((line: string) => line.replace(/^\d+[.)]\s*/, '').trim());
 
-    const data = await response.json();
-    const result = data.choices[0]?.message?.content || '';
-    const ideas = result
-      .split('\n')
-      .filter((line: string) => line.match(/^\d+[.)]/))
-      .map((line: string) => line.replace(/^\d+[.)]\s*/, '').trim());
-
-    return { ideas };
-  } catch (error) {
-    return { ideas: [], error: error instanceof Error ? error.message : 'Unknown error' };
-  }
+  return { ideas };
 }

@@ -95,8 +95,7 @@ const Settings = () => {
     loadProfile();
   }, [user]);
 
-  // Password strength
-  const getPasswordStrength = (pw: string): { level: number; label: string; color: string } => {
+  const getPasswordStrength = (pw: string) => {
     if (!pw) return { level: 0, label: '', color: '' };
     let score = 0;
     if (pw.length >= 8) score++;
@@ -104,7 +103,6 @@ const Settings = () => {
     if (/[A-Z]/.test(pw)) score++;
     if (/[0-9]/.test(pw)) score++;
     if (/[^A-Za-z0-9]/.test(pw)) score++;
-
     if (score <= 2) return { level: 1, label: 'Weak', color: 'bg-red-500' };
     if (score <= 3) return { level: 2, label: 'Medium', color: 'bg-amber-500' };
     if (score <= 4) return { level: 3, label: 'Strong', color: 'bg-emerald-500' };

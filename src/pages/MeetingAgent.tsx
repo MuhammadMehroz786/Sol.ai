@@ -198,7 +198,7 @@ export default function MeetingAgent() {
     } finally {
       setIsGenerating(false);
     }
-  }, [activeMode, agendaForm, minutesForm, actionsForm, followupForm, toast]);
+  }, [activeMode, agendaForm, minutesForm, actionsForm, followupForm, transcriptForm, toast]);
 
   const handleRefine = useCallback(async () => {
     if (!refinementRequest.trim()) return;
@@ -231,7 +231,7 @@ export default function MeetingAgent() {
   }, [generatedContent, toast]);
 
   const handleDownload = useCallback(() => {
-    const modeLabels = { agenda: 'Agenda', minutes: 'Minutes', actions: 'Actions', followup: 'FollowUp' };
+    const modeLabels = { agenda: 'Agenda', minutes: 'Minutes', actions: 'Actions', followup: 'FollowUp', transcript: 'Transcript' };
     const blob = new Blob([generatedContent], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -243,7 +243,7 @@ export default function MeetingAgent() {
   }, [generatedContent, activeMode, toast]);
 
   const handleDownloadPDF = useCallback(async () => {
-    const modeLabels = { agenda: 'Meeting Agenda', minutes: 'Meeting Minutes', actions: 'Action Items', followup: 'Follow-Up Email' };
+    const modeLabels = { agenda: 'Meeting Agenda', minutes: 'Meeting Minutes', actions: 'Action Items', followup: 'Follow-Up Email', transcript: 'Transcript' };
     try {
       toast({ title: "Generating PDF..." });
       await exportToPDF(generatedContent, {

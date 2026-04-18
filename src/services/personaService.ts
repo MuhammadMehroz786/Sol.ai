@@ -1,29 +1,11 @@
 /**
  * Persona GPT Service
- * Uses OpenAI GPT-4 to generate content and chat as different personas
+ * Calls the openai-proxy Edge Function — the API key never touches the browser.
  */
 
 import { Persona, ChatMessage, PersonaWritingRequest } from '@/types/persona';
+import { callOpenAI } from '@/lib/openaiProxy';
 
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface OpenAIResponse {
-  choices: {
-    message: {
-      content: string;
-    };
-  }[];
-}
-
-/**
- * Build the system prompt for a persona
- */
 function buildPersonaSystemPrompt(persona: Persona): string {
   return `You ARE ${persona.name}. You must fully embody this character in every response.
 
@@ -52,20 +34,10 @@ CRITICAL RULES:
 Remember: You don't just write LIKE ${persona.name}, you ARE ${persona.name}.`;
 }
 
-/**
- * Generate content as a specific persona
- */
 export async function generatePersonaContent(
   persona: Persona,
   request: PersonaWritingRequest
 ): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.'
-    };
-  }
-
   const lengthInstructions = {
     short: 'Keep it brief, 1-2 paragraphs maximum.',
     medium: 'Write 3-5 paragraphs with good detail.',
@@ -91,69 +63,25 @@ ${lengthInstructions[request.length || 'medium']}
 
 Write this exactly as ${persona.name} would, in their distinctive voice and style.`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: buildPersonaSystemPrompt(persona) },
-    { role: 'user', content: userPrompt }
+  const messages = [
+    { role: 'system' as const, content: buildPersonaSystemPrompt(persona) },
+    { role: 'user' as const, content: userPrompt },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 2000,
-        temperature: 0.8,
-        presence_penalty: 0.3,
-        frequency_penalty: 0.2
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 2000, temperature: 0.8, presence_penalty: 0.3, frequency_penalty: 0.2 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    // Post-process to remove any em dashes
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Chat with a persona while maintaining conversation context
- */
 export async function chatWithPersona(
   persona: Persona,
   userMessage: string,
   conversationHistory: ChatMessage[]
 ): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured.'
-    };
-  }
-
-  // Build conversation context from history
-  const historyMessages: OpenAIMessage[] = conversationHistory.map(msg => ({
-    role: msg.role,
-    content: msg.content
+  const historyMessages = conversationHistory.map(msg => ({
+    role: msg.role as 'system' | 'user' | 'assistant',
+    content: msg.content,
   }));
 
   const systemPrompt = `${buildPersonaSystemPrompt(persona)}
@@ -166,99 +94,26 @@ You are having a natural conversation. Respond as ${persona.name} would in a rea
 - Keep responses focused but feel free to elaborate when relevant
 - Ask follow-up questions when appropriate to keep the conversation flowing`;
 
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: systemPrompt },
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
     ...historyMessages,
-    { role: 'user', content: userMessage }
+    { role: 'user' as const, content: userMessage },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 1000,
-        temperature: 0.85,
-        presence_penalty: 0.4,
-        frequency_penalty: 0.3
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 1000, temperature: 0.85, presence_penalty: 0.4, frequency_penalty: 0.3 });
+  if (error || !raw) return { content: '', error: error || 'No response generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No response generated');
-    }
-
-    // Post-process to remove any em dashes
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
-/**
- * Generate a creative introduction from a persona
- */
 export async function getPersonaIntroduction(persona: Persona): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured.'
-    };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: buildPersonaSystemPrompt(persona) },
-    { role: 'user', content: `Introduce yourself in 2-3 sentences. Be warm, authentic, and let your personality shine through. This is your first message to someone who wants to chat with you or have you write content for them.` }
+  const messages = [
+    { role: 'system' as const, content: buildPersonaSystemPrompt(persona) },
+    { role: 'user' as const, content: `Introduce yourself in 2-3 sentences. Be warm, authentic, and let your personality shine through. This is your first message to someone who wants to chat with you or have you write content for them.` },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 200,
-        temperature: 0.9
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 200, temperature: 0.9 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }

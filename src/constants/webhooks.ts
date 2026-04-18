@@ -11,6 +11,7 @@
  */
 
 const N8N_BASE = (import.meta.env.VITE_N8N_BASE as string) || '';
+if (!N8N_BASE && import.meta.env.DEV) console.warn('[webhooks] VITE_N8N_BASE is not set — all webhook calls will fail');
 
 // ─── Workflow 1: Scout GPT (signal ingestion) ───
 // Handles both general signals and topic-specific searches via the `topic` field
@@ -26,4 +27,4 @@ export const WEBHOOK_VOICE_PROFILE_CREATE = `${N8N_BASE}/66bc4c62-262d-4a3c-8d18
 export const WEBHOOK_SOCIAL_ALCHEMIST = `${N8N_BASE}/ab4dc726-d881-46c6-bcc3-3b1bffd2c7c4`;
 
 // ─── Workflow 5: Content Refinement (quick actions + custom modifiers) ───
-export const WEBHOOK_CONTENT_REFINEMENT = `https://soleai.app.n8n.cloud/webhook/9487a6d7-b909-4ace-87de-5609027ddf6e`;
+export const WEBHOOK_CONTENT_REFINEMENT = `${N8N_BASE}/9487a6d7-b909-4ace-87de-5609027ddf6e`;

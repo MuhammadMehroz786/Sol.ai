@@ -392,15 +392,6 @@ const SocialAlchemist = () => {
     setIsDeletingVoice(true);
 
     try {
-      if (voiceToDelete.databaseId) {
-        const { error: dbError } = await supabase
-          .from('voice_profiles')
-          .delete()
-          .eq('id', voiceToDelete.databaseId);
-
-        if (dbError) throw dbError;
-      }
-
       removeVoice(voiceToDelete.value);
 
       if (selectedVoice === voiceToDelete.value) setSelectedVoice("");
@@ -1366,25 +1357,24 @@ const SocialAlchemist = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {data.runId && (
+                        {data.runId && data.runId !== 'unknown' && (
                           <span className="text-[10px] text-muted-foreground/60 font-mono hidden sm:inline">
                             {data.runId.slice(0, 8)}
                           </span>
                         )}
-                        <Badge
-                          className={cn(
-                            "text-xs font-medium",
-                            data.status === 'succeeded' && "bg-success/10 text-success border-success/20",
-                            data.status === 'partial_failure' && "bg-warning/10 text-warning border-warning/20",
-                            data.status === 'failed' && "bg-destructive/10 text-destructive border-destructive/20"
-                          )}
-                        >
-                          {data.status === 'succeeded' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                          {data.status === 'partial_failure' && <AlertTriangle className="h-3 w-3 mr-1" />}
-                          {data.status === 'failed' && <AlertCircle className="h-3 w-3 mr-1" />}
-                          {data.status === 'succeeded' ? 'Ready' :
-                           data.status === 'partial_failure' ? 'Partial' : 'Failed'}
-                        </Badge>
+                        {data.status !== 'succeeded' && (
+                          <Badge
+                            className={cn(
+                              "text-xs font-medium",
+                              data.status === 'partial_failure' && "bg-warning/10 text-warning border-warning/20",
+                              data.status === 'failed' && "bg-destructive/10 text-destructive border-destructive/20"
+                            )}
+                          >
+                            {data.status === 'partial_failure' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                            {data.status === 'failed' && <AlertCircle className="h-3 w-3 mr-1" />}
+                            {data.status === 'partial_failure' ? 'Partial' : 'Failed'}
+                          </Badge>
+                        )}
                       </div>
                     </div>
 

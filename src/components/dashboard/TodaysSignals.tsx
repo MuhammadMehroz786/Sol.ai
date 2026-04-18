@@ -345,14 +345,14 @@ export const TodaysSignals = () => {
       setIsLoadingTrending(true);
       ScoutGptService.fetchAndSaveSignals(undefined, 'trending')
         .then(fresh => {
-          setTrendingSignals([...fresh].sort((a, b) => b.score - a.score));
+          setTrendingSignals([...fresh].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 })));
           sessionStorage.setItem(sessionKey, '1');
         })
         .catch(() => {
           // fallback: load whatever is cached in DB
           ScoutGptService.loadSignalsFromDatabase('trending')
             .then(cached => {
-              if (cached.length > 0) setTrendingSignals([...cached].sort((a, b) => b.score - a.score));
+              if (cached.length > 0) setTrendingSignals([...cached].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 })));
             })
             .catch(() => {});
         })
@@ -360,7 +360,7 @@ export const TodaysSignals = () => {
     } else {
       ScoutGptService.loadSignalsFromDatabase('trending')
         .then(cached => {
-          if (cached.length > 0) setTrendingSignals([...cached].sort((a, b) => b.score - a.score));
+          if (cached.length > 0) setTrendingSignals([...cached].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 })));
         })
         .catch(() => {})
         .finally(() => setIsLoadingTrending(false));
@@ -427,7 +427,7 @@ export const TodaysSignals = () => {
     setIsLoadingTrending(true);
     try {
       const fresh = await ScoutGptService.fetchAndSaveSignals(undefined, 'trending');
-      setTrendingSignals([...fresh].sort((a, b) => b.score - a.score));
+      setTrendingSignals([...fresh].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 })));
       sessionStorage.setItem('trending_fetched_this_session', '1');
       toast({ title: "Trending signals refreshed", description: `Loaded ${fresh.length} fresh signals` });
     } catch (error) {
@@ -493,7 +493,7 @@ export const TodaysSignals = () => {
         return;
       }
 
-      const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
+      const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 }));
       setSignals(sortedSignals);
 
       toast({
@@ -529,7 +529,7 @@ export const TodaysSignals = () => {
       toast({ title: "Loading new signals...", description: "Fetching latest signals" });
 
       const newSignals = await ScoutGptService.fetchAndSaveSignals(topicSearch.trim(), 'topic');
-      const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score);
+      const sortedSignals = [...newSignals].sort((a, b) => b.score - a.score).map((s, i) => ({ ...s, rank: i + 1 }));
       setSignals(sortedSignals);
 
       toast({ title: "Signals updated!", description: `Loaded ${newSignals.length} signals` });
@@ -568,15 +568,6 @@ export const TodaysSignals = () => {
     setIsDeletingVoice(true);
 
     try {
-      if (voiceToDelete.databaseId) {
-        const { error: dbError } = await supabase
-          .from('voice_profiles')
-          .delete()
-          .eq('id', voiceToDelete.databaseId);
-
-        if (dbError) throw dbError;
-      }
-
       removeVoice(voiceToDelete.value);
 
       if (selectedVoice === voiceToDelete.value) {
@@ -669,10 +660,14 @@ export const TodaysSignals = () => {
       formData.append('voice_name', voiceProfileName.trim());
       formData.append('user_id', user.user.id);
 
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
       const response = await fetch(WEBHOOK_VOICE_PROFILE_CREATE, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (response.ok) {
         const result = await response.json();
@@ -787,7 +782,7 @@ export const TodaysSignals = () => {
                 title: contentTitle,
                 content: formattedContent,
                 persona: voiceName,
-                output_type: selectedOutputType,
+                output_type: baseOutputType,
                 status: 'draft',
                 topic_context: selectedSignal.headline
               })
@@ -998,7 +993,7 @@ export const TodaysSignals = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {[...trendingSignals].sort((a, b) => b.score - a.score).slice(0, 3).map((signal) => (
+                {trendingSignals.slice(0, 3).map((signal) => (
                   <SignalCard
                     key={signal.id}
                     signal={signal}
@@ -1648,7 +1643,7 @@ export const TodaysSignals = () => {
           </DialogHeader>
 
           <div className="overflow-y-auto max-h-[60vh] py-4 px-1 space-y-2">
-            {[...(allSignalsModalSource === 'trending' ? trendingSignals : signals)].sort((a, b) => b.score - a.score).map((signal) => (
+            {(allSignalsModalSource === 'trending' ? trendingSignals : signals).map((signal) => (
               <SignalCard
                 key={signal.id}
                 signal={signal}

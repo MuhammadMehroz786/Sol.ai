@@ -553,6 +553,7 @@ export type Database = {
           score: number | null
           source: string | null
           summary: string | null
+          signal_type: string | null
           tag: string | null
           url: string | null
           use_mode: string[] | null
@@ -568,6 +569,7 @@ export type Database = {
           published_at?: string | null
           rationale?: string | null
           score?: number | null
+          signal_type?: string | null
           source?: string | null
           summary?: string | null
           tag?: string | null
@@ -585,6 +587,7 @@ export type Database = {
           published_at?: string | null
           rationale?: string | null
           score?: number | null
+          signal_type?: string | null
           source?: string | null
           summary?: string | null
           tag?: string | null

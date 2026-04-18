@@ -1,25 +1,10 @@
 /**
  * SOP Generator Service
- * Uses OpenAI GPT-4 to generate professional Standard Operating Procedures
+ * Calls the openai-proxy Edge Function — the API key never touches the browser.
  */
 
-import { SOPGeneratorInput, SOPDocument } from '@/types/sop';
-
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface OpenAIResponse {
-  choices: {
-    message: {
-      content: string;
-    };
-  }[];
-}
+import { SOPGeneratorInput } from '@/types/sop';
+import { callOpenAI } from '@/lib/openaiProxy';
 
 const SOP_SYSTEM_PROMPT = `You are an elite SOP (Standard Operating Procedure) consultant with 25+ years of experience creating enterprise-grade documentation for Fortune 500 companies, government agencies, and healthcare organizations. You are certified in ISO 9001, ISO 14001, ISO 45001, OSHA, HIPAA, FDA 21 CFR Part 11, and Six Sigma methodologies.
 
@@ -195,161 +180,30 @@ Generate the SOP in clean, professional markdown format. This document should be
 }
 
 export async function generateSOP(input: SOPGeneratorInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.'
-    };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: SOP_SYSTEM_PROMPT },
-    { role: 'user', content: buildSOPPrompt(input) }
+  const messages = [
+    { role: 'system' as const, content: SOP_SYSTEM_PROMPT },
+    { role: 'user' as const, content: buildSOPPrompt(input) },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 4000,
-        temperature: 0.7,
-        presence_penalty: 0.1,
-        frequency_penalty: 0.1
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 4000, temperature: 0.7, presence_penalty: 0.1, frequency_penalty: 0.1 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    // Post-process to remove any em dashes that slipped through
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
 export async function refineSOP(
   currentSOP: string,
   refinementRequest: string
 ): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured.'
-    };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: SOP_SYSTEM_PROMPT },
-    { role: 'user', content: `Here is an existing SOP document:\n\n${currentSOP}` },
-    { role: 'assistant', content: 'I have reviewed the SOP document. What changes would you like me to make?' },
-    { role: 'user', content: `Please refine this SOP based on the following request:\n\n${refinementRequest}\n\nReturn the complete updated SOP in markdown format.` }
+  const messages = [
+    { role: 'system' as const, content: SOP_SYSTEM_PROMPT },
+    { role: 'user' as const, content: `Here is an existing SOP document:\n\n${currentSOP}` },
+    { role: 'assistant' as const, content: 'I have reviewed the SOP document. What changes would you like me to make?' },
+    { role: 'user' as const, content: `Please refine this SOP based on the following request:\n\n${refinementRequest}\n\nReturn the complete updated SOP in markdown format.` },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 4000,
-        temperature: 0.5
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 4000, temperature: 0.5 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    // Post-process to remove any em dashes
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
-}
-
-export async function generateSOPSection(
-  sectionType: string,
-  context: string
-): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured.'
-    };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: SOP_SYSTEM_PROMPT },
-    { role: 'user', content: `Generate only the "${sectionType}" section for an SOP with this context:\n\n${context}\n\nReturn only this section in proper markdown format.` }
-  ];
-
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 1500,
-        temperature: 0.6
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    // Post-process to remove any em dashes
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }

@@ -37,7 +37,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
           <VoicesProvider>
-            <Suspense fallback={null}>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><div className="h-8 w-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" /></div>}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={

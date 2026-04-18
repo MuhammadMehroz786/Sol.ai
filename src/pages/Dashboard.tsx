@@ -125,8 +125,8 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     if (!user) return;
-    const { data } = await supabase.from("content_outputs").select("status, updated_at").eq("user_id", user.id);
-    if (!data) return;
+    const { data, error } = await supabase.from("content_outputs").select("status, updated_at").eq("user_id", user.id);
+    if (error || !data) return;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     setStats({
       totalGenerated: data.length,

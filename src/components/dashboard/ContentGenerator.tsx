@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatResponseData } from "@/utils/contentFormatters";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -160,15 +161,6 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
     setIsDeletingVoice(true);
 
     try {
-      if (voiceToDelete.databaseId) {
-        const { error: dbError } = await supabase
-          .from('voice_profiles')
-          .delete()
-          .eq('id', voiceToDelete.databaseId);
-
-        if (dbError) throw dbError;
-      }
-
       removeVoice(voiceToDelete.value);
 
       if (selectedVoice === voiceToDelete.value) {
@@ -356,7 +348,7 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
                 title: `${selectedOutputType.replace('-', ' ')} about ${topic.substring(0, 50)}`,
                 content: formattedContent,
                 persona: voiceName,
-                output_type: selectedOutputType,
+                output_type: baseOutputType,
                 status: 'draft',
                 topic_context: topic,
               })
@@ -381,42 +373,6 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const formatResponseData = (response: any): string => {
-    if (!response) return "";
-    const data = Array.isArray(response) && response.length > 0 ? response[0] : response;
-
-    if (typeof data === "string") return data;
-    if (data.text_output) return data.text_output;
-    if (data.content_markdown) return data.content_markdown;
-
-    const body = data.content || data.body || "";
-    const { headline, tldr, caption } = data;
-
-    if (!headline && !body && !tldr && !caption) {
-      return JSON.stringify(data, null, 2);
-    }
-
-    let out = "";
-
-    if (headline) {
-      out += `# ${headline}\n\n`;
-    }
-
-    if (tldr) {
-      out += `## In Brief\n\n${tldr}\n\n`;
-    }
-
-    if (body) {
-      out += `## Full Story\n\n${body}\n\n`;
-    }
-
-    if (caption) {
-      out += `## Caption\n\n${caption}`;
-    }
-
-    return out.trim();
   };
 
   const canGenerate = selectedVoice && selectedOutputType && topic.trim();

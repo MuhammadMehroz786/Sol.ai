@@ -43,10 +43,43 @@ export function VoicesProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Initial load
+  // Initial load from localStorage
   useEffect(() => {
     loadVoices();
   }, [loadVoices]);
+
+  // Sync voice profiles from Supabase on mount
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user || cancelled) return;
+      supabase
+        .from('voice_profiles')
+        .select('id, name, description')
+        .eq('user_id', data.user.id)
+        .then(({ data: profiles }) => {
+          if (!profiles || cancelled) return;
+          setVoices((prev) => {
+            const existingDbIds = new Set(prev.map((v) => v.databaseId).filter(Boolean));
+            const newFromDb: CustomVoice[] = profiles
+              .filter((p) => !existingDbIds.has(p.id))
+              .map((p) => ({
+                value: `voice-db-${p.id}`,
+                label: p.name,
+                description: p.description || 'Custom voice profile',
+                isDefault: false,
+                userId: data.user!.id,
+                databaseId: p.id,
+              }));
+            if (newFromDb.length === 0) return prev;
+            const next = [...prev, ...newFromDb];
+            persist(next);
+            return next;
+          });
+        });
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Listen for cross-tab storage changes
   useEffect(() => {
@@ -82,6 +115,10 @@ export function VoicesProvider({ children }: { children: ReactNode }) {
 
   const removeVoice = useCallback((value: string) => {
     setVoices((prev) => {
+      const voice = prev.find((v) => v.value === value);
+      if (voice?.databaseId) {
+        supabase.from('voice_profiles').delete().eq('id', voice.databaseId).then(() => {});
+      }
       const next = prev.filter((v) => v.value !== value);
       persist(next);
       return next;

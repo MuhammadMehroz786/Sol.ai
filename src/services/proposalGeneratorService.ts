@@ -1,25 +1,10 @@
 /**
  * Proposal Generator Service
- * Uses OpenAI GPT-4 to generate professional, humanized business proposals
+ * Calls the openai-proxy Edge Function — the API key never touches the browser.
  */
 
 import { ProposalGeneratorInput } from '@/types/proposal';
-
-const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY as string;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
-
-interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface OpenAIResponse {
-  choices: {
-    message: {
-      content: string;
-    };
-  }[];
-}
+import { callOpenAI } from '@/lib/openaiProxy';
 
 const PROPOSAL_SYSTEM_PROMPT = `You are a world-class business proposal writer who has helped companies win billions of dollars in contracts. Your proposals are known for being compelling, clear, and genuinely human in their voice.
 
@@ -128,108 +113,30 @@ Generate the proposal in clean markdown format.`;
 }
 
 export async function generateProposal(input: ProposalGeneratorInput): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured. Please add VITE_OPENAI_API_KEY to your .env file.'
-    };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: PROPOSAL_SYSTEM_PROMPT },
-    { role: 'user', content: buildProposalPrompt(input) }
+  const messages = [
+    { role: 'system' as const, content: PROPOSAL_SYSTEM_PROMPT },
+    { role: 'user' as const, content: buildProposalPrompt(input) },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 4000,
-        temperature: 0.75,
-        presence_penalty: 0.2,
-        frequency_penalty: 0.1
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 4000, temperature: 0.75, presence_penalty: 0.2, frequency_penalty: 0.1 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    // Post-process to remove any em dashes that slipped through
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
 
 export async function refineProposal(
   currentProposal: string,
   refinementRequest: string
 ): Promise<{ content: string; error?: string }> {
-  if (!OPENAI_API_KEY) {
-    return {
-      content: '',
-      error: 'OpenAI API key not configured.'
-    };
-  }
-
-  const messages: OpenAIMessage[] = [
-    { role: 'system', content: PROPOSAL_SYSTEM_PROMPT },
-    { role: 'user', content: `Here is an existing proposal:\n\n${currentProposal}` },
-    { role: 'assistant', content: 'I have reviewed the proposal. What changes would you like me to make?' },
-    { role: 'user', content: `Please refine this proposal based on the following request:\n\n${refinementRequest}\n\nRemember: No em dashes, no robotic language, write like a human.\n\nReturn the complete updated proposal in markdown format.` }
+  const messages = [
+    { role: 'system' as const, content: PROPOSAL_SYSTEM_PROMPT },
+    { role: 'user' as const, content: `Here is an existing proposal:\n\n${currentProposal}` },
+    { role: 'assistant' as const, content: 'I have reviewed the proposal. What changes would you like me to make?' },
+    { role: 'user' as const, content: `Please refine this proposal based on the following request:\n\n${refinementRequest}\n\nRemember: No em dashes, no robotic language, write like a human.\n\nReturn the complete updated proposal in markdown format.` },
   ];
 
-  try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages,
-        max_tokens: 4000,
-        temperature: 0.6
-      })
-    });
+  const { content: raw, error } = await callOpenAI({ messages, max_tokens: 4000, temperature: 0.6 });
+  if (error || !raw) return { content: '', error: error || 'No content generated' };
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `API error: ${response.status}`);
-    }
-
-    const data: OpenAIResponse = await response.json();
-    let content = data.choices[0]?.message?.content;
-
-    if (!content) {
-      throw new Error('No content generated');
-    }
-
-    // Post-process to remove any em dashes
-    content = content.replace(/—/g, ', ').replace(/–/g, ', ');
-
-    return { content };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    return { content: '', error: message };
-  }
+  return { content: raw.replace(/—/g, ', ').replace(/–/g, ', ') };
 }
