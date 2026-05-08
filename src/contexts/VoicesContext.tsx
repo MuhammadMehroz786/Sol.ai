@@ -81,17 +81,6 @@ export function VoicesProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Reset voices to defaults on sign-out / account deletion
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        localStorage.removeItem(VOICES_STORAGE_KEY);
-        setVoices(DEFAULT_VOICES);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
   // Listen for cross-tab storage changes
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
