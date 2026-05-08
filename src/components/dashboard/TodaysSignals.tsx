@@ -19,6 +19,8 @@ import { Signal } from "@/types/signals";
 import { useToast } from "@/hooks/use-toast";
 import { GeneratedContentModal, DEFAULT_GUARDRAILS, type Guardrails } from "@/components/dashboard/GeneratedContentModal";
 import { VoiceDropdown } from "@/components/shared/VoiceDropdown";
+import { formatResponseData } from "@/utils/contentFormatters";
+import { fetchVoiceProfileDbId } from "@/utils/voiceProfiles";
 
 type CustomVoice = VoiceOption;
 
@@ -629,25 +631,7 @@ export const TodaysSignals = () => {
       if (response.ok) {
         const result = await response.json();
 
-        let voiceProfileId: string | undefined;
-        try {
-          const { data: voiceProfileData, error: dbError } = await supabase
-            .from('voice_profiles')
-            .select('id')
-            .eq('user_id', user.user.id)
-            .eq('name', voiceProfileName.trim())
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          if (dbError) {
-            if (import.meta.env.DEV) console.error('[voice_profiles fetch]', dbError);
-          } else {
-            voiceProfileId = voiceProfileData?.id;
-          }
-        } catch (e) {
-          if (import.meta.env.DEV) console.error('[voice_profiles fetch] exception', e);
-        }
+        const voiceProfileId = await fetchVoiceProfileDbId(user.user.id, voiceProfileName);
 
         const newVoice: CustomVoice = {
           value: `voice-${Date.now()}`,
@@ -777,42 +761,6 @@ export const TodaysSignals = () => {
   };
 
 
-  const formatResponseData = (response: unknown): string => {
-    if (!response) return "";
-    const raw = Array.isArray(response) && response.length > 0 ? response[0] : response;
-    const data = raw as Record<string, unknown>;
-
-    if (typeof data === "string") return data;
-    if (data.text_output) return data.text_output;
-    if (data.content_markdown) return data.content_markdown;
-
-    const body = data.content || data.body || "";
-    const { headline, tldr, caption } = data;
-
-    if (!headline && !body && !tldr && !caption) {
-      return JSON.stringify(data, null, 2);
-    }
-
-    let out = "";
-
-    if (headline) {
-      out += `# ${headline}\n\n`;
-    }
-
-    if (tldr) {
-      out += `## In Brief\n\n${tldr}\n\n`;
-    }
-
-    if (body) {
-      out += `## Full Story\n\n${body}\n\n`;
-    }
-
-    if (caption) {
-      out += `## Caption\n\n${caption}`;
-    }
-
-    return out.trim();
-  };
 
 
 

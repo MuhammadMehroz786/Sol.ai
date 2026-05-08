@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { formatResponseData } from "@/utils/contentFormatters";
+import { fetchVoiceProfileDbId } from "@/utils/voiceProfiles";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -222,27 +223,7 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
       if (response.ok) {
         const result = await response.json();
 
-        let voiceProfileId: string | undefined;
-
-        // n8n webhook already saved the record — just fetch the ID
-        try {
-          const { data: voiceProfileData, error: dbError } = await supabase
-            .from('voice_profiles')
-            .select('id')
-            .eq('user_id', user.user.id)
-            .eq('name', voiceProfileName.trim())
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          if (dbError) {
-            if (import.meta.env.DEV) console.error('[voice_profiles fetch]', dbError);
-          } else {
-            voiceProfileId = voiceProfileData?.id;
-          }
-        } catch (e) {
-          if (import.meta.env.DEV) console.error('[voice_profiles fetch] exception', e);
-        }
+        const voiceProfileId = await fetchVoiceProfileDbId(user.user.id, voiceProfileName);
 
         // Create voice profile in local state
         const newVoice: CustomVoice = {

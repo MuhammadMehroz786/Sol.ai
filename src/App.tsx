@@ -63,27 +63,37 @@ const App = () => (
               } />
               <Route path="/sop-generator" element={
                 <ProtectedRoute>
-                  <SOPGenerator />
+                  <Layout>
+                    <SOPGenerator />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/proposal-generator" element={
                 <ProtectedRoute>
-                  <ProposalGenerator />
+                  <Layout>
+                    <ProposalGenerator />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/persona-gpt" element={
                 <ProtectedRoute>
-                  <PersonaGPT />
+                  <Layout>
+                    <PersonaGPT />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/meeting-agent" element={
                 <ProtectedRoute>
-                  <MeetingAgent />
+                  <Layout>
+                    <MeetingAgent />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/post-cal" element={
                 <ProtectedRoute>
-                  <PostCal />
+                  <Layout>
+                    <PostCal />
+                  </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/settings" element={

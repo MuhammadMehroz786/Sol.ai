@@ -117,7 +117,7 @@ export function VoicesProvider({ children }: { children: ReactNode }) {
     setVoices((prev) => {
       const voice = prev.find((v) => v.value === value);
       if (voice?.databaseId) {
-        supabase.from('voice_profiles').delete().eq('id', voice.databaseId).then(() => {});
+        supabase.from('voice_profiles').delete().eq('id', voice.databaseId).then(() => {}).catch(() => {});
       }
       const next = prev.filter((v) => v.value !== value);
       persist(next);
