@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +14,7 @@ import { generatePersonaContent, chatWithPersona, getPersonaIntroduction } from 
 import { exportToPDF } from "@/utils/pdfExport";
 import { Persona, ChatMessage, DEFAULT_PERSONAS, CONTENT_TYPES, CONTENT_LENGTHS, PersonaWritingRequest } from "@/types/persona";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import {
   Users,
   MessageSquare,
@@ -27,13 +26,9 @@ import {
   Loader2,
   Plus,
   User,
-  Palette,
   Brain,
-  BookOpen,
   Trash2,
   RefreshCw,
-  ChevronRight,
-  Zap,
   ArrowLeft,
   FileDown
 } from "lucide-react";
@@ -170,7 +165,7 @@ export default function PersonaGPT() {
           description: `${selectedPersona.name} has created your ${contentType}.`,
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred.",
@@ -219,7 +214,7 @@ export default function PersonaGPT() {
         };
         setChatMessages(prev => [...prev, assistantMessage]);
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to send message.",
@@ -712,7 +707,7 @@ export default function PersonaGPT() {
                   ) : generatedContent ? (
                     <ScrollArea className="h-[400px] pr-4">
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{generatedContent}</ReactMarkdown>
                       </div>
                     </ScrollArea>
                   ) : (

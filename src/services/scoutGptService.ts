@@ -45,69 +45,63 @@ const SCOUT_GPT_ENDPOINT = WEBHOOK_SCOUT_GPT;
 export class ScoutGptService {
 
   static async fetchSignalsFromScoutGpt(topic?: string, timeoutMs = 300000): Promise<ScoutGptSignal[]> {
-    try {
-      const endpoint = SCOUT_GPT_ENDPOINT;
+    const endpoint = SCOUT_GPT_ENDPOINT;
 
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => {
-          const mins = Math.round(timeoutMs / 60000);
-          reject(new Error(`Request timeout: The search took longer than ${mins} minute${mins !== 1 ? 's' : ''} and has been cancelled.`));
-        }, timeoutMs);
-      });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        const mins = Math.round(timeoutMs / 60000);
+        reject(new Error(`Request timeout: The search took longer than ${mins} minute${mins !== 1 ? 's' : ''} and has been cancelled.`));
+      }, timeoutMs);
+    });
 
-      // Use POST request (n8n webhook is configured for POST)
-      const fetchPromise = fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'get_signals',
-          timestamp: new Date().toISOString(),
-          topic: topic || 'emerging AI and technology stories from the last 72 hours with strong cultural, policy, and economic implications—prioritizing signals affecting authorship, ownership, labor, and Black and Brown communities',
-        })
-      });
+    const fetchPromise = fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'get_signals',
+        timestamp: new Date().toISOString(),
+        topic: topic || 'emerging AI and technology stories from the last 72 hours with strong cultural, policy, and economic implications—prioritizing signals affecting authorship, ownership, labor, and Black and Brown communities',
+      })
+    });
 
-      // Race between fetch and timeout
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
 
-      if (!response.ok) {
-        throw new Error(`Sole Intelligence API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return this.parseSignalsResponse(data);
-    } catch (error) {
-      throw error;
+    if (!response.ok) {
+      throw new Error(`Sole Intelligence API error: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    return this.parseSignalsResponse(data);
   }
 
-  static parseSignalsResponse(data: any): ScoutGptSignal[] {
+  static parseSignalsResponse(data: unknown): ScoutGptSignal[] {
     let signals: ScoutGptSignal[] = [];
+    const d = data as Record<string, unknown>;
 
     if (Array.isArray(data)) {
-      signals = data.length > 0 && data[0].output
-        ? data.map(item => item.output)
-        : data;
-    } else if (data.signals && Array.isArray(data.signals)) {
-      signals = data.signals;
-    } else if (data.data && Array.isArray(data.data)) {
-      signals = data.data;
-    } else if (data.results && Array.isArray(data.results)) {
-      signals = data.results;
-    } else if (data.items && Array.isArray(data.items)) {
-      signals = data.items;
-    } else if (data.output) {
-      signals = [data.output];
-    } else if (data.topic && data.summary) {
-      signals = [data];
-    } else if (data.headline && data.summary) {
-      signals = [data];
+      signals = data.length > 0 && (data[0] as Record<string, unknown>).output
+        ? data.map(item => (item as Record<string, unknown>).output as ScoutGptSignal)
+        : data as ScoutGptSignal[];
+    } else if (Array.isArray(d.signals)) {
+      signals = d.signals as ScoutGptSignal[];
+    } else if (Array.isArray(d.data)) {
+      signals = d.data as ScoutGptSignal[];
+    } else if (Array.isArray(d.results)) {
+      signals = d.results as ScoutGptSignal[];
+    } else if (Array.isArray(d.items)) {
+      signals = d.items as ScoutGptSignal[];
+    } else if (d.output) {
+      signals = [d.output as ScoutGptSignal];
+    } else if (d.topic && d.summary) {
+      signals = [d as unknown as ScoutGptSignal];
+    } else if (d.headline && d.summary) {
+      signals = [d as unknown as ScoutGptSignal];
     } else if (typeof data === 'object' && data !== null) {
-      // Try to find any array in the response
-      for (const key of Object.keys(data)) {
-        if (Array.isArray(data[key])) {
-          signals = data[key];
+      for (const key of Object.keys(d)) {
+        if (Array.isArray(d[key])) {
+          signals = d[key] as ScoutGptSignal[];
           break;
         }
       }
@@ -138,8 +132,9 @@ export class ScoutGptService {
       const summary = signal.summary || signal.description || 'No summary available';
 
       // score arrives as string "9" or number — normalise to 0–100
+      // If >10 it's already on a 0–100 scale; if ≤10 it's a 1–10 scale
       const rawScore = Number(signal.score) || 5;
-      const score = rawScore * 10;
+      const score = Math.min(100, rawScore > 10 ? Math.round(rawScore) : rawScore * 10);
 
       // date field is the real publish date; fall back to published_at then now
       const rawDate = signal.date || signal.published_at;
@@ -216,9 +211,9 @@ export class ScoutGptService {
     return this.convertToProcessedSignals(data || []);
   }
 
-  static convertToProcessedSignals(dbSignals: any[]): ProcessedSignal[] {
+  static convertToProcessedSignals(dbSignals: Record<string, unknown>[]): ProcessedSignal[] {
     return dbSignals.map((signal, index) => {
-      const score = signal.score || 0;
+      const score = (signal.score as number) || 0;
       return {
         id: signal.id,
         rank: index + 1,

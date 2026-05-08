@@ -20,7 +20,6 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  ArrowRight,
 } from "lucide-react";
 
 interface ContentOutput {
@@ -37,7 +36,6 @@ interface ContentOutput {
 }
 
 interface ContentQueueProps {
-  onSelectOutput: (output: ContentOutput) => void;
   pendingOpenId?: string | null;
   onDraftOpened?: () => void;
   /** When true: renders without Card shell and delegates item clicks to onOpenContent */
@@ -80,7 +78,7 @@ const statusConfig = {
   }
 };
 
-export const ContentQueue = ({ onSelectOutput, pendingOpenId, onDraftOpened, embedded, onOpenContent }: ContentQueueProps) => {
+export const ContentQueue = ({ pendingOpenId, onDraftOpened, embedded, onOpenContent }: ContentQueueProps) => {
   const [outputs, setOutputs] = useState<ContentOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");

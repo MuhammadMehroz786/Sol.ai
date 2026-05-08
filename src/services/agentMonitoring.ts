@@ -10,8 +10,8 @@ export interface HealthCheckResult {
   error_message?: string;
   error_type?: 'network' | 'timeout' | 'auth' | 'server' | 'client';
   health_status: 'ok' | 'warn' | 'fail' | 'unknown';
-  request_payload?: any;
-  response_payload?: any;
+  request_payload?: unknown;
+  response_payload?: unknown;
 }
 
 export interface MonitoringStats {
@@ -137,8 +137,8 @@ class AgentMonitoringService {
       // Perform comprehensive system health check
       await fallbackManager.performSystemHealthCheck();
 
-
-    } catch (error) {
+    } catch {
+      // health check failures are non-fatal
     }
   }
 
@@ -196,8 +196,8 @@ class AgentMonitoringService {
     status_code: number;
     error_message?: string;
     error_type?: 'network' | 'timeout' | 'auth' | 'server' | 'client';
-    request_payload?: any;
-    response_payload?: any;
+    request_payload?: unknown;
+    response_payload?: unknown;
   }> {
     if (this.isAiProviderEndpoint(agent.endpoint)) {
       return this.pingViaProxy(agent);
@@ -228,7 +228,7 @@ class AgentMonitoringService {
     status_code: number;
     error_message?: string;
     error_type?: 'network' | 'timeout' | 'auth' | 'server' | 'client';
-    response_payload?: any;
+    response_payload?: unknown;
   }> {
     const proxyUrl = import.meta.env.VITE_HEALTH_CHECK_PROXY as string | undefined;
 
@@ -276,12 +276,13 @@ class AgentMonitoringService {
           response_payload: responseData,
         };
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      const e = err instanceof Error ? err : null;
+      if (e?.name === 'AbortError') {
         return { success: false, status_code: 0, error_message: 'Request timeout', error_type: 'timeout' };
       }
-      return { success: false, status_code: 0, error_message: error.message, error_type: 'network' };
+      return { success: false, status_code: 0, error_message: e?.message ?? 'Network error', error_type: 'network' };
     }
   }
 
@@ -349,12 +350,13 @@ class AgentMonitoringService {
         error_type: response.status >= 500 ? 'server' : response.status === 401 || response.status === 403 ? 'auth' : 'client',
       };
 
-    } catch (error: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      const e = err instanceof Error ? err : null;
+      if (e?.name === 'AbortError') {
         return { success: false, status_code: 0, error_message: 'Request timeout', error_type: 'timeout' };
       }
-      return { success: false, status_code: 0, error_message: error.message, error_type: 'network' };
+      return { success: false, status_code: 0, error_message: e?.message ?? 'Network error', error_type: 'network' };
     }
   }
 
@@ -383,7 +385,7 @@ class AgentMonitoringService {
   private async storeHealthCheckResults(results: HealthCheckResult[]): Promise<void> {
     if (results.length === 0) return;
 
-    const { error } = await supabase
+    await supabase
       .from('agent_health_checks')
       .insert(results.map(result => ({
         agent_id: result.agent_id,
@@ -396,21 +398,15 @@ class AgentMonitoringService {
         request_payload: result.request_payload,
         response_payload: result.response_payload
       })));
-
-    if (error) {
-    }
   }
 
   /**
    * Update agent health status using database function
    */
   private async updateAgentHealthStatus(agentId: string): Promise<void> {
-    const { error } = await supabase.rpc('update_agent_health_status', {
+    await supabase.rpc('update_agent_health_status', {
       p_agent_id: agentId
     });
-
-    if (error) {
-    }
   }
 
   /**
@@ -439,7 +435,8 @@ class AgentMonitoringService {
         }
       }
 
-    } catch (error) {
+    } catch {
+      // non-fatal
     }
   }
 
@@ -463,7 +460,7 @@ class AgentMonitoringService {
 
       return data?.length || 0;
 
-    } catch (error) {
+    } catch {
       return 0;
     }
   }
@@ -473,13 +470,9 @@ class AgentMonitoringService {
    */
   private async triggerAutomaticFallback(failedAgent: Agent): Promise<void> {
     try {
-      const success = await fallbackManager.checkAutomaticFallback(failedAgent.id);
-
-      if (success) {
-      } else {
-      }
-
-    } catch (error) {
+      await fallbackManager.checkAutomaticFallback(failedAgent.id);
+    } catch {
+      // fallback trigger failures are non-fatal
     }
   }
 
@@ -494,10 +487,7 @@ class AgentMonitoringService {
     agent_id?: string;
     user_id?: string;
   }): Promise<void> {
-    const { error } = await supabase.from('system_alerts').insert(alert);
-
-    if (error) {
-    }
+    await supabase.from('system_alerts').insert(alert);
   }
 
   /**
@@ -559,7 +549,7 @@ class AgentMonitoringService {
 
       return result;
 
-    } catch (error) {
+    } catch {
       return null;
     }
   }

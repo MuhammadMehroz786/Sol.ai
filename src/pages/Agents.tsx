@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAgentMonitoring } from "@/hooks/useAgentMonitoring";
 import { StatusBadge } from "@/components/monitoring/StatusBadge";
 import {
-  Agent, AgentInsert, AgentWithStats, validateEndpoint,
+  Agent, AgentInsert, AgentWithStats, AgentRole, AgentStatus, AuthMethod, validateEndpoint,
 } from "@/types/agents";
 import { agentMonitoringService } from "@/services/agentMonitoring";
 import {
@@ -60,7 +60,7 @@ const AgentFormFields = ({
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
         <Label className="font-semibold">Role</Label>
-        <Select value={formData.role || ""} onValueChange={(v) => setFormData(p => ({ ...p, role: v as any }))}>
+        <Select value={formData.role || ""} onValueChange={(v) => setFormData(p => ({ ...p, role: v as AgentRole }))}>
           <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select role" /></SelectTrigger>
           <SelectContent>
             {[
@@ -77,7 +77,7 @@ const AgentFormFields = ({
       </div>
       <div className="space-y-2">
         <Label className="font-semibold">Auth Method</Label>
-        <Select value={formData.auth_method || ""} onValueChange={(v) => setFormData(p => ({ ...p, auth_method: v as any }))}>
+        <Select value={formData.auth_method || ""} onValueChange={(v) => setFormData(p => ({ ...p, auth_method: v as AuthMethod }))}>
           <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select method" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="api_key">API Key</SelectItem>
@@ -119,7 +119,7 @@ const AgentFormFields = ({
     </div>
     <div className="space-y-2">
       <Label className="font-semibold">Status</Label>
-      <Select value={formData.status || ""} onValueChange={(v) => setFormData(p => ({ ...p, status: v as any }))}>
+      <Select value={formData.status || ""} onValueChange={(v) => setFormData(p => ({ ...p, status: v as AgentStatus }))}>
         <SelectTrigger className="rounded-xl"><SelectValue placeholder="Select status" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="planned">Planned</SelectItem>
@@ -342,8 +342,8 @@ const Agents = () => {
       api_headers: agent.api_headers || {},
       input_schema: agent.input_schema, output_schema: agent.output_schema,
       status: agent.status,
-      priority: (agent as any).priority ?? 1,
-      is_fallback_enabled: (agent as any).is_fallback_enabled ?? false,
+      priority: (agent as AgentWithStats).priority ?? 1,
+      is_fallback_enabled: (agent as AgentWithStats).is_fallback_enabled ?? false,
     });
     setIsEditDialogOpen(true);
   };
@@ -861,12 +861,12 @@ const Agents = () => {
                               />
                             ) : (
                               <button
-                                onClick={() => setEditingPriority({ id: agentStatus.agent.id, value: (agentStatus.agent as any).priority ?? 1 })}
+                                onClick={() => setEditingPriority({ id: agentStatus.agent.id, value: (agentStatus.agent as AgentWithStats).priority ?? 1 })}
                                 className="text-lg font-bold text-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center"
                                 title="Click to edit priority"
                               >
                                 <Hash className="h-3 w-3 mr-0.5 text-muted-foreground" />
-                                {(agentStatus.agent as any).priority ?? 1}
+                                {(agentStatus.agent as AgentWithStats).priority ?? 1}
                               </button>
                             )}
                             <p className="text-xs font-semibold text-muted-foreground">Priority</p>
@@ -1081,7 +1081,7 @@ const Agents = () => {
                     {monitoringAgents
                       .filter(a => a.agent.id !== fallbackConfig.from && a.agent.is_fallback_enabled)
                       .map(s => (
-                        <option key={s.agent.id} value={s.agent.id}>{s.agent.name} (Priority: {(s.agent as any).priority})</option>
+                        <option key={s.agent.id} value={s.agent.id}>{s.agent.name} (Priority: {(s.agent as AgentWithStats).priority})</option>
                       ))}
                   </select>
                 </div>

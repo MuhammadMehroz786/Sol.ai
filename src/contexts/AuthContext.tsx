@@ -2,17 +2,19 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+type AuthMethodError = { message: string } | null;
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthMethodError }>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: AuthMethodError }>;
   signOut: () => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<{ error: any }>;
-  updateProfile: (data: { displayName?: string; avatarUrl?: string }) => Promise<{ error: any }>;
-  signOutAllDevices: () => Promise<{ error: any }>;
-  deleteAccount: () => Promise<{ error: any }>;
+  updatePassword: (newPassword: string) => Promise<{ error: AuthMethodError }>;
+  updateProfile: (data: { displayName?: string; avatarUrl?: string }) => Promise<{ error: AuthMethodError }>;
+  signOutAllDevices: () => Promise<{ error: AuthMethodError }>;
+  deleteAccount: () => Promise<{ error: AuthMethodError }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,6 +81,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (event === 'SIGNED_IN' && session?.user) {
           // Defer to avoid Supabase client deadlock inside the listener
           setTimeout(() => ensureProfileExists(session.user), 0);
+        }
+
+        // Session expired — clear local state so ProtectedRoute redirects to /auth
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          setSession(null);
+          setUser(null);
+        }
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
         }
       }
     );
@@ -152,7 +164,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           message: 'User already registered',
           name: 'AuthApiError',
           status: 400
-        } as any
+        }
       };
     }
 
@@ -212,24 +224,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const deleteAccount = async () => {
     if (!user) return { error: { message: 'No user logged in' } };
 
-    // Delete voice profiles
-    const { error: voiceError } = await supabase
-      .from('voice_profiles')
-      .delete()
-      .eq('user_id', user.id);
+    // Delete all user-owned data (non-blocking; best-effort before auth user removal)
+    const tables = [
+      'voice_profiles',
+      'content_outputs',
+      'signals_ranked',
+      'signals',
+      'agent_health_checks',
+      'agent_monitoring_stats',
+      'system_alerts',
+      'agent_fallback_events',
+      'profiles',
+    ] as const;
 
-    if (voiceError) {
-      // non-blocking — continue deletion
-    }
-
-    // Delete user profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (profileError) {
-      // non-blocking — continue deletion
+    for (const table of tables) {
+      await supabase.from(table).delete().eq('user_id', user.id).catch(() => {});
     }
 
     // Delete the auth user itself so the email can be re-registered

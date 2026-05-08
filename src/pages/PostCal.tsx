@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,15 +40,12 @@ import {
   Trash2,
   Copy,
   CheckCircle2,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
   List,
-  Filter,
   Hash,
   Wand2,
-  Send,
   MoreVertical,
   CalendarDays,
   TrendingUp,

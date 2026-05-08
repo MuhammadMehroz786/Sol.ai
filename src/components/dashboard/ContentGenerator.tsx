@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { formatResponseData } from "@/utils/contentFormatters";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -24,23 +22,12 @@ import {
   FileText,
   Twitter,
   Video,
-  ScrollText,
   BookOpen,
-  FileImage,
-  Palette,
-  Edit,
   Loader2,
   Trash2,
-  Plus,
-  Briefcase,
   Target,
   BarChart3,
-  FileEdit,
-  Users,
-  MessageSquare,
   Globe,
-  Star,
-  AlertCircle,
   CheckCircle2,
   Lightbulb,
   Shield,
@@ -174,10 +161,10 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
 
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch (error: any) {
+    } catch (err: unknown) {
       toast({
         title: "Delete failed",
-        description: error?.message || "An error occurred while deleting the voice profile",
+        description: err instanceof Error ? err.message : "An error occurred while deleting the voice profile",
         variant: "destructive",
       });
     } finally {
@@ -249,12 +236,12 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
             .single();
 
           if (dbError) {
-            console.error('[voice_profiles fetch]', dbError);
+            if (import.meta.env.DEV) console.error('[voice_profiles fetch]', dbError);
           } else {
             voiceProfileId = voiceProfileData?.id;
           }
         } catch (e) {
-          console.error('[voice_profiles fetch] exception', e);
+          if (import.meta.env.DEV) console.error('[voice_profiles fetch] exception', e);
         }
 
         // Create voice profile in local state
@@ -281,7 +268,7 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
       } else {
         throw new Error('Failed to upload voice profile');
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Upload failed",
         description: "Failed to create voice profile. Please try again.",
@@ -310,7 +297,7 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
 
       const resolvedVoiceId = voices.find(v => v.value === selectedVoice)?.databaseId ?? selectedVoice;
 
-      const payload: any = {
+      const payload = {
         topic,
         signal: {
           headline: topic,
@@ -319,11 +306,8 @@ export const ContentGenerator = ({ onClose }: { onClose?: () => void }) => {
         voice_id: resolvedVoiceId,
         output_type: baseOutputType,
         guardrails,
+        ...(contentSize ? { content_size: contentSize } : {}),
       };
-
-      if (contentSize) {
-        payload.content_size = contentSize;
-      }
 
       const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',

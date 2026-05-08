@@ -1,19 +1,17 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { WEBHOOK_EDITORIAL_GPT, WEBHOOK_VOICE_PROFILE_CREATE } from "@/constants/webhooks";
 import { type VoiceOption } from "@/constants/voices";
 import { useVoices } from "@/contexts/VoicesContext";
 import { Label } from "@/components/ui/label";
-import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Crown, Star, Target, Loader2, Download, ArrowLeft, Edit, Sparkles, RotateCcw, Scissors, RefreshCw, X, Search, Briefcase, Lightbulb, Users, FileText, MessageSquare, Video, FileEdit, BookOpen, ScrollText, Palette, AlertCircle, BarChart3, Globe, CheckCircle2, CheckCircle, User, Trash2, Link2, Wand2, Save, Send, FileDown, Shield, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { ExternalLink, TrendingUp, Clock, ArrowRight, Zap, Star, Target, Loader2, ArrowLeft, Sparkles, RotateCcw, RefreshCw, X, Search, FileText, MessageSquare, Video, BookOpen, BarChart3, Globe, CheckCircle2, CheckCircle, User, Link2, Wand2, Shield, ChevronDown, SlidersHorizontal, Crown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ScoutGptService } from "@/services/scoutGptService";
@@ -235,7 +233,6 @@ const SignalCard = ({
 export const TodaysSignals = () => {
   const navigate = useNavigate();
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [loadingSignals, setLoadingSignals] = useState<{ [key: string]: boolean }>({});
   const [isLoadingAllSignals, setIsLoadingAllSignals] = useState(true);
   const [allSignalsModalOpen, setAllSignalsModalOpen] = useState(false);
   const [agentLinkModalOpen, setAgentLinkModalOpen] = useState(false);
@@ -263,8 +260,6 @@ export const TodaysSignals = () => {
   const [allSignalsModalSource, setAllSignalsModalSource] = useState<'trending' | 'topic'>('topic');
   const [topicSearch, setTopicSearch] = useState("");
   const [isFilteringByTopic, setIsFilteringByTopic] = useState(false);
-  const [isTopicDropdownOpen, setIsTopicDropdownOpen] = useState(false);
-  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -293,44 +288,6 @@ export const TodaysSignals = () => {
     { value: "long", label: "Long", description: "1600+ words" }
   ];
 
-  const topicGroups = [
-    {
-      label: "Technology & Innovation",
-      icon: Globe,
-      color: "from-blue-500 to-cyan-500",
-      topics: ["ai", "tech", "data", "algorithms", "digital", "internet", "network", "innovation"]
-    },
-    {
-      label: "Business & Career",
-      icon: Briefcase,
-      color: "from-orange-500 to-amber-500",
-      topics: ["business", "career", "startups", "funding", "enterprise", "entrepreneurship", "strategy", "leadership"]
-    },
-    {
-      label: "Society & Culture",
-      icon: Users,
-      color: "from-purple-500 to-pink-500",
-      topics: ["culture", "society", "community", "equity", "race", "women", "latinx", "public opinion", "history"]
-    },
-    {
-      label: "Media & Entertainment",
-      icon: Video,
-      color: "from-rose-500 to-red-500",
-      topics: ["media", "entertainment", "music", "hip hop", "art", "artists", "clubs"]
-    },
-    {
-      label: "Knowledge & Research",
-      icon: BookOpen,
-      color: "from-emerald-500 to-teal-500",
-      topics: ["education", "research", "data justice", "ethics", "policy", "investigations"]
-    },
-    {
-      label: "Lifestyle & Personal",
-      icon: Star,
-      color: "from-indigo-500 to-purple-500",
-      topics: ["life", "lifestyle", "beauty", "interviews", "process", "news"]
-    }
-  ];
 
   // Load signals on component mount
   useEffect(() => {
@@ -581,10 +538,10 @@ export const TodaysSignals = () => {
 
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch (error: any) {
+    } catch (err: unknown) {
       toast({
         title: "Delete failed",
-        description: error?.message || "An error occurred while deleting the voice profile",
+        description: err instanceof Error ? err.message : "An error occurred while deleting the voice profile",
         variant: "destructive",
       });
     } finally {
@@ -684,12 +641,12 @@ export const TodaysSignals = () => {
             .single();
 
           if (dbError) {
-            console.error('[voice_profiles fetch]', dbError);
+            if (import.meta.env.DEV) console.error('[voice_profiles fetch]', dbError);
           } else {
             voiceProfileId = voiceProfileData?.id;
           }
         } catch (e) {
-          console.error('[voice_profiles fetch] exception', e);
+          if (import.meta.env.DEV) console.error('[voice_profiles fetch] exception', e);
         }
 
         const newVoice: CustomVoice = {
@@ -741,7 +698,7 @@ export const TodaysSignals = () => {
       const baseOutputType = selectedOutputType.startsWith('Article-') ? 'article' : selectedOutputType.toLowerCase();
       const contentSize = selectedOutputType.startsWith('Article-') ? selectedOutputType.replace('Article-', '').toLowerCase() : selectedArticleLength.toLowerCase() || undefined;
 
-      const payload: any = {
+      const payload = {
         topic: selectedSignal.headline,
         signal: {
           headline: selectedSignal.headline,
@@ -750,11 +707,8 @@ export const TodaysSignals = () => {
         voice_id: resolvedVoiceId,
         output_type: baseOutputType,
         guardrails,
+        ...(contentSize ? { content_size: contentSize } : {}),
       };
-
-      if (contentSize) {
-        payload.content_size = contentSize;
-      }
 
       const response = await fetch(WEBHOOK_EDITORIAL_GPT, {
         method: 'POST',
@@ -823,9 +777,10 @@ export const TodaysSignals = () => {
   };
 
 
-  const formatResponseData = (response: any): string => {
+  const formatResponseData = (response: unknown): string => {
     if (!response) return "";
-    const data = Array.isArray(response) && response.length > 0 ? response[0] : response;
+    const raw = Array.isArray(response) && response.length > 0 ? response[0] : response;
+    const data = raw as Record<string, unknown>;
 
     if (typeof data === "string") return data;
     if (data.text_output) return data.text_output;
@@ -860,44 +815,6 @@ export const TodaysSignals = () => {
   };
 
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High": return "bg-destructive/10 text-destructive border-destructive/30";
-      case "Medium": return "bg-warning/10 text-warning border-warning/30";
-      default: return "bg-muted/50 text-muted-foreground border-border";
-    }
-  };
-
-  const getPriorityBorder = (priority: string) => {
-    switch (priority) {
-      case "High": return "border-l-destructive/50";
-      case "Medium": return "border-l-warning/50";
-      default: return "border-l-border";
-    }
-  };
-
-  const getScorePillColor = (score: number) => {
-    if (score >= 80) return "bg-primary/15 text-primary border-primary/30";
-    if (score >= 60) return "bg-accent/15 text-accent-foreground border-accent/30";
-    return "bg-muted text-muted-foreground border-border";
-  };
-
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-gradient-primary text-white shrink-0">
-        <Crown className="h-2.5 w-2.5" />#1
-      </span>
-    );
-    return (
-      <span className="text-[10px] font-bold text-muted-foreground shrink-0">#{rank}</span>
-    );
-  };
-
-  const getScoreCircle = (score: number) => {
-    if (score >= 80) return 'border-primary/50 text-primary bg-primary/8';
-    if (score >= 60) return 'border-amber-400/50 text-amber-600 bg-amber-50';
-    return 'border-border text-muted-foreground bg-muted/40';
-  };
 
   return (
     <Card className="bg-gradient-card border border-border shadow-elegant">

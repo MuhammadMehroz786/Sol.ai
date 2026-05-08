@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { Briefcase, Palette, Target, Users, BookOpen, Shield, Cpu, Telescope } from "lucide-react";
 
 export interface VoiceOption {
@@ -6,7 +7,7 @@ export interface VoiceOption {
   description: string;
   tooltip?: string;
   isDefault: boolean;
-  icon?: any;
+  icon?: ComponentType;
   color?: string;
   userId?: string;
   databaseId?: string;

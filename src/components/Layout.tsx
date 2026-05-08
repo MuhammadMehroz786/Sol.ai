@@ -2,7 +2,6 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -17,7 +16,6 @@ import soleLogoBlack from "@/assets/Auth logo.png";
 import {
   LayoutDashboard,
   Settings,
-  Bot,
   LogOut,
   Wand2,
   ClipboardList,
@@ -217,7 +215,7 @@ const Layout = ({ children }: LayoutProps) => {
 
           {/* Nav items */}
           <div className="relative p-3 space-y-1 overflow-y-auto max-h-[calc(100vh-11rem)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {navigation.map((item, index) => {
+            {navigation.map((item) => {
               const isActive = location.pathname === item.href;
               return (
                 <div key={item.name}>

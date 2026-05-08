@@ -16,6 +16,7 @@ import { generateSOP, refineSOP } from "@/services/sopGeneratorService";
 import { exportSOPToPDF } from "@/utils/pdfExport";
 import { SOP_TEMPLATES, DEPARTMENTS, OUTPUT_FORMATS, COMPLIANCE_FRAMEWORKS, RISK_LEVELS, SOPGeneratorInput, SOPTemplate } from "@/types/sop";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import {
   FileText,
   Factory,
@@ -41,7 +42,6 @@ import {
   Target,
   BookOpen,
   Settings2,
-  Zap
 } from "lucide-react";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -137,7 +137,7 @@ export default function SOPGenerator() {
           description: "Your Standard Operating Procedure has been created successfully.",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -179,7 +179,7 @@ export default function SOPGenerator() {
           description: "Your SOP has been updated based on your feedback.",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -267,7 +267,7 @@ export default function SOPGenerator() {
         title: "PDF Downloaded!",
         description: "Your SOP has been saved as a PDF file.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "PDF generation failed",
         description: "Unable to create PDF. Please try the Print option instead.",
@@ -659,6 +659,7 @@ export default function SOPGenerator() {
                       <ScrollArea className="h-[600px] pr-4">
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                           <ReactMarkdown
+                            rehypePlugins={[rehypeSanitize]}
                             components={{
                               h1: ({ children }) => <h1 className="text-2xl font-bold border-b pb-2 mb-4">{children}</h1>,
                               h2: ({ children }) => <h2 className="text-xl font-semibold mt-6 mb-3 text-primary">{children}</h2>,

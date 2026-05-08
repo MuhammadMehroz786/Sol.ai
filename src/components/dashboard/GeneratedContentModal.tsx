@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { formatResponseData as sharedFormatResponseData } from "@/utils/contentFormatters";
+import { exportToPDF as exportToPDFUtil } from "@/utils/pdfExport";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { WEBHOOK_EDITORIAL_GPT, WEBHOOK_CONTENT_REFINEMENT } from "@/constants/webhooks";
+import { WEBHOOK_CONTENT_REFINEMENT } from "@/constants/webhooks";
 import { useToast } from "@/hooks/use-toast";
-import { useVoices } from "@/contexts/VoicesContext";
 import { Input } from "@/components/ui/input";
 import {
   Edit3, AlertCircle, CheckCircle, Share2,
@@ -79,10 +79,10 @@ export const GeneratedContentModal = ({
   title,
   initialContent,
   persona,
-  voiceId,
+  voiceId: _voiceId,
   outputType,
   initialStatus,
-  topicContext,
+  topicContext: _topicContext,
   createdAt,
   guardrails,
   onNewGeneration,
@@ -100,7 +100,6 @@ export const GeneratedContentModal = ({
   const [contentHistory, setContentHistory] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { voices } = useVoices();
 
   useEffect(() => {
     if (open) {
@@ -116,6 +115,22 @@ export const GeneratedContentModal = ({
     const text = editableContent.trim();
     return text ? text.split(/\s+/).length : 0;
   }, [editableContent]);
+
+  const articleWordLimit = useMemo((): { min: number; max: number | null; label: string } | null => {
+    const lower = outputType.toLowerCase();
+    if (lower.includes('short'))  return { min: 500,  max: 700,  label: '500–700' };
+    if (lower.includes('medium')) return { min: 700,  max: 1600, label: '700–1600' };
+    if (lower.includes('long'))   return { min: 1600, max: null, label: '1600+' };
+    return null;
+  }, [outputType]);
+
+  const wordCountStatus = useMemo(() => {
+    if (!articleWordLimit) return 'neutral';
+    const { min, max } = articleWordLimit;
+    if (wordCount < min) return 'under';
+    if (max !== null && wordCount > max) return 'over';
+    return 'ok';
+  }, [wordCount, articleWordLimit]);
 
   const displayOutputType = useMemo(() => {
     const base = outputType.startsWith('Article') ? 'Article' : outputType.replace(/-/g, ' ');
@@ -189,6 +204,7 @@ export const GeneratedContentModal = ({
         caption,
         quick_action: quickAction,
         modifiers,
+        ...(guardrails ? { guardrails } : {}),
       }),
     });
     if (response.ok) {
@@ -250,13 +266,22 @@ export const GeneratedContentModal = ({
     URL.revokeObjectURL(url);
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     setIsExporting(true);
-    const printContent = `<html><head><title>${title}</title><style>body{font-family:Georgia,serif;margin:40px;line-height:1.8;color:#222}h1{font-size:1.5rem;margin-bottom:1rem;border-bottom:1px solid #ccc;padding-bottom:.5rem}.content{white-space:pre-wrap;font-size:1rem}</style></head><body><h1>${title}</h1><div class="content">${editableContent.replace(/\n/g, '<br>')}</div></body></html>`;
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(printContent); w.document.close(); w.print(); }
-    setIsExporting(false);
-    toast({ title: "Print dialog opened", description: "Save as PDF from your browser." });
+    try {
+      const safeName = title.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      await exportToPDFUtil(editableContent, {
+        filename: `${safeName}-${new Date().toISOString().split('T')[0]}.pdf`,
+        title,
+        subtitle: persona ? `by ${persona}` : undefined,
+        accentColor: '#d07e3b',
+      });
+      toast({ title: "PDF exported", description: `${title}.pdf saved.` });
+    } catch {
+      toast({ title: "Export failed", description: "Could not generate PDF.", variant: "destructive" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const sendToCMS = async () => {
@@ -430,8 +455,14 @@ export const GeneratedContentModal = ({
           {/* Toolbar */}
           <div className="shrink-0 flex items-center justify-between px-5 py-2 border-b border-border/20">
             <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/50 mr-2">
+              <span className={`text-[10px] font-semibold uppercase tracking-[0.12em] mr-2 ${
+                wordCountStatus === 'over'  ? 'text-red-500' :
+                wordCountStatus === 'under' ? 'text-warning/80' :
+                wordCountStatus === 'ok'    ? 'text-success/80' :
+                'text-muted-foreground/50'
+              }`}>
                 {wordCount.toLocaleString()} words
+                {articleWordLimit && ` / ${articleWordLimit.label}`}
               </span>
               {contentStatus === 'review' && isDirty && (
                 <span className="flex items-center gap-1 text-[10px] text-warning/80 font-medium">
@@ -446,7 +477,7 @@ export const GeneratedContentModal = ({
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              {contentStatus === 'draft' && (
+              {contentStatus === 'review' && !isEditingReview && (
                 <>
                   <Button size="sm" variant="ghost" onClick={() => downloadContent('txt')}
                     className="h-7 text-[11px] px-2.5 gap-1 text-muted-foreground hover:text-foreground">
@@ -513,7 +544,7 @@ export const GeneratedContentModal = ({
               }`}>
                 {editableContent ? (
                   <div className="px-8 py-7">
-                    <ReactMarkdown components={mdComponents}>{editableContent}</ReactMarkdown>
+                    <ReactMarkdown rehypePlugins={[rehypeSanitize]} components={mdComponents}>{editableContent}</ReactMarkdown>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground/40 italic text-sm">

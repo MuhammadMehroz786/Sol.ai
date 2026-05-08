@@ -23,12 +23,12 @@ const FEATURES = [
 ];
 
 // Views that should NOT trigger an auto-redirect even if user is signed in
-const STAY_VIEWS = ['email-confirmed', 'set-password', 'set-password-done'] as const;
+const STAY_VIEWS = ['email-confirmed', 'set-password', 'set-password-done', 'verify-otp'] as const;
 
 type View =
   | 'signin'
   | 'signup'
-  | 'signup-pending'
+  | 'verify-otp'
   | 'forgot'
   | 'forgot-sent'
   | 'set-password'
@@ -126,6 +126,20 @@ const Auth = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSent, setResendSent]       = useState(false);
 
+  // OTP state
+  const [otpCode, setOtpCode]         = useState('');
+  const [otpLoading, setOtpLoading]   = useState(false);
+  const [otpError, setOtpError]       = useState('');
+
+  // Failed attempts + cooldown
+  const [failedAttempts, setFailedAttempts]   = useState(0);
+  const [cooldownUntil, setCooldownUntil]     = useState<number | null>(null);
+  const [cooldownLeft, setCooldownLeft]       = useState(0);
+
+  // Email rate limiting (resend + forgot)
+  const [lastEmailSent, setLastEmailSent]     = useState<number | null>(null);
+  const EMAIL_RATE_LIMIT_SECS = 60;
+
   // Validation
   const [emailError, setEmailError]   = useState('');
   const [confirmError, setConfirmError] = useState('');
@@ -174,17 +188,27 @@ const Auth = () => {
     }
   }, [view, navigate]);
 
-  // ── Effect 5: listen for SIGNED_IN while on signup-pending ──────────────────
-  // Covers the case where the user confirms in the same browser (storage event
-  // triggers onAuthStateChange cross-tab). If that doesn't fire, the manual
-  // "Sign me in" button below is the reliable fallback.
+  // ── Effect 5: cooldown countdown ticker ──────────────────────────────────────
   useEffect(() => {
-    if (view !== 'signup-pending') return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') navigate('/');
-    });
-    return () => subscription.unsubscribe();
-  }, [view, navigate]);
+    if (!cooldownUntil) return;
+    const tick = () => {
+      const left = Math.ceil((cooldownUntil - Date.now()) / 1000);
+      if (left <= 0) { setCooldownUntil(null); setCooldownLeft(0); setFailedAttempts(0); }
+      else setCooldownLeft(left);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [cooldownUntil]);
+
+  // ── Effect 6: BroadcastChannel — signal original tab after OTP confirms ──────
+  useEffect(() => {
+    const channel = new BroadcastChannel('sole_auth');
+    channel.onmessage = (e) => {
+      if (e.data === 'confirmed') navigate('/');
+    };
+    return () => channel.close();
+  }, [navigate]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -194,6 +218,7 @@ const Auth = () => {
     setNewPassword(''); setConfirmNew('');
     setShowPassword(false); setShowConfirmPw(false);
     setShowNewPw(false); setShowConfirmNew(false);
+    setOtpCode(''); setOtpError('');
   };
 
   const switchView = (v: View) => { reset(); setView(v); };
@@ -204,12 +229,21 @@ const Auth = () => {
   // ── Handlers ──────────────────────────────────────────────────────────────────
 
   const doSignIn = async () => {
+    if (cooldownUntil && Date.now() < cooldownUntil) return;
     setLoading(true); setError('');
     const { error } = await signIn(email, password);
     if (error) {
       const msg = error.message.toLowerCase();
       if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
-        setError('No account found with this email, or your password is incorrect.');
+        const next = failedAttempts + 1;
+        setFailedAttempts(next);
+        if (next >= 5) {
+          const until = Date.now() + 30_000;
+          setCooldownUntil(until);
+          setError('Too many failed attempts. Please wait 30 seconds before trying again.');
+        } else {
+          setError(`Incorrect username or password. ${5 - next} attempt${5 - next === 1 ? '' : 's'} remaining.`);
+        }
       } else if (msg.includes('email not confirmed')) {
         setError('Please confirm your email before signing in.');
       } else if (msg.includes('too many requests')) {
@@ -218,6 +252,8 @@ const Auth = () => {
         setError(error.message);
       }
     } else {
+      setFailedAttempts(0);
+      setCooldownUntil(null);
       toast({ title: 'Welcome back!', description: 'Successfully signed in to Sole Central Station.' });
     }
     setLoading(false);
@@ -247,30 +283,57 @@ const Auth = () => {
         setError(result.error.message);
       }
     } else {
-      // Don't redirect yet — wait for email confirmation
-      setView('signup-pending');
+      setOtpCode(''); setOtpError('');
+      setView('verify-otp');
     }
     setLoading(false);
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpCode.length !== 6) { setOtpError('Enter the 6-digit code from your email.'); return; }
+    setOtpLoading(true); setOtpError('');
+    const { error } = await supabase.auth.verifyOtp({ email, token: otpCode, type: 'signup' });
+    if (error) {
+      setOtpError(error.message.includes('expired') || error.message.includes('invalid')
+        ? 'Invalid or expired code. Request a new one.'
+        : error.message);
+    } else {
+      new BroadcastChannel('sole_auth').postMessage('confirmed');
+      navigate('/');
+    }
+    setOtpLoading(false);
   };
 
   const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValidEmail(email)) { setEmailError('Enter a valid email address'); return; }
+    if (lastEmailSent && (Date.now() - lastEmailSent) < EMAIL_RATE_LIMIT_SECS * 1000) {
+      const secs = Math.ceil((EMAIL_RATE_LIMIT_SECS * 1000 - (Date.now() - lastEmailSent)) / 1000);
+      setError(`Please wait ${secs}s before requesting another reset email.`);
+      return;
+    }
     setLoading(true); setError('');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth`,
     });
     setLoading(false);
     if (error) setError(error.message);
-    else setView('forgot-sent');
+    else { setLastEmailSent(Date.now()); setView('forgot-sent'); }
   };
 
   const handleResend = async () => {
+    if (lastEmailSent && (Date.now() - lastEmailSent) < EMAIL_RATE_LIMIT_SECS * 1000) {
+      const secs = Math.ceil((EMAIL_RATE_LIMIT_SECS * 1000 - (Date.now() - lastEmailSent)) / 1000);
+      setError(`Please wait ${secs}s before requesting another email.`);
+      return;
+    }
     setResendLoading(true);
     setResendSent(false);
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setResendLoading(false);
     if (error) { setError(error.message); return; }
+    setLastEmailSent(Date.now());
     setResendSent(true);
     setTimeout(() => setResendSent(false), 5000);
   };
@@ -304,12 +367,11 @@ const Auth = () => {
   // Supabase fires onAuthStateChange(SIGNED_IN) across all tabs via localStorage,
   // so the redirect guard above will auto-navigate to '/' the moment the user
   // clicks the confirmation link in any tab/window.
-  if (view === 'signup-pending') {
+  if (view === 'verify-otp') {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-6">
         <div className="w-full max-w-sm text-center space-y-6">
 
-          {/* Animated envelope */}
           <div className="relative mx-auto w-20 h-20">
             <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping opacity-40" />
             <div className="relative w-20 h-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center shadow-sm">
@@ -318,37 +380,39 @@ const Auth = () => {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">Check your inbox</h2>
+            <h2 className="text-2xl font-bold text-foreground">Enter your code</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              We sent a confirmation link to<br />
+              We sent a 6-digit verification code to<br />
               <span className="font-semibold text-foreground">{email}</span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Click the link in the email, then come back here and tap the button below.
             </p>
           </div>
 
-          {/* Error from sign-in attempt */}
-          {error && (
-            <div className="w-full text-left">
-              <p className="text-xs text-red-500 text-center">{error}</p>
+          <form onSubmit={handleVerifyOtp} className="space-y-4 text-left">
+            <div className="space-y-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="000000"
+                value={otpCode}
+                onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, '')); setOtpError(''); }}
+                className={`w-full h-14 text-center text-3xl font-bold tracking-[0.4em] rounded-xl border-2 bg-muted/40 focus:outline-none focus:bg-background transition-colors ${
+                  otpError ? 'border-red-400' : 'border-border/50 focus:border-primary'
+                }`}
+                autoFocus
+              />
+              {otpError && <p className="text-xs text-red-500 text-center">{otpError}</p>}
             </div>
-          )}
+            <Button
+              type="submit"
+              disabled={otpLoading || otpCode.length !== 6}
+              className="w-full h-10 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold text-sm"
+            >
+              {otpLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Verifying…</> : 'Verify & Sign In'}
+            </Button>
+          </form>
 
-          {/* Primary CTA — signs in directly once email is confirmed */}
-          <Button
-            type="button"
-            onClick={doSignIn}
-            disabled={loading}
-            className="w-full h-10 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold text-sm"
-          >
-            {loading
-              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing in…</>
-              : "I've confirmed my email — Sign me in"
-            }
-          </Button>
-
-          {/* Resend + go back */}
           <div className="space-y-2 pt-1">
             <button
               type="button"
@@ -356,7 +420,7 @@ const Auth = () => {
               disabled={resendLoading || resendSent}
               className="text-sm text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {resendSent ? '✓ Email resent' : resendLoading ? 'Sending…' : 'Resend confirmation email'}
+              {resendSent ? '✓ Code resent' : resendLoading ? 'Sending…' : 'Resend code'}
             </button>
             <br />
             <button
@@ -583,8 +647,8 @@ const Auth = () => {
                   </button>
                 </div>
 
-                <Button type="submit" className="w-full h-10 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold text-sm" disabled={loading}>
-                  {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing in…</> : 'Sign In'}
+                <Button type="submit" className="w-full h-10 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold text-sm" disabled={loading || !!cooldownUntil}>
+                  {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing in…</> : cooldownUntil ? `Try again in ${cooldownLeft}s` : 'Sign In'}
                 </Button>
               </form>
 

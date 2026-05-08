@@ -16,6 +16,7 @@ import { generateProposal, refineProposal } from "@/services/proposalGeneratorSe
 import { exportProposalToPDF } from "@/utils/pdfExport";
 import { PROPOSAL_TEMPLATES, PROPOSAL_TYPES, CLIENT_INDUSTRIES, TONE_OPTIONS, ProposalGeneratorInput, ProposalTemplate } from "@/types/proposal";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import {
   FileText,
   Briefcase,
@@ -41,7 +42,6 @@ import {
   Target,
   BookOpen,
   Settings2,
-  Zap,
   DollarSign,
   Calendar,
   MessageSquare,
@@ -150,7 +150,7 @@ export default function ProposalGenerator() {
           description: "Your professional proposal has been created successfully.",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -192,7 +192,7 @@ export default function ProposalGenerator() {
           description: "Your proposal has been updated based on your feedback.",
         });
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -281,7 +281,7 @@ export default function ProposalGenerator() {
         title: "PDF Downloaded!",
         description: "Your proposal has been saved as a PDF file.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "PDF generation failed",
         description: "Unable to create PDF. Please try the Print option instead.",
@@ -706,6 +706,7 @@ export default function ProposalGenerator() {
                       <ScrollArea className="h-[600px] pr-4">
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                           <ReactMarkdown
+                            rehypePlugins={[rehypeSanitize]}
                             components={{
                               h1: ({ children }) => <h1 className="text-2xl font-bold border-b-2 border-primary pb-3 mb-6">{children}</h1>,
                               h2: ({ children }) => <h2 className="text-xl font-semibold mt-8 mb-4 text-primary">{children}</h2>,

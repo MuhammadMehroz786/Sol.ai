@@ -14,29 +14,26 @@
  *   userId: "uuid-of-authenticated-user",
  *   payload: {
  *     voiceProfile: "Malcolm" | "Ana" | "Winston" | "Custom Voice Name",
- *     sourceType: "raw_text" | "url" | "doc_id" | "transcript",
+ *     sourceType: "raw_text" | "url",
  *     source: "content-string",
- *     targetPlatforms: ["x", "linkedin", "instagram_carousel", "short_video"]
+ *     targetPlatforms: ["x", "linkedin", "instagram_carousel"]
  *   }
  * }
  *
  * TYPE MAPPINGS:
  * - UI "paste" → API "raw_text"
  * - UI "instagram" → API "instagram_carousel"
- * - UI "video" → API "short_video"
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ComponentType } from "react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroup } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -48,49 +45,32 @@ import { VoiceDropdown } from "@/components/shared/VoiceDropdown";
 import {
   FileText,
   Link as LinkIcon,
-  FileCode,
-  Mic,
   Twitter,
   Linkedin,
   Instagram,
-  Video,
   Copy,
-  Download,
-  Send,
   Loader2,
   CheckCircle2,
   User,
   Sparkles,
   Trash2,
   Wand2,
-  X,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
   FileJson,
   FileDown,
-  Hash,
   MessageSquare,
   Image as ImageIcon,
-  Film,
   AlertTriangle,
-  RotateCw,
-  Zap,
-  Crown,
-  Eye,
-  AtSign,
-  Layers,
-  Type,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Types
-type SourceType = "paste" | "url" | "doc_id" | "transcript";
-type Platform = "x" | "linkedin" | "instagram" | "video";
+type SourceType = "paste" | "url";
+type Platform = "x" | "linkedin" | "instagram";
 
 // API Types
-type ApiSourceType = "raw_text" | "url" | "doc_id" | "transcript";
-type ApiPlatform = "x" | "linkedin" | "instagram_carousel" | "short_video";
+type ApiSourceType = "raw_text" | "url";
+type ApiPlatform = "x" | "linkedin" | "instagram_carousel";
 
 interface SocialAlchemistRequest {
   idempotencyKey: string;
@@ -116,10 +96,6 @@ interface SocialAlchemistResponse {
       caption: string;
       altText: string[];
     };
-    short_video?: {
-      script: string;
-      beats: string[];
-    };
   };
   errors?: Array<{
     platform: string;
@@ -127,11 +103,6 @@ interface SocialAlchemistResponse {
   }>;
 }
 
-interface PlatformResult {
-  platform: Platform;
-  content: string;
-  badges: string[];
-}
 
 // Modal state for new design
 interface GeneratedContentModalState {
@@ -146,7 +117,7 @@ interface CustomVoice {
   label: string;
   description: string;
   isDefault: boolean;
-  icon?: any;
+  icon?: ComponentType;
   color?: string;
   userId?: string;
   databaseId?: string;
@@ -179,20 +150,13 @@ const platformConfigs = {
     bg: "bg-pink-50 dark:bg-pink-950/30",
     gradient: "from-pink-600 to-purple-600"
   },
-  video: {
-    label: "Video",
-    icon: Video,
-    color: "text-red-600",
-    bg: "bg-red-50 dark:bg-red-950/30",
-    gradient: "from-red-600 to-red-700"
-  },
 };
 
 // Modal platform display configs with richer styling
 const modalPlatformConfigs: Record<string, {
   label: string;
   headline: string;
-  icon: any;
+  icon: ComponentType;
   gradient: string;
   lightBg: string;
   accentColor: string;
@@ -225,15 +189,6 @@ const modalPlatformConfigs: Record<string, {
     accentColor: "text-pink-600",
     badgeColor: "bg-pink-50 text-pink-700 border border-pink-200",
   },
-  short_video: {
-    label: "Video Script",
-    headline: "Script Engineered to Hook & Convert",
-    icon: Video,
-    gradient: "from-red-500 via-orange-500 to-amber-500",
-    lightBg: "from-[hsl(47,59%,98%)] to-[hsl(15,59%,96%)]",
-    accentColor: "text-red-600",
-    badgeColor: "bg-red-50 text-red-700 border border-red-200",
-  },
 };
 
 const SocialAlchemist = () => {
@@ -245,9 +200,6 @@ const SocialAlchemist = () => {
   const [sourceContent, setSourceContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [results, setResults] = useState<PlatformResult[] | null>(null);
-  const [showResultsModal, setShowResultsModal] = useState(false);
-  const [copiedPlatform, setCopiedPlatform] = useState<Platform | null>(null);
 
   // New modal state
   const [generatedContentModal, setGeneratedContentModal] = useState<GeneratedContentModalState>({
@@ -256,7 +208,6 @@ const SocialAlchemist = () => {
     activeTab: null,
     copiedItem: null,
   });
-  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
 
   // Voice profile modal states
@@ -294,7 +245,7 @@ const SocialAlchemist = () => {
   // Helper: Map UI source type to API source type
   const mapSourceTypeToApi = (uiType: SourceType): ApiSourceType => {
     if (uiType === "paste") return "raw_text";
-    return uiType; // url, doc_id, transcript remain the same
+    return uiType; // url remains the same
   };
 
   // Helper: Map UI platform to API platform
@@ -303,7 +254,6 @@ const SocialAlchemist = () => {
       x: "x",
       linkedin: "linkedin",
       instagram: "instagram_carousel",
-      video: "short_video"
     };
     return platformMap[uiPlatform];
   };
@@ -325,11 +275,11 @@ const SocialAlchemist = () => {
     if (!request.payload.targetPlatforms || request.payload.targetPlatforms.length === 0) {
       return { valid: false, error: "At least one platform must be selected" };
     }
-    const validSourceTypes: ApiSourceType[] = ["raw_text", "url", "doc_id", "transcript"];
+    const validSourceTypes: ApiSourceType[] = ["raw_text", "url"];
     if (!validSourceTypes.includes(request.payload.sourceType)) {
       return { valid: false, error: `Invalid source type: ${request.payload.sourceType}` };
     }
-    const validPlatforms: ApiPlatform[] = ["x", "linkedin", "instagram_carousel", "short_video"];
+    const validPlatforms: ApiPlatform[] = ["x", "linkedin", "instagram_carousel"];
     const invalidPlatforms = request.payload.targetPlatforms.filter(p => !validPlatforms.includes(p));
     if (invalidPlatforms.length > 0) {
       return { valid: false, error: `Invalid platforms: ${invalidPlatforms.join(', ')}` };
@@ -360,7 +310,7 @@ const SocialAlchemist = () => {
 
   // Pre-populate source content when navigated from a signal link
   useEffect(() => {
-    const signal = (location.state as any)?.signal;
+    const signal = (location.state as { signal?: { headline?: string; summary?: string } } | null)?.signal;
     if (signal?.headline) {
       setSourceType("paste");
       setSourceContent(`${signal.headline}\n\n${signal.summary || ''}`);
@@ -369,7 +319,7 @@ const SocialAlchemist = () => {
         description: "Select a voice and platforms to generate social assets.",
       });
     }
-  }, [location.state]);
+  }, [location.state, toast]);
 
   const handleVoiceChange = (value: string) => {
     if (value === "create-voice-profile") {
@@ -399,8 +349,8 @@ const SocialAlchemist = () => {
       toast({ title: "Voice deleted", description: "Voice profile removed successfully" });
       setDeleteConfirmOpen(false);
       setVoiceToDelete(null);
-    } catch (error: any) {
-      toast({ title: "Delete failed", description: error?.message || 'Failed to delete voice profile', variant: "destructive" });
+    } catch (err: unknown) {
+      toast({ title: "Delete failed", description: err instanceof Error ? err.message : 'Failed to delete voice profile', variant: "destructive" });
     } finally {
       setIsDeletingVoice(false);
     }
@@ -486,10 +436,11 @@ const SocialAlchemist = () => {
       setVoiceProfileModalOpen(false);
       setUploadedFiles([]);
       setVoiceProfileName("");
-    } catch (error: any) {
-      const message = error?.name === 'AbortError'
+    } catch (err: unknown) {
+      const e = err instanceof Error ? err : null;
+      const message = e?.name === 'AbortError'
         ? 'Upload timed out. Please try again with a smaller file.'
-        : error?.message || 'Failed to create voice profile';
+        : e?.message || 'Failed to create voice profile';
       toast({ title: "Upload failed", description: message, variant: "destructive" });
     } finally {
       setIsUploadingProfile(false);
@@ -522,7 +473,6 @@ const SocialAlchemist = () => {
     const key = generateIdempotencyKey();
 
     setIsGenerating(true);
-    setResults(null);
 
     try {
       // Get voice profile — resolve databaseId for RAG support
@@ -570,7 +520,7 @@ const SocialAlchemist = () => {
 
       // Handle array responses — n8n returns one item per platform
       if (Array.isArray(result) && result.length > 0) {
-        const mergedOutputs: Record<string, any> = {};
+        const mergedOutputs: Record<string, unknown> = {};
         const mergedErrors: Array<{ platform: string; error: string }> = [];
         let runId = '';
 
@@ -593,10 +543,11 @@ const SocialAlchemist = () => {
           // ---- Format B: { ok, runId, outputs: { platform: data } } (legacy format) ----
           if (entry.outputs && typeof entry.outputs === 'object') {
             for (const [key, value] of Object.entries(entry.outputs)) {
-              if (value && typeof value === 'object' && !(value as any).error) {
+              const v = value as Record<string, unknown>;
+              if (value && typeof value === 'object' && !v.error) {
                 mergedOutputs[key] = value;
-              } else if (value && typeof value === 'object' && (value as any).error) {
-                mergedErrors.push({ platform: key, error: (value as any).error });
+              } else if (value && typeof value === 'object' && v.error) {
+                mergedErrors.push({ platform: key, error: v.error as string });
               }
             }
           }
@@ -625,11 +576,12 @@ const SocialAlchemist = () => {
 
       // Separate error-only entries from outputs
       if (result.outputs && typeof result.outputs === 'object') {
-        const cleanOutputs: Record<string, any> = {};
+        const cleanOutputs: Record<string, unknown> = {};
         const extraErrors: Array<{ platform: string; error: string }> = [];
         for (const [key, value] of Object.entries(result.outputs)) {
-          if (value && typeof value === 'object' && (value as any).error) {
-            extraErrors.push({ platform: key, error: (value as any).error });
+          const v = value as Record<string, unknown>;
+          if (value && typeof value === 'object' && v.error) {
+            extraErrors.push({ platform: key, error: v.error as string });
           } else if (value) {
             cleanOutputs[key] = value;
           }
@@ -657,7 +609,6 @@ const SocialAlchemist = () => {
           activeTab: firstAvailablePlatform,
           copiedItem: null,
         });
-        setCurrentSlideIndex(0);
 
         const successCount = Object.keys(result.outputs).length;
         const errorCount = result.errors?.length || 0;
@@ -668,18 +619,19 @@ const SocialAlchemist = () => {
             : `Generated content for ${successCount} platform${successCount !== 1 ? 's' : ''}`,
         });
       } else {
-        const errorMsg = result.errors?.map((e: any) => e.error || e.platform).join('; ')
+        const errorMsg = result.errors?.map((e: { error?: string; platform?: string }) => e.error || e.platform).join('; ')
           || 'No content was returned.';
         throw new Error(errorMsg);
       }
 
-    } catch (error: any) {
-      const isTimeout = error.name === 'AbortError';
+    } catch (err: unknown) {
+      const e = err instanceof Error ? err : null;
+      const isTimeout = e?.name === 'AbortError';
       toast({
         title: isTimeout ? "Request timed out" : "Generation failed",
         description: isTimeout
           ? "The server took too long to respond. Please try again."
-          : (error.message || "Please try again"),
+          : (e?.message || "Please try again"),
         variant: "destructive"
       });
     } finally {
@@ -687,12 +639,6 @@ const SocialAlchemist = () => {
     }
   };
 
-  const handleCopy = async (content: string, platform: Platform) => {
-    await navigator.clipboard.writeText(content);
-    setCopiedPlatform(platform);
-    setTimeout(() => setCopiedPlatform(null), 2000);
-    toast({ title: "Copied to clipboard!" });
-  };
 
   // New modal utilities
   const handleCopyContent = async (content: string, label: string) => {
@@ -701,7 +647,7 @@ const SocialAlchemist = () => {
       setGeneratedContentModal(prev => ({ ...prev, copiedItem: label }));
       setTimeout(() => setGeneratedContentModal(prev => ({ ...prev, copiedItem: null })), 2000);
       toast({ title: "Copied!", description: `${label} copied to clipboard` });
-    } catch (error) {
+    } catch {
       toast({ title: "Copy failed", variant: "destructive" });
     }
   };
@@ -723,10 +669,6 @@ const SocialAlchemist = () => {
       allContent += `Slides:\n${outputs.instagram_carousel.slides.map((s, i) => `Slide ${i + 1}:\n${s}`).join('\n\n')}\n\n`;
       allContent += `Caption:\n${outputs.instagram_carousel.caption}\n\n`;
     }
-    if (outputs.short_video) {
-      allContent += `=== SHORT VIDEO ===\nScript:\n${outputs.short_video.script}\n\nBeats:\n${outputs.short_video.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}\n`;
-    }
-
     await handleCopyContent(allContent, "All content");
   };
 
@@ -758,10 +700,6 @@ const SocialAlchemist = () => {
     if (outputs.instagram_carousel) {
       markdown += `## Instagram Carousel\n\n### Slides\n\n${outputs.instagram_carousel.slides.map((s, i) => `**Slide ${i + 1}**\n\n${s}\n`).join('\n')}\n\n### Caption\n\n${outputs.instagram_carousel.caption}\n\n---\n\n`;
     }
-    if (outputs.short_video) {
-      markdown += `## Short Video\n\n### Script\n\n${outputs.short_video.script}\n\n### Beats\n\n${outputs.short_video.beats.map((b, i) => `${i + 1}. ${b}`).join('\n')}\n`;
-    }
-
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -783,28 +721,9 @@ const SocialAlchemist = () => {
     if (outputs.x?.tweets?.length) tabs.push('x');
     if (outputs.linkedin?.post) tabs.push('linkedin');
     if (outputs.instagram_carousel?.slides?.length && outputs.instagram_carousel?.caption !== undefined) tabs.push('instagram_carousel');
-    if (outputs.short_video?.script && outputs.short_video?.beats?.length) tabs.push('short_video');
     return tabs;
   };
 
-  // Get dynamic modal headline
-  const getModalHeadline = () => {
-    const tabs = getAvailableTabs();
-    if (tabs.length === 0) return "Generation Complete";
-    if (tabs.length === 1) {
-      const config = modalPlatformConfigs[tabs[0]];
-      return config?.headline || "Your Content is Ready";
-    }
-    return "Crafted & Ready to Publish";
-  };
-
-  // Get dynamic subheadline
-  const getModalSubheadline = () => {
-    const tabs = getAvailableTabs();
-    if (tabs.length === 0) return "";
-    const platformNames = tabs.map(t => modalPlatformConfigs[t]?.label || t).join(', ');
-    return `${tabs.length} platform${tabs.length > 1 ? 's' : ''} generated: ${platformNames}`;
-  };
 
   const canGenerate = sourceContent.trim().length > 0 && selectedPlatforms.length > 0 && selectedVoice;
 
@@ -1035,12 +954,10 @@ const SocialAlchemist = () => {
                       <Label className="text-sm font-bold text-foreground">Source Type</Label>
                     </div>
                     <RadioGroup value={sourceType} onValueChange={(v) => setSourceType(v as SourceType)}>
-                      <div className="grid grid-cols-4 gap-1">
+                      <div className="grid grid-cols-2 gap-1">
                         {[
                           { value: "paste", icon: FileText, label: "Paste" },
                           { value: "url", icon: LinkIcon, label: "URL" },
-                          { value: "doc_id", icon: FileCode, label: "Doc ID" },
-                          { value: "transcript", icon: Mic, label: "Script" },
                         ].map(({ value, icon: Icon, label }) => (
                           <button
                             key={value}
@@ -1110,17 +1027,13 @@ const SocialAlchemist = () => {
               <div className="shrink-0 px-5 py-3 border-b border-border/30 relative z-10">
                 <div className="flex items-center gap-3">
                   {(() => {
-                    const iconMap: Record<SourceType, any> = {
+                    const iconMap: Record<SourceType, ComponentType> = {
                       paste: FileText,
                       url: LinkIcon,
-                      doc_id: FileCode,
-                      transcript: Mic,
                     };
                     const labelMap: Record<SourceType, string> = {
                       paste: "Paste raw text or long-form content",
                       url: "Provide a URL to fetch content from",
-                      doc_id: "Reference a document by its ID",
-                      transcript: "Paste a video or audio transcript",
                     };
                     const Icon = iconMap[sourceType];
                     return (
@@ -1143,13 +1056,9 @@ const SocialAlchemist = () => {
 
               {/* Content input area */}
               <div className="flex-1 flex flex-col p-5 gap-3 min-h-0 relative z-10">
-                {(sourceType === "paste" || sourceType === "transcript") && (
+                {sourceType === "paste" && (
                   <Textarea
-                    placeholder={
-                      sourceType === "paste"
-                        ? "Paste your long-form content here... articles, blog posts, newsletters, or any written content you want to repurpose."
-                        : "Paste your video or audio transcript here..."
-                    }
+                    placeholder="Paste your long-form content here... articles, blog posts, newsletters, or any written content you want to repurpose."
                     value={sourceContent}
                     onChange={(e) => setSourceContent(e.target.value)}
                     className="flex-1 resize-none font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 rounded-xl min-h-0"
@@ -1177,35 +1086,10 @@ const SocialAlchemist = () => {
                   </div>
                 )}
 
-                {sourceType === "doc_id" && (
-                  <div className="flex flex-col gap-4 h-full">
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="doc-abc123-xyz"
-                        value={sourceContent}
-                        onChange={(e) => setSourceContent(e.target.value)}
-                        className="h-14 font-mono text-sm border-2 bg-white/80 dark:bg-background/80 backdrop-blur-sm focus:border-primary focus:shadow-lg focus:shadow-primary/10 transition-all duration-300 rounded-xl"
-                      />
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <AlertCircle className="h-3 w-3" />
-                        Enter the ID of an existing document from your library
-                      </p>
-                    </div>
-                    <div className="flex-1 rounded-xl border-2 border-dashed border-border/40 bg-white/40 dark:bg-background/40 flex items-center justify-center text-center p-8">
-                      <div className="space-y-3">
-                        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                          <FileCode className="h-7 w-7 text-primary" />
-                        </div>
-                        <p className="text-sm font-semibold text-foreground">Document will be retrieved by ID</p>
-                        <p className="text-xs text-muted-foreground">The document content will be used as source material</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Footer: character + word count */}
-              {(sourceType === "paste" || sourceType === "transcript") && (
+              {(sourceType === "paste" || sourceType === "url") && (
                 <div className="shrink-0 px-5 py-2.5 border-t border-border/30 bg-white/40 dark:bg-card/40 backdrop-blur-sm relative z-10">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -1335,7 +1219,6 @@ const SocialAlchemist = () => {
               if (tabKey === 'x' && data.outputs.x) return `${data.outputs.x.tweets.length} tweets`;
               if (tabKey === 'linkedin' && data.outputs.linkedin) return '1 post';
               if (tabKey === 'instagram_carousel' && data.outputs.instagram_carousel) return `${data.outputs.instagram_carousel.slides.length} slides`;
-              if (tabKey === 'short_video' && data.outputs.short_video) return `${data.outputs.short_video.beats.length} beats`;
               return '';
             };
 
@@ -1391,7 +1274,6 @@ const SocialAlchemist = () => {
                             style={{ animationDelay: `${availableTabs.indexOf(tabKey) * 100 + 200}ms` }}
                             onClick={() => {
                               setGeneratedContentModal(prev => ({ ...prev, activeTab: tabKey }));
-                              setCurrentSlideIndex(0);
                             }}
                           >
                             <CheckCircle2 className="h-3 w-3" />
@@ -1487,7 +1369,6 @@ const SocialAlchemist = () => {
                             key={tabKey}
                             onClick={() => {
                               setGeneratedContentModal(prev => ({ ...prev, activeTab: tabKey }));
-                              setCurrentSlideIndex(0);
                             }}
                             className={cn(
                               "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0",
@@ -1643,7 +1524,7 @@ const SocialAlchemist = () => {
                               {/* Post content */}
                               <div className="p-4">
                                 <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                                  {data.outputs.linkedin.post.split(/(\#\w+)/g).map((part, i) =>
+                                  {data.outputs.linkedin.post.split(/(#\w+)/g).map((part, i) =>
                                     part.startsWith('#') ? (
                                       <span key={i} className="text-[#0077B5] font-semibold">{part}</span>
                                     ) : (
@@ -1773,7 +1654,7 @@ const SocialAlchemist = () => {
                                 </Button>
                               </div>
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                                {data.outputs.instagram_carousel.caption.split(/(\#\w+)/g).map((part, i) =>
+                                {data.outputs.instagram_carousel.caption.split(/(#\w+)/g).map((part, i) =>
                                   part.startsWith('#') ? (
                                     <span key={i} className="text-pink-600 font-semibold">{part}</span>
                                   ) : (
@@ -1781,106 +1662,6 @@ const SocialAlchemist = () => {
                                   )
                                 )}
                               </p>
-                            </div>
-                          </div>
-                        </ScrollArea>
-                      </>
-                    )}
-
-                    {/* Video Script */}
-                    {activeTab === 'short_video' && data.outputs.short_video && (
-                      <>
-                        <div className="shrink-0 px-5 py-3 border-b border-[hsl(47,50%,92%)] bg-[hsl(47,50%,99%)]">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-sm shadow-orange-200">
-                                <Video className="h-4 w-4 text-white" />
-                              </div>
-                              <div>
-                                <h3 className="font-semibold text-sm text-foreground">Video Script</h3>
-                                <p className="text-xs text-muted-foreground">
-                                  {data.outputs.short_video.beats.length} beats &middot; {data.outputs.short_video.script.split(/\s+/).length} words
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                const script = data.outputs.short_video!.script;
-                                const beats = data.outputs.short_video!.beats.join('\n');
-                                handleCopyContent(`${script}\n\n===BEATS===\n${beats}`, 'Script & beats');
-                              }}
-                              className="h-8 text-xs"
-                            >
-                              {generatedContentModal.copiedItem === 'Script & beats' ? (
-                                <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-emerald-500" /> Copied</>
-                              ) : (
-                                <><Copy className="h-3.5 w-3.5 mr-1.5" /> Copy All</>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                        <ScrollArea className="flex-1">
-                          <div className="px-5 py-4 space-y-5">
-                            {/* Script block */}
-                            <div className="space-y-3" style={{ animation: 'slideContent 0.4s ease-out' }}>
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-bold flex items-center gap-2">
-                                  <Type className="h-4 w-4 text-red-500" />
-                                  Full Script
-                                </Label>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleCopyContent(data.outputs.short_video!.script, 'Script')}
-                                  className="h-7 text-xs"
-                                >
-                                  {generatedContentModal.copiedItem === 'Script' ? (
-                                    <><CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-500" /> Copied</>
-                                  ) : (
-                                    <><Copy className="h-3.5 w-3.5 mr-1" /> Copy</>
-                                  )}
-                                </Button>
-                              </div>
-                              <div className="rounded-xl border-l-4 border-l-orange-300 bg-gradient-to-br from-[hsl(47,60%,98.5%)] to-[hsl(25,50%,97.5%)] p-5 shadow-sm">
-                                <p className="text-sm leading-[1.9] whitespace-pre-wrap font-medium">
-                                  {data.outputs.short_video.script}
-                                </p>
-                                <div className="flex items-center gap-3 mt-4 pt-3 border-t border-[hsl(47,50%,92%)]">
-                                  <span className="text-xs text-muted-foreground">{data.outputs.short_video.script.split(/\s+/).length} words</span>
-                                  <span className="text-xs text-muted-foreground">~{Math.ceil(data.outputs.short_video.script.split(/\s+/).length / 150)} min speaking</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Beats timeline */}
-                            <div className="space-y-3">
-                              <Label className="text-sm font-bold flex items-center gap-2">
-                                <Zap className="h-4 w-4 text-orange-500" />
-                                Beats Timeline
-                              </Label>
-                              <div className="relative">
-                                {/* Vertical connector line */}
-                                <div className="absolute left-[15px] top-8 bottom-4 w-[2px] bg-gradient-to-b from-orange-300 via-amber-200 to-amber-100/0 rounded-full" />
-                                <div className="space-y-2.5">
-                                  {data.outputs.short_video.beats.map((beat, index) => (
-                                    <div
-                                      key={index}
-                                      className="relative flex gap-3 items-start"
-                                      style={{ animation: 'slideContent 0.4s ease-out', animationDelay: `${index * 80}ms`, animationFillMode: 'both' }}
-                                    >
-                                      <div className="relative z-10 h-8 w-8 rounded-full bg-gradient-to-br from-red-500 via-orange-500 to-amber-400 flex items-center justify-center shadow-sm shrink-0 number-bubble">
-                                        <span className="text-xs font-bold text-white">{index + 1}</span>
-                                      </div>
-                                      <div className="flex-1 p-3 rounded-xl border border-[hsl(47,50%,90%)] bg-white hover:border-orange-300 card-hover-lift">
-                                        <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Beat {index + 1}</span>
-                                        <p className="text-sm leading-relaxed mt-1">{beat}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
                             </div>
                           </div>
                         </ScrollArea>

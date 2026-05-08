@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { TodaysSignals } from "@/components/dashboard/TodaysSignals";
 import { ContentQueue } from "@/components/dashboard/ContentQueue";
 import { ContentGenerator } from "@/components/dashboard/ContentGenerator";
@@ -12,12 +11,23 @@ import {
   Activity, ArrowUpRight, Zap, TrendingUp,
 } from "lucide-react";
 
+interface ContentOutput {
+  id: string;
+  title: string;
+  content: string;
+  persona: string;
+  output_type: string;
+  status: string;
+  topic_context?: string;
+  created_at: string;
+}
+
 /* ─── Pipeline content viewer (top-level, never nested inside another Dialog) ─── */
 const ContentQueueViewer = ({
   open, output, voiceId, guardrails, onClose, onRefresh
 }: {
   open: boolean;
-  output: any;
+  output: ContentOutput;
   voiceId: string;
   guardrails: Guardrails | null;
   onClose: () => void;
@@ -119,9 +129,9 @@ const Dashboard = () => {
   const [queueOpen, setQueueOpen] = useState(false);
   const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
   const [pipelineContentOpen, setPipelineContentOpen] = useState(false);
-  const [pipelineSelectedOutput, setPipelineSelectedOutput] = useState<any>(null);
+  const [pipelineSelectedOutput, setPipelineSelectedOutput] = useState<ContentOutput | null>(null);
   const [pipelineVoiceId, setPipelineVoiceId] = useState("");
-  const [pipelineGuardrails, setPipelineGuardrails] = useState<any>(null);
+  const [pipelineGuardrails, setPipelineGuardrails] = useState<Guardrails | null>(null);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -304,7 +314,6 @@ const Dashboard = () => {
           and opens its viewer Dialog (portal) without the pipeline wrapper */}
       <div style={{ display: 'none' }} aria-hidden="true">
         <ContentQueue
-          onSelectOutput={() => {}}
           pendingOpenId={pendingDraftId}
           onDraftOpened={() => setPendingDraftId(null)}
         />
@@ -373,7 +382,6 @@ const Dashboard = () => {
           {/* Body — filters are static inside ContentQueue, only records scroll */}
           <div className="flex flex-col flex-1 min-h-0">
             <ContentQueue
-              onSelectOutput={() => {}}
               embedded
               onOpenContent={(output, voiceId, guardrails) => {
                 setQueueOpen(false);

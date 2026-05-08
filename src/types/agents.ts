@@ -20,9 +20,9 @@ export interface AgentWithStats {
   endpoint: string;
   auth_method: string;
   api_key_encrypted: string | null;
-  api_headers: any;
-  input_schema: any;
-  output_schema: any;
+  api_headers: Record<string, string> | null;
+  input_schema: Record<string, unknown> | null;
+  output_schema: Record<string, unknown> | null;
   status: string;
   last_ping: string | null;
   response_time: number | null;
@@ -50,13 +50,13 @@ export interface IOSchema {
   required?: string[];
   items?: IOSchema;
   description?: string;
-  example?: any;
+  example?: unknown;
 }
 
 export interface SchemaProperty {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
   description?: string;
-  example?: any;
+  example?: unknown;
   enum?: string[];
   properties?: Record<string, SchemaProperty>;
   items?: SchemaProperty;
@@ -75,12 +75,12 @@ export interface AgentRequest {
   endpoint: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
   headers: Record<string, string>;
-  body?: any;
+  body?: unknown;
 }
 
 export interface AgentResponse {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
   response_time: number;
   status_code: number;
@@ -234,7 +234,7 @@ export const AGENT_ROLES: Record<AgentRole, { name: string; description: string;
 };
 
 // Validation functions
-export const validateAgentSchema = (schema: any): IOSchema | null => {
+export const validateAgentSchema = (schema: unknown): IOSchema | null => {
   try {
     // Basic validation - could be enhanced with JSON Schema validator
     if (typeof schema !== 'object' || !schema.type) {

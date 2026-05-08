@@ -6,12 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { generateAgenda, generateMinutes, extractActionItems, generateFollowUpEmail, refineMeetingDocument, processTranscript, loadSavedMeetings, saveMeeting, deleteSavedMeeting, getSavedMeeting } from "@/services/meetingAgentService";
+import { generateAgenda, generateMinutes, extractActionItems, generateFollowUpEmail, refineMeetingDocument, processTranscript, loadSavedMeetings, saveMeeting, deleteSavedMeeting } from "@/services/meetingAgentService";
 import { exportToPDF } from "@/utils/pdfExport";
 import {
   MeetingMode,
@@ -29,6 +28,7 @@ import {
   TRANSCRIPT_OUTPUT_TYPES
 } from "@/types/meeting";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import {
   Calendar,
   FileText,
@@ -38,15 +38,8 @@ import {
   Copy,
   Download,
   Loader2,
-  CheckCircle2,
   Wand2,
   ArrowLeft,
-  ArrowRight,
-  Users,
-  Clock,
-  Target,
-  Zap,
-  RefreshCw,
   FileDown,
   Mic,
   Save,
@@ -193,7 +186,7 @@ export default function MeetingAgent() {
         setGeneratedContent(result.content);
         toast({ title: "Generated!", description: "Your meeting document is ready." });
       }
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
     } finally {
       setIsGenerating(false);
@@ -504,7 +497,7 @@ export default function MeetingAgent() {
                   ) : generatedContent ? (
                     <ScrollArea className="h-[500px] pr-4">
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{generatedContent}</ReactMarkdown>
                       </div>
                     </ScrollArea>
                   ) : (
@@ -609,7 +602,7 @@ export default function MeetingAgent() {
                   ) : generatedContent ? (
                     <ScrollArea className="h-[500px] pr-4">
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{generatedContent}</ReactMarkdown>
                       </div>
                     </ScrollArea>
                   ) : (
@@ -702,7 +695,7 @@ export default function MeetingAgent() {
                   ) : generatedContent ? (
                     <ScrollArea className="h-[500px] pr-4">
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{generatedContent}</ReactMarkdown>
                       </div>
                     </ScrollArea>
                   ) : (
@@ -818,7 +811,7 @@ export default function MeetingAgent() {
                   ) : generatedContent ? (
                     <ScrollArea className="h-[500px] pr-4">
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{generatedContent}</ReactMarkdown>
                       </div>
                     </ScrollArea>
                   ) : (
@@ -929,7 +922,7 @@ export default function MeetingAgent() {
                   ) : generatedContent ? (
                     <ScrollArea className="h-[500px] pr-4">
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{generatedContent}</ReactMarkdown>
+                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{generatedContent}</ReactMarkdown>
                       </div>
                     </ScrollArea>
                   ) : (

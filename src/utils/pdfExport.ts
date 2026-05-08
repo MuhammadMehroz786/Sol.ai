@@ -1,8 +1,4 @@
-/**
- * PDF Export Utility
- * Uses html2pdf.js to generate professional PDF documents from markdown content
- */
-
+import DOMPurify from 'dompurify';
 
 interface PDFExportOptions {
   filename: string;
@@ -30,9 +26,9 @@ function markdownToStyledHTML(markdown: string, options: PDFExportOptions): stri
     // Inline code
     .replace(/`(.*?)`/gim, '<code>$1</code>')
     // Blockquotes
-    .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+    .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
     // Unordered lists
-    .replace(/^\- (.*$)/gim, '<li>$1</li>')
+    .replace(/^- (.*$)/gim, '<li>$1</li>')
     .replace(/^\* (.*$)/gim, '<li>$1</li>')
     // Ordered lists
     .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
@@ -43,6 +39,8 @@ function markdownToStyledHTML(markdown: string, options: PDFExportOptions): stri
   // Wrap consecutive <li> elements in <ul>
   html = html.replace(/(<li>.*?<\/li>)(\s*<br>\s*)?(<li>)/g, '$1$3');
   html = html.replace(/(<li>.*?<\/li>)+/g, '<ul>$&</ul>');
+
+  html = DOMPurify.sanitize(html);
 
   // Process tables
   const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;

@@ -95,7 +95,7 @@ export const useAgentMonitoring = () => {
                 lastChecked: healthCheck?.checked_at || null,
                 isOnline: agent.status === 'active' && (agent.health_status === 'ok' || agent.health_status === 'warn')
               } as AgentHealthStatus;
-            } catch (err) {
+            } catch {
               return {
                 agent,
                 healthStatus: 'unknown',
@@ -114,8 +114,8 @@ export const useAgentMonitoring = () => {
         // Calculate category statistics
         await calculateCategoryStats(healthStatuses);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
     }
   };
 
@@ -165,7 +165,8 @@ export const useAgentMonitoring = () => {
       });
 
       setCategoryStats(stats);
-    } catch (error) {
+    } catch {
+      // non-fatal
     }
   };
 
@@ -185,7 +186,8 @@ export const useAgentMonitoring = () => {
 
       if (error) throw error;
       setAlerts(data || []);
-    } catch (err: any) {
+    } catch {
+      // non-fatal
     }
   };
 
@@ -198,8 +200,8 @@ export const useAgentMonitoring = () => {
         await fetchAgentsHealth();
         return result;
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
     }
     return null;
   };
@@ -215,8 +217,8 @@ export const useAgentMonitoring = () => {
 
       if (error) throw error;
       await fetchAgentsHealth();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
     }
   };
 
@@ -230,8 +232,8 @@ export const useAgentMonitoring = () => {
         await fetchAlerts();
       }
       return success;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
       return false;
     }
   };
@@ -249,7 +251,8 @@ export const useAgentMonitoring = () => {
 
       if (error) throw error;
       await fetchAlerts();
-    } catch (err: any) {
+    } catch {
+      // non-fatal
     }
   };
 
@@ -262,8 +265,8 @@ export const useAgentMonitoring = () => {
         await fetchAgentsHealth();
       }
       return success;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
       return false;
     }
   };
@@ -277,8 +280,8 @@ export const useAgentMonitoring = () => {
         await fetchAgentsHealth();
       }
       return success;
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
       return false;
     }
   };

@@ -57,7 +57,7 @@ class FallbackManager {
         currentActive: roleAgents.find(agent => agent.status === 'active') || null
       }));
 
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -82,7 +82,7 @@ class FallbackManager {
 
       return agents && agents.length > 0 ? agents[0] : null;
 
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -121,7 +121,7 @@ class FallbackManager {
       // Return the highest priority available fallback
       return fallbackAgents && fallbackAgents.length > 0 ? fallbackAgents[0] : null;
 
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -166,7 +166,7 @@ class FallbackManager {
         .eq('id', toAgentId);
 
       // Log the fallback event
-      const { error: eventError } = await supabase
+      await supabase
         .from('agent_fallback_events')
         .insert({
           trigger_type: 'manual',
@@ -177,8 +177,6 @@ class FallbackManager {
           triggered_by_user_id: userId
         });
 
-      if (eventError) {
-      }
 
       // Create alert
       await this.createAlert({
@@ -191,7 +189,7 @@ class FallbackManager {
 
       return true;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -241,7 +239,7 @@ class FallbackManager {
 
       return false;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -267,7 +265,7 @@ class FallbackManager {
 
       return data?.length || 0;
 
-    } catch (error) {
+    } catch {
       return 0;
     }
   }
@@ -311,7 +309,7 @@ class FallbackManager {
 
       return true;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -332,7 +330,7 @@ class FallbackManager {
 
       return true;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -353,7 +351,7 @@ class FallbackManager {
 
       return true;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -379,7 +377,7 @@ class FallbackManager {
 
       return data || [];
 
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -424,7 +422,7 @@ class FallbackManager {
 
       return allFailed;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -467,7 +465,7 @@ class FallbackManager {
 
       return roleFailureStats.allFailed;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -476,7 +474,7 @@ class FallbackManager {
    * Calculate failure statistics and create appropriate alerts
    */
   private async calculateCategoryFailureStats(
-    agents: any[],
+    agents: { health_status?: string | null }[],
     name: string,
     type: 'role' | 'category'
   ): Promise<{ allFailed: boolean; failureRate: number }> {
@@ -606,7 +604,8 @@ class FallbackManager {
       }
 
 
-    } catch (error) {
+    } catch {
+      // non-fatal
     }
   }
 
@@ -650,7 +649,7 @@ class FallbackManager {
 
       return true;
 
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -666,10 +665,7 @@ class FallbackManager {
     agent_id?: string;
     user_id?: string;
   }): Promise<void> {
-    const { error } = await supabase.from('system_alerts').insert(alert);
-
-    if (error) {
-    }
+    await supabase.from('system_alerts').insert(alert);
   }
 
   /**
@@ -701,7 +697,7 @@ class FallbackManager {
         recommended_priority: (index + 1) * 10 // 10, 20, 30, etc.
       }));
 
-    } catch (error) {
+    } catch {
       return [];
     }
   }
