@@ -238,7 +238,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     ] as const;
 
     for (const table of tables) {
-      await supabase.from(table).delete().eq('user_id', user.id).catch(() => {});
+      try { await supabase.from(table).delete().eq('user_id', user.id); } catch { /* best effort */ }
     }
 
     // Delete the auth user itself so the email can be re-registered

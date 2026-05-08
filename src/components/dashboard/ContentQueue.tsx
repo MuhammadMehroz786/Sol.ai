@@ -27,7 +27,7 @@ interface ContentOutput {
   title: string;
   content: string;
   persona: string;
-  tones: string[];
+  tones?: string[] | null;
   output_type: string;
   status: 'draft' | 'review' | 'final' | 'published';
   topic_context?: string;
@@ -423,9 +423,9 @@ export const ContentQueue = ({ pendingOpenId, onDraftOpened, embedded, onOpenCon
                               <Badge variant="secondary" className="text-[10px] capitalize">
                                 {output.persona.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                               </Badge>
-                              {output.tones.length > 0 && (
+                              {(output.tones ?? []).length > 0 && (
                                 <Badge variant="outline" className="text-[10px]">
-                                  {output.tones[0]} {output.tones.length > 1 && `+${output.tones.length - 1}`}
+                                  {output.tones![0]} {output.tones!.length > 1 && `+${output.tones!.length - 1}`}
                                 </Badge>
                               )}
                             </div>

@@ -3,6 +3,7 @@ import { formatResponseData as sharedFormatResponseData } from "@/utils/contentF
 import { exportToPDF as exportToPDFUtil } from "@/utils/pdfExport";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
