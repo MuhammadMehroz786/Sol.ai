@@ -247,6 +247,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return { error: rpcError };
     }
 
+    // Clear all app localStorage keys so stale data doesn't appear on next login
+    const APP_STORAGE_KEYS = [
+      'sole-custom-voices',
+      'postCal_scheduledPosts',
+      'meetingAgent_savedMeetings',
+      'signal_scheduler_config',
+      'personas',
+      'user_signal_topic',
+    ];
+    for (const key of APP_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
+
     // Session is invalidated after auth user deletion; sign out to clear local state
     await supabase.auth.signOut({ scope: 'global' }).catch(() => {});
     return { error: null };
