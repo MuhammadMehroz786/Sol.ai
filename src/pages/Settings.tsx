@@ -206,7 +206,8 @@ const Settings = () => {
     setDeleteLoading(true);
     const { error } = await deleteAccount();
     if (error) {
-      toast({ title: 'Account deletion failed', description: error.message, variant: 'destructive' });
+      console.error('[deleteAccount]', error);
+      toast({ title: 'Account deletion failed', description: error.message || JSON.stringify(error), variant: 'destructive' });
       setDeleteLoading(false);
     } else {
       navigate('/auth');
